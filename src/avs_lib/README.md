@@ -168,9 +168,9 @@ pm.register_effect("my_effect", info);
 The standalone example demonstrates the library without any framework dependencies:
 
 ```bash
-cd examples/standalone
+# From the library directory (avs_lib/)
 mkdir build && cd build
-cmake ../../../..  # Point to main CMakeLists.txt
+cmake ..
 make
 ./avs_example
 ```

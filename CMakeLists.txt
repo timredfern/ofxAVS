@@ -1,11 +1,14 @@
 cmake_minimum_required(VERSION 3.15)
 project(ofxAVS VERSION 1.0.0 LANGUAGES CXX)
 
+# This CMakeLists.txt is for OpenFrameworks addon integration
+# For standalone library usage, see src/avs_lib/CMakeLists.txt
+
 # Set C++ standard
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# Build options
+# Build options  
 option(BUILD_EXAMPLES "Build example applications" ON)
 option(BUILD_TESTS "Build tests" ON)
 
