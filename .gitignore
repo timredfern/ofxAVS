@@ -1,0 +1,38 @@
+# Build directories
+build/
+**/build/
+
+# CMake generated files
+CMakeCache.txt
+CMakeFiles/
+Makefile
+cmake_install.cmake
+*.cmake
+
+# Compiled binaries
+*.o
+*.a
+*.so
+*.dll
+*.exe
+avs_example
+
+# Generated output files
+*.ppm
+*.png
+
+# IDE files
+.vscode/
+.idea/
+*.xcodeproj/
+*.sln
+*.vcxproj
+
+# System files
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*~
+*.tmp
+*.bak

@@ -1,0 +1,52 @@
+#include "builtin_effects.h"
+#include "plugin_manager.h"
+#include "../effects/clear_effect.h"
+#include "../effects/oscilloscope_effect.h"
+#include "../effects/blur_effect.h"
+
+namespace avs {
+
+void register_builtin_effects() {
+    auto& pm = PluginManager::instance();
+    
+    // Register Clear effect
+    {
+        PluginInfo info;
+        info.name = "Clear";
+        info.description = "Clear screen effect";
+        info.author = "AVS Port";
+        info.version = 1;
+        info.factory = []() -> std::unique_ptr<EffectBase> {
+            return std::make_unique<ClearEffect>();
+        };
+        pm.register_effect("clear", info);
+    }
+    
+    // Register Oscilloscope effect
+    {
+        PluginInfo info;
+        info.name = "Oscilloscope";
+        info.description = "Audio waveform display";
+        info.author = "AVS Port";
+        info.version = 1;
+        info.factory = []() -> std::unique_ptr<EffectBase> {
+            return std::make_unique<OscilloscopeEffect>();
+        };
+        pm.register_effect("oscilloscope", info);
+    }
+    
+    // Register Blur effect
+    {
+        PluginInfo info;
+        info.name = "Blur";
+        info.description = "Blur effect";
+        info.author = "AVS Port";
+        info.version = 1;
+        info.factory = []() -> std::unique_ptr<EffectBase> {
+            return std::make_unique<BlurEffect>();
+        };
+        pm.register_effect("blur", info);
+    }
+}
+
+} // namespace avs
