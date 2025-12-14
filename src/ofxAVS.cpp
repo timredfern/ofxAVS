@@ -25,7 +25,7 @@ void ofxAVS::setup(int w, int h) {
     height = h;
     
     // Initialize renderer
-    renderer = std::make_unique<Renderer>(width, height);
+    renderer = std::make_unique<DefaultRenderer>(width, height);
     
     // Register built-in effects
     register_builtin_effects();
@@ -34,7 +34,7 @@ void ofxAVS::setup(int w, int h) {
     framebuffer.resize(width * height, 0);
     output_buffer.resize(width * height, 0);
     
-    // Initialize texture
+    // Initialize texture with RGBA format (matches new templated pixel format)
     pixels.allocate(width, height, OF_PIXELS_RGBA);
     texture.allocate(pixels);
     
@@ -117,6 +117,18 @@ void ofxAVS::addTransformEffect(const std::string& x_expr, const std::string& y_
     }
 }
 
+void ofxAVS::addClearEffect(bool only_first, uint32_t color) {
+    if (!initialized) return;
+    
+    auto effect = PluginManager::instance().create_effect("clear");
+    if (effect) {
+        // Configure the clear effect parameters
+        effect->parameters().set_bool("only_first", only_first);
+        effect->parameters().set_color("color", color);
+        renderer->add_effect(std::move(effect));
+    }
+}
+
 void ofxAVS::clearEffects() {
     if (!initialized) return;
     
@@ -170,25 +182,8 @@ void ofxAVS::detectBeat() {
 }
 
 void ofxAVS::updateTexture() {
-    // Convert ARGB framebuffer to OF RGBA format
-    unsigned char* pixel_data = pixels.getData();
-    
-    for (int i = 0; i < width * height; i++) {
-        uint32_t color = output_buffer[i];
-        
-        // Extract ARGB components
-        unsigned char a = (color >> 24) & 0xFF;
-        unsigned char r = (color >> 16) & 0xFF;
-        unsigned char g = (color >> 8) & 0xFF;
-        unsigned char b = color & 0xFF;
-        
-        // Store as RGBA
-        pixel_data[i * 4 + 0] = r;
-        pixel_data[i * 4 + 1] = g;
-        pixel_data[i * 4 + 2] = b;
-        pixel_data[i * 4 + 3] = a;
-    }
-    
+    // Direct copy - RGBA format matches templated pixel format
+    std::memcpy(pixels.getData(), output_buffer.data(), width * height * sizeof(uint32_t));
     texture.loadData(pixels);
 }
 

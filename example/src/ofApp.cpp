@@ -68,16 +68,17 @@ void ofApp::draw() {
     // Draw UI
     ofSetColor(255);
     ofDrawBitmapString("ofxAVS Example - Layered Effects Demo", 20, 30);
-    ofDrawBitmapString("Effect Chain: Transform (1.05x scale) + Oscilloscope", 20, 50);
-    ofDrawBitmapString("Auto-cycle: " + std::string(auto_cycle_effects ? "ON" : "OFF"), 20, 70);
-    ofDrawBitmapString("Beat Detected: " + std::string(visualizer.isBeat() ? "YES" : "NO"), 20, 90);
+    ofDrawBitmapString("Effect Chain: Clear (first frame) + Transform (1.05x scale) + Oscilloscope", 20, 50);
+    ofDrawBitmapString("FPS: " + ofToString(ofGetFrameRate(), 1), 20, 70);
+    ofDrawBitmapString("Auto-cycle: " + std::string(auto_cycle_effects ? "ON" : "OFF"), 20, 90);
+    ofDrawBitmapString("Beat Detected: " + std::string(visualizer.isBeat() ? "YES" : "NO"), 20, 110);
     
-    ofDrawBitmapString("Controls:", 20, 130);
-    ofDrawBitmapString("1-4: Select single effect", 20, 150);
-    ofDrawBitmapString("l: Reload layered effects", 20, 170);
-    ofDrawBitmapString("c: Clear effects", 20, 190);
-    ofDrawBitmapString("r: Add random effect", 20, 210);
-    ofDrawBitmapString("SPACE: Toggle auto-cycle", 20, 230);
+    ofDrawBitmapString("Controls:", 20, 150);
+    ofDrawBitmapString("1-4: Select single effect", 20, 170);
+    ofDrawBitmapString("l: Reload layered effects", 20, 190);
+    ofDrawBitmapString("c: Clear effects", 20, 210);
+    ofDrawBitmapString("r: Add random effect", 20, 230);
+    ofDrawBitmapString("SPACE: Toggle auto-cycle", 20, 250);
     
     // Draw audio info
     ofDrawBitmapString("Audio Input: " + std::to_string(num_input_channels) + " channels", 20, ofGetHeight() - 60);

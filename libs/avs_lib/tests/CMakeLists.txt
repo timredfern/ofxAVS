@@ -17,9 +17,8 @@ FetchContent_MakeAvailable(Catch2)
 # Include the avs_lib core for testing
 set(AVS_LIB_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/..")
 
-# Build avs_core library for testing
+# Build avs_core library for testing (renderer is now header-only)
 add_library(avs_core_test STATIC
-    ${AVS_LIB_ROOT}/core/renderer.cpp
     ${AVS_LIB_ROOT}/core/parameter.cpp
     ${AVS_LIB_ROOT}/core/plugin_manager.cpp
     ${AVS_LIB_ROOT}/core/script/script_engine.cpp

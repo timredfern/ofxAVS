@@ -22,6 +22,7 @@ public:
     // Effect management
     void addEffect(const std::string& effect_name);
     void addTransformEffect(const std::string& x_expr, const std::string& y_expr);
+    void addClearEffect(bool only_first = false, uint32_t color = 0xFF000000);
     void clearEffects();
     
     // Beat detection
@@ -38,7 +39,7 @@ private:
     void updateTexture();
     
     // Core AVS components
-    std::unique_ptr<Renderer> renderer;
+    std::unique_ptr<DefaultRenderer> renderer;
     
     // OpenFrameworks integration
     ofTexture texture;
