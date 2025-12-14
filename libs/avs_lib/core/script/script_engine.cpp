@@ -36,10 +36,12 @@ double ScriptEngine::evaluate(const std::string& expression) {
         
         // Add AVS-specific variables only if not overridden by user variables
         if (combined_vars.find("x") == combined_vars.end()) {
-            combined_vars["x"] = static_cast<double>(pImpl->pixel_context.x) / pImpl->pixel_context.width;
+            combined_vars["x"] = pImpl->pixel_context.width > 1 ? 
+                static_cast<double>(pImpl->pixel_context.x) / (pImpl->pixel_context.width - 1) : 0.0;
         }
         if (combined_vars.find("y") == combined_vars.end()) {
-            combined_vars["y"] = static_cast<double>(pImpl->pixel_context.y) / pImpl->pixel_context.height;
+            combined_vars["y"] = pImpl->pixel_context.height > 1 ? 
+                static_cast<double>(pImpl->pixel_context.y) / (pImpl->pixel_context.height - 1) : 0.0;
         }
         if (combined_vars.find("w") == combined_vars.end()) {
             combined_vars["w"] = static_cast<double>(pImpl->pixel_context.width);
@@ -80,8 +82,10 @@ double ScriptEngine::get_variable(const std::string& name) {
     }
     
     // Then check AVS-specific variables
-    if (name == "x") return static_cast<double>(pImpl->pixel_context.x) / pImpl->pixel_context.width;
-    if (name == "y") return static_cast<double>(pImpl->pixel_context.y) / pImpl->pixel_context.height;
+    if (name == "x") return pImpl->pixel_context.width > 1 ? 
+        static_cast<double>(pImpl->pixel_context.x) / (pImpl->pixel_context.width - 1) : 0.0;
+    if (name == "y") return pImpl->pixel_context.height > 1 ? 
+        static_cast<double>(pImpl->pixel_context.y) / (pImpl->pixel_context.height - 1) : 0.0;
     if (name == "w") return static_cast<double>(pImpl->pixel_context.width);
     if (name == "h") return static_cast<double>(pImpl->pixel_context.height);
     if (name == "r") return pImpl->color_context.r;

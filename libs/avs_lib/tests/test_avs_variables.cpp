@@ -15,8 +15,8 @@ TEST_CASE("AVS-specific variables", "[avs_variables]") {
             double x_result = engine.evaluate("x");
             double y_result = engine.evaluate("y");
             
-            REQUIRE(x_result == Catch::Approx(0.5));  // 50/100 = 0.5 (normalized)
-            REQUIRE(y_result == Catch::Approx(0.75)); // 75/100 = 0.75 (normalized)
+            REQUIRE(x_result == Catch::Approx(50.0/99.0));  // 50/99 (normalized with width-1)
+            REQUIRE(y_result == Catch::Approx(75.0/99.0)); // 75/99 (normalized with height-1)
         }
         
         SECTION("w and h dimensions") {
@@ -63,13 +63,15 @@ TEST_CASE("AVS-specific variables", "[avs_variables]") {
             engine.set_pixel_context(30, 70, 100, 100);
             engine.set_color_context(0.5, 0.5, 0.5);
             
-            // Gradient effect: red increases with x position
+            // Gradient effect: red increases with x position  
+            double expected_x = 30.0 / 99.0; // 30 / (100-1)
             double gradient_red = engine.evaluate("x * r");
-            REQUIRE(gradient_red == Catch::Approx(0.15)); // 0.3 * 0.5
+            REQUIRE(gradient_red == Catch::Approx(expected_x * 0.5)); // (30/99) * 0.5
             
             // Distance-based effect using coordinates
+            double expected_y = 70.0 / 99.0; // 70 / (100-1)
             double distance_factor = engine.evaluate("sqrt(x*x + y*y)");
-            REQUIRE(distance_factor == Catch::Approx(std::sqrt(0.3*0.3 + 0.7*0.7)).epsilon(0.001));
+            REQUIRE(distance_factor == Catch::Approx(std::sqrt(expected_x*expected_x + expected_y*expected_y)).epsilon(0.001));
         }
         
         SECTION("Complex color transformations") {
@@ -106,14 +108,14 @@ TEST_CASE("AVS-specific variables", "[avs_variables]") {
             engine.set_pixel_context(25, 75, 100, 100);
             
             // Verify initial values
-            REQUIRE(engine.get_variable("x") == Catch::Approx(0.25));
-            REQUIRE(engine.get_variable("y") == Catch::Approx(0.75));
+            REQUIRE(engine.get_variable("x") == Catch::Approx(25.0/99.0)); // 25/(100-1)
+            REQUIRE(engine.get_variable("y") == Catch::Approx(75.0/99.0)); // 75/(100-1)
             
             // Update context and verify new values
             engine.set_pixel_context(10, 20, 100, 100);
             
-            REQUIRE(engine.get_variable("x") == Catch::Approx(0.1));
-            REQUIRE(engine.get_variable("y") == Catch::Approx(0.2));
+            REQUIRE(engine.get_variable("x") == Catch::Approx(10.0/99.0)); // 10/(100-1)
+            REQUIRE(engine.get_variable("y") == Catch::Approx(20.0/99.0)); // 20/(100-1)
         }
     }
 }
