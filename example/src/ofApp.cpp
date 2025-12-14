@@ -7,7 +7,7 @@ void ofApp::setup() {
     // Audio setup
     sample_rate = 44100;
     buffer_size = 512;
-    num_input_channels = 2;
+    num_input_channels = 1; // Most built-in mics are mono
     
     soundStream.printDeviceList();
     

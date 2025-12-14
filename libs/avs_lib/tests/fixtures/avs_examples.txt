@@ -1,0 +1,23 @@
+# AVS-specific expression examples from real effects
+# These are expressions commonly found in AVS presets
+
+# Distance from center
+d = sqrt(x*x + y*y)
+
+# Polar coordinates  
+r = sqrt(x*x + y*y); a = atan2(y, x)
+
+# Color manipulation
+r = r * 0.5
+g = g * sin(d * 0.1)  
+b = b * cos(a)
+
+# Audio-based effects
+x = x + sin(d * 0.01) * getspec(0.1, 0.1, 0)
+y = y + cos(d * 0.01) * getspec(0.1, 0.1, 0)
+
+# Time-based animation  
+t = t + 0.01; x = x + sin(t) * 0.1
+
+# Beat-reactive effects
+if(above(bass, 0.5), r = 1, r = r * 0.9)

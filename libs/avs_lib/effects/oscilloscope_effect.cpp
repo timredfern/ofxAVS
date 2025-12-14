@@ -13,7 +13,7 @@ void OscilloscopeEffect::setup_parameters() {
     auto& params = parameters();
     
     params.add_parameter(std::make_shared<Parameter>("enabled", ParameterType::BOOL, true));
-    params.add_parameter(std::make_shared<Parameter>("color", ParameterType::COLOR, uint32_t(0xFFFFFF))); // White
+    params.add_parameter(std::make_shared<Parameter>("color", ParameterType::COLOR, uint32_t(0xFFFFFFFF))); // White with full alpha
     params.add_parameter(std::make_shared<Parameter>("channel", ParameterType::INT, 0, 0, 2)); // 0=left, 1=right, 2=both
     params.add_parameter(std::make_shared<Parameter>("thickness", ParameterType::INT, 1, 1, 5));
     params.add_parameter(std::make_shared<Parameter>("solid", ParameterType::BOOL, false)); // false=dots, true=lines
@@ -69,14 +69,14 @@ int OscilloscopeEffect::render(AudioData visdata, int isBeat,
     // Choose which channel to display
     unsigned char* audio_data;
     if (channel == 0) {
-        audio_data = (unsigned char*)&visdata[0][1][0]; // Left channel waveform
+        audio_data = (unsigned char*)&visdata[0][0][0]; // Left channel waveform
     } else if (channel == 1) {
-        audio_data = (unsigned char*)&visdata[1][1][0]; // Right channel waveform
+        audio_data = (unsigned char*)&visdata[0][1][0]; // Right channel waveform
     } else {
         // Mix both channels - simplified
         static char mixed_data[576];
         for (int i = 0; i < 576; i++) {
-            mixed_data[i] = (visdata[0][1][i] + visdata[1][1][i]) / 2;
+            mixed_data[i] = (visdata[0][0][i] + visdata[0][1][i]) / 2;
         }
         audio_data = (unsigned char*)mixed_data;
     }

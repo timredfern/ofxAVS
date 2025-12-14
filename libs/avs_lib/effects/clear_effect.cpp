@@ -13,7 +13,7 @@ void ClearEffect::setup_parameters() {
     auto& params = parameters();
     
     params.add_parameter(std::make_shared<Parameter>("enabled", ParameterType::BOOL, true));
-    params.add_parameter(std::make_shared<Parameter>("color", ParameterType::COLOR, uint32_t(0x000000))); // Black
+    params.add_parameter(std::make_shared<Parameter>("color", ParameterType::COLOR, uint32_t(0xFF000000))); // Black with full alpha
     params.add_parameter(std::make_shared<Parameter>("only_first", ParameterType::BOOL, false));
     params.add_parameter(std::make_shared<Parameter>("blend_mode", ParameterType::INT, 0, 0, 3)); // 0=replace, 1=add, 2=line, 3=avg
 }

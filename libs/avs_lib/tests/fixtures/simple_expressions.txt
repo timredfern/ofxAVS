@@ -1,0 +1,21 @@
+# Simple arithmetic expressions for testing
+# Format: expression = expected_result
+
+2 + 3 = 5
+10 - 4 = 6  
+5 * 7 = 35
+20 / 4 = 5
+
+# With parentheses
+(2 + 3) * 4 = 20
+2 + (3 * 4) = 14
+
+# Mathematical functions
+sin(0) = 0
+cos(0) = 1
+sqrt(16) = 4
+abs(-5) = 5
+
+# Variables
+x = 5; x = 5
+y = x + 1; y = 6
