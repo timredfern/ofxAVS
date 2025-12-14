@@ -10,7 +10,7 @@ bin/
 # CMake generated files
 CMakeCache.txt
 CMakeFiles/
-Makefile
+libs/**/Makefile
 cmake_install.cmake
 *.cmake
 _deps/
