@@ -2,12 +2,20 @@
 build/
 **/build/
 
+# OpenFrameworks build artifacts
+obj/
+bin/
+*.app/
+
 # CMake generated files
 CMakeCache.txt
 CMakeFiles/
 Makefile
 cmake_install.cmake
 *.cmake
+_deps/
+DartConfiguration.tcl
+avs_tests
 
 # Compiled binaries
 *.o
@@ -15,6 +23,7 @@ cmake_install.cmake
 *.so
 *.dll
 *.exe
+*.d
 avs_example
 
 # Generated output files
