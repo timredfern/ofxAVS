@@ -1,4 +1,5 @@
 #include "ofxAVS.h"
+#include "avs_lib/core/plugin_manager.h"
 #include <algorithm>
 #include <cstring>
 
@@ -27,7 +28,7 @@ void ofxAVS::setup(int w, int h) {
     renderer = std::make_unique<Renderer>(width, height);
     
     // Register built-in effects
-    register_builtin_effects(*renderer);
+    register_builtin_effects();
     
     // Initialize framebuffers
     framebuffer.resize(width * height, 0);
@@ -98,7 +99,10 @@ void ofxAVS::setAudioData(const std::vector<float>& left, const std::vector<floa
 void ofxAVS::addEffect(const std::string& effect_name) {
     if (!initialized) return;
     
-    renderer->add_effect_by_name(effect_name);
+    auto effect = PluginManager::instance().create_effect(effect_name);
+    if (effect) {
+        renderer->add_effect(std::move(effect));
+    }
 }
 
 void ofxAVS::clearEffects() {
