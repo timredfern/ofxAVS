@@ -22,6 +22,7 @@ add_library(avs_core_test STATIC
     ${AVS_LIB_ROOT}/core/renderer.cpp
     ${AVS_LIB_ROOT}/core/parameter.cpp
     ${AVS_LIB_ROOT}/core/plugin_manager.cpp
+    ${AVS_LIB_ROOT}/core/script/script_engine.cpp
 )
 
 target_include_directories(avs_core_test PUBLIC 
