@@ -23,6 +23,10 @@ public:
     void set_variable(const std::string& name, double value);
     double get_variable(const std::string& name);
     
+    // AVS-specific context
+    void set_pixel_context(int pixel_x, int pixel_y, int width, int height);
+    void set_color_context(double red, double green, double blue);
+    
     // Error handling
     bool has_error() const;
     std::string get_error() const;

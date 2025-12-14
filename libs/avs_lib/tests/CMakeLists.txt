@@ -23,6 +23,8 @@ add_library(avs_core_test STATIC
     ${AVS_LIB_ROOT}/core/parameter.cpp
     ${AVS_LIB_ROOT}/core/plugin_manager.cpp
     ${AVS_LIB_ROOT}/core/script/script_engine.cpp
+    ${AVS_LIB_ROOT}/core/script/lexer.cpp
+    ${AVS_LIB_ROOT}/core/script/parser.cpp
 )
 
 target_include_directories(avs_core_test PUBLIC 
@@ -38,6 +40,7 @@ add_executable(avs_tests
     test_functions.cpp
     test_variables.cpp
     test_integration.cpp
+    test_avs_variables.cpp
 )
 
 target_link_libraries(avs_tests PRIVATE 
