@@ -22,20 +22,24 @@ void ofApp::setup() {
     // Visualizer setup
     visualizer.setup(512, 512);
     
-    // Demo effects
-    effect_names = {"clear", "oscilloscope", "blur"};
+    // Demo effects setup for layered visualization
+    effect_names = {"clear", "oscilloscope", "blur", "transform"};
     current_effect = 0;
-    auto_cycle_effects = true;
-    effect_cycle_time = 5.0f; // Change effect every 5 seconds
+    auto_cycle_effects = false; // Disable auto cycling for manual control
+    effect_cycle_time = 5.0f;
     last_effect_change = 0;
     
-    // Add initial effect
-    visualizer.addEffect(effect_names[current_effect]);
+    // Set up layered effect chain for classic AVS feedback look:
+    // 1. Transform effect with slight scaling (creates feedback/trails)
+    // 2. Oscilloscope to draw new audio waveform
+    setupLayeredEffects();
     
-    ofLogNotice() << "ofxAVS Example Started";
-    ofLogNotice() << "Press keys 1-3 to change effects";
+    ofLogNotice() << "ofxAVS Example Started - Layered Effects Mode";
+    ofLogNotice() << "Effect Chain: Transform (1.05x scale) + Oscilloscope";
+    ofLogNotice() << "Press keys 1-4 to change effects";
     ofLogNotice() << "Press SPACE to toggle auto-cycling";
     ofLogNotice() << "Press 'c' to clear effects";
+    ofLogNotice() << "Press 'l' to reload layered effects";
 }
 
 void ofApp::update() {
@@ -63,16 +67,17 @@ void ofApp::draw() {
     
     // Draw UI
     ofSetColor(255);
-    ofDrawBitmapString("ofxAVS Example", 20, 30);
-    ofDrawBitmapString("Current Effect: " + effect_names[current_effect], 20, 50);
+    ofDrawBitmapString("ofxAVS Example - Layered Effects Demo", 20, 30);
+    ofDrawBitmapString("Effect Chain: Transform (1.05x scale) + Oscilloscope", 20, 50);
     ofDrawBitmapString("Auto-cycle: " + std::string(auto_cycle_effects ? "ON" : "OFF"), 20, 70);
     ofDrawBitmapString("Beat Detected: " + std::string(visualizer.isBeat() ? "YES" : "NO"), 20, 90);
     
     ofDrawBitmapString("Controls:", 20, 130);
-    ofDrawBitmapString("1-3: Select effect", 20, 150);
-    ofDrawBitmapString("SPACE: Toggle auto-cycle", 20, 170);
+    ofDrawBitmapString("1-4: Select single effect", 20, 150);
+    ofDrawBitmapString("l: Reload layered effects", 20, 170);
     ofDrawBitmapString("c: Clear effects", 20, 190);
     ofDrawBitmapString("r: Add random effect", 20, 210);
+    ofDrawBitmapString("SPACE: Toggle auto-cycle", 20, 230);
     
     // Draw audio info
     ofDrawBitmapString("Audio Input: " + std::to_string(num_input_channels) + " channels", 20, ofGetHeight() - 60);
@@ -85,6 +90,7 @@ void ofApp::keyPressed(int key) {
         case '1':
         case '2':  
         case '3':
+        case '4':
             current_effect = key - '1';
             if (current_effect < effect_names.size()) {
                 visualizer.clearEffects();
@@ -111,12 +117,42 @@ void ofApp::keyPressed(int key) {
             visualizer.addEffect(effect_names[current_effect]);
             ofLogNotice() << "Random effect: " << effect_names[current_effect];
             break;
+            
+        case 'l':
+            setupLayeredEffects();
+            ofLogNotice() << "Reloaded layered effects";
+            break;
     }
 }
 
 void ofApp::audioIn(ofSoundBuffer& buffer) {
     // Pass audio data to visualizer
     visualizer.audioReceived(buffer.getBuffer().data(), buffer.getNumFrames(), buffer.getNumChannels());
+}
+
+void ofApp::setupLayeredEffects() {
+    // Clear any existing effects
+    visualizer.clearEffects();
+    
+    // Create the classic AVS feedback effect:
+    // 1. Clear effect that only clears on first frame (enables feedback)
+    // 2. Transform effect with slight scaling creates trails/feedback
+    // 3. Oscilloscope draws fresh audio waveform on top
+    
+    // Add clear effect configured for feedback (only clear first frame)
+    visualizer.addClearEffect(true); // only_first=true enables feedback
+    
+    // Add transform effect with scaling to create feedback trails
+    // x = x * 1.05, y = y * 1.05 (slight zoom/scale)
+    visualizer.addTransformEffect("x * 1.05", "y * 1.05");
+    
+    // Add oscilloscope to draw audio waveform on top
+    visualizer.addEffect("oscilloscope");
+    
+    ofLogNotice() << "Layered effects configured:";
+    ofLogNotice() << "  1. Clear: only_first=true (feedback enabled)";
+    ofLogNotice() << "  2. Transform: x = x * 1.05, y = y * 1.05 (feedback scaling)";
+    ofLogNotice() << "  3. Oscilloscope: Audio waveform visualization";
 }
 
 void ofApp::keyReleased(int key) {}

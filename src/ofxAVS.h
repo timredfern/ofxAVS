@@ -21,6 +21,7 @@ public:
     
     // Effect management
     void addEffect(const std::string& effect_name);
+    void addTransformEffect(const std::string& x_expr, const std::string& y_expr);
     void clearEffects();
     
     // Beat detection

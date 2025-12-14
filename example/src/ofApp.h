@@ -40,4 +40,7 @@ private:
     bool auto_cycle_effects;
     float effect_cycle_time;
     float last_effect_change;
+    
+    // Setup methods
+    void setupLayeredEffects();
 };

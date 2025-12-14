@@ -46,8 +46,8 @@ void Renderer::render(AudioData visdata, bool is_beat, uint32_t* output_buffer) 
         return;
     }
     
-    // Start with clear buffer
-    std::fill(buffer_a_.begin(), buffer_a_.end(), 0);
+    // Don't auto-clear buffer - preserve previous frame for feedback effects
+    // The Clear effect will handle clearing when needed
     
     // Chain effects using double buffering
     uint32_t* current_input = get_buffer_a();
@@ -73,6 +73,11 @@ void Renderer::render(AudioData visdata, bool is_beat, uint32_t* output_buffer) 
     
     // Copy final result to output
     std::memcpy(output_buffer, current_input, width_ * height_ * sizeof(uint32_t));
+    
+    // Preserve final result in buffer_a for next frame (feedback)
+    if (current_input != get_buffer_a()) {
+        std::memcpy(get_buffer_a(), current_input, width_ * height_ * sizeof(uint32_t));
+    }
 }
 
 } // namespace avs

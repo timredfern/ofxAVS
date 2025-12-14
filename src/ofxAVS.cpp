@@ -105,6 +105,18 @@ void ofxAVS::addEffect(const std::string& effect_name) {
     }
 }
 
+void ofxAVS::addTransformEffect(const std::string& x_expr, const std::string& y_expr) {
+    if (!initialized) return;
+    
+    auto effect = PluginManager::instance().create_effect("transform");
+    if (effect) {
+        // Configure the transform expressions
+        effect->parameters().set_string("x_expr", x_expr);
+        effect->parameters().set_string("y_expr", y_expr);
+        renderer->add_effect(std::move(effect));
+    }
+}
+
 void ofxAVS::clearEffects() {
     if (!initialized) return;
     
