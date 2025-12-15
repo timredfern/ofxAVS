@@ -24,7 +24,7 @@ add_library(avs_core_test STATIC
     ${AVS_LIB_ROOT}/core/script/script_engine.cpp
     ${AVS_LIB_ROOT}/core/script/lexer.cpp
     ${AVS_LIB_ROOT}/core/script/parser.cpp
-    ${AVS_LIB_ROOT}/core/transform_lookup_table.cpp
+    ${AVS_LIB_ROOT}/core/coordinate_lookup_table.cpp
     ${AVS_LIB_ROOT}/effects/transform_effect.cpp
 )
 
@@ -45,7 +45,8 @@ add_executable(avs_tests
     test_transform_effect.cpp
     test_audio_variables.cpp
     test_assignment_expressions.cpp
-    test_transform_lookup_table.cpp
+    test_coordinate_lookup_table.cpp
+    test_enum_parameter.cpp
 )
 
 target_link_libraries(avs_tests PRIVATE 
