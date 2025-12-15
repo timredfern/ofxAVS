@@ -118,9 +118,21 @@ double ScriptEngine::evaluate(const std::string& expression) {
         // Update user variables with any assignments that occurred
         for (const auto& [name, value] : combined_vars) {
             // Only update user variables (not AVS built-ins)
-            if (name != "x" && name != "y" && name != "w" && name != "h" && 
-                name != "r" && name != "g" && name != "b" && name != "beat" &&
-                name.substr(0, 1) != "v" && name.substr(0, 1) != "s") {
+            // Check if this is a user variable by seeing if it was already in user variables
+            // or if it's not a built-in variable
+            bool is_builtin = (name == "x" || name == "y" || name == "w" || name == "h" || 
+                              name == "r" || name == "g" || name == "b" || name == "beat");
+            
+            // Check for audio variables (v1-v8, vr1-vr8, s1-s8)
+            if (!is_builtin && name.length() >= 2) {
+                if ((name[0] == 'v' && name.length() == 2 && name[1] >= '1' && name[1] <= '8') ||
+                    (name.substr(0, 2) == "vr" && name.length() == 3 && name[2] >= '1' && name[2] <= '8') ||
+                    (name[0] == 's' && name.length() == 2 && name[1] >= '1' && name[1] <= '8')) {
+                    is_builtin = true;
+                }
+            }
+            
+            if (!is_builtin) {
                 pImpl->variables[name] = value;
             }
         }

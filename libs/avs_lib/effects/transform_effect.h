@@ -1,7 +1,7 @@
 #pragma once
 
 #include "../core/effect_base.h"
-#include "../core/script/script_engine.h"
+#include "../core/transform_lookup_table.h"
 #include <memory>
 
 namespace avs {
@@ -36,28 +36,24 @@ public:
     std::string get_name() const override { return "Transform"; }
     std::string get_description() const override { return "Mathematical coordinate transformation"; }
     
-    // For testing - access to script engine
-    ScriptEngine* get_script_engine() { return script_engine_.get(); }
+    // For testing - access to lookup table
+    const TransformLookupTable& get_lookup_table() const { return lookup_table_; }
 
 private:
-    std::unique_ptr<ScriptEngine> script_engine_;
+    TransformLookupTable lookup_table_;
     
-    // Compiled expressions for performance
+    // Expression state tracking
     std::string last_x_expr_;
     std::string last_y_expr_;
-    bool expressions_valid_;
+    bool last_rectangular_;
+    bool last_subpixel_;
+    bool last_wrap_;
+    int last_width_;
+    int last_height_;
+    bool table_valid_;
     
     void setup_parameters();
-    void update_expressions();
-    bool compile_expressions();
-    
-    // Coordinate transformation helpers
-    struct TransformPoint {
-        double x, y;
-    };
-    
-    TransformPoint transform_pixel(int px, int py, int w, int h, uint32_t color);
-    uint32_t sample_pixel(uint32_t* framebuffer, double x, double y, int w, int h);
+    bool needs_table_regeneration(int w, int h, const AudioData& visdata) const;
 };
 
 } // namespace avs

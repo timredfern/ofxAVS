@@ -29,10 +29,11 @@ void ofApp::setup() {
     effect_cycle_time = 5.0f;
     last_effect_change = 0;
     
-    // Set up layered effect chain for classic AVS feedback look:
-    // 1. Transform effect with slight scaling (creates feedback/trails)
-    // 2. Oscilloscope to draw new audio waveform
-    setupLayeredEffects();
+    // Set up layered effect chain demonstrating new lookup table-based transform:
+    // 1. Clear effect for feedback control
+    // 2. Transform effect with audio-reactive scaling using lookup tables  
+    // 3. Oscilloscope to draw audio waveform on top
+    setupLookupTableDemo();
     
     ofLogNotice() << "ofxAVS Example Started - Layered Effects Mode";
     ofLogNotice() << "Effect Chain: Transform (1.05x scale) + Oscilloscope";
@@ -68,7 +69,7 @@ void ofApp::draw() {
     // Draw UI
     ofSetColor(255);
     ofDrawBitmapString("ofxAVS Example - Layered Effects Demo", 20, 30);
-    ofDrawBitmapString("Effect Chain: Clear (first frame) + Transform (1.05x scale) + Oscilloscope", 20, 50);
+    ofDrawBitmapString("Effect Chain: Clear (feedback) + Transform (lookup table) + Oscilloscope", 20, 50);
     ofDrawBitmapString("FPS: " + ofToString(ofGetFrameRate(), 1), 20, 70);
     ofDrawBitmapString("Auto-cycle: " + std::string(auto_cycle_effects ? "ON" : "OFF"), 20, 90);
     ofDrawBitmapString("Beat Detected: " + std::string(visualizer.isBeat() ? "YES" : "NO"), 20, 110);
@@ -120,8 +121,8 @@ void ofApp::keyPressed(int key) {
             break;
             
         case 'l':
-            setupLayeredEffects();
-            ofLogNotice() << "Reloaded layered effects";
+            setupLookupTableDemo();
+            ofLogNotice() << "Reloaded lookup table demo";
             break;
     }
 }
@@ -131,29 +132,31 @@ void ofApp::audioIn(ofSoundBuffer& buffer) {
     visualizer.audioReceived(buffer.getBuffer().data(), buffer.getNumFrames(), buffer.getNumChannels());
 }
 
-void ofApp::setupLayeredEffects() {
+void ofApp::setupLookupTableDemo() {
     // Clear any existing effects
     visualizer.clearEffects();
     
-    // Create the classic AVS feedback effect:
+    // Demonstrate new lookup table-based Transform effect:
     // 1. Clear effect that only clears on first frame (enables feedback)
-    // 2. Transform effect with slight scaling creates trails/feedback
+    // 2. Transform effect with audio-reactive distortion using pre-computed lookup tables
     // 3. Oscilloscope draws fresh audio waveform on top
     
     // Add clear effect configured for feedback (only clear first frame)
     visualizer.addClearEffect(true); // only_first=true enables feedback
     
-    // Add transform effect with scaling to create feedback trails
-    // x = x * 1.05, y = y * 1.05 (slight zoom/scale)
-    visualizer.addTransformEffect("x * 1.05", "y * 1.05");
+    // Add audio-reactive transform effect using lookup table approach
+    // This recreates the classic AVS stepped/quantized transform behavior
+    // Audio variables: v1-v8 (waveform), beat, etc.
+    visualizer.addTransformEffect("x + sin(y * 6.28) * v1 * 0.1", "y + cos(x * 6.28) * v2 * 0.1");
     
     // Add oscilloscope to draw audio waveform on top
     visualizer.addEffect("oscilloscope");
     
-    ofLogNotice() << "Layered effects configured:";
+    ofLogNotice() << "Lookup table demo configured:";
     ofLogNotice() << "  1. Clear: only_first=true (feedback enabled)";
-    ofLogNotice() << "  2. Transform: x = x * 1.05, y = y * 1.05 (feedback scaling)";
+    ofLogNotice() << "  2. Transform: Audio-reactive wave distortion with lookup tables";
     ofLogNotice() << "  3. Oscilloscope: Audio waveform visualization";
+    ofLogNotice() << "Transform uses pre-computed lookup table (classic AVS behavior)";
 }
 
 void ofApp::keyReleased(int key) {}

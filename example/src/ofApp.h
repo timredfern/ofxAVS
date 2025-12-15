@@ -42,5 +42,5 @@ private:
     float last_effect_change;
     
     // Setup methods
-    void setupLayeredEffects();
+    void setupLookupTableDemo();
 };
