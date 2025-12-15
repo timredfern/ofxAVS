@@ -20,6 +20,13 @@ public:
     struct ColorContext {
         double r, g, b;
     } color_context = {0.0, 0.0, 0.0};
+    
+    struct AudioContext {
+        const AudioData* visdata;
+        bool is_beat;
+        
+        AudioContext() : visdata(nullptr), is_beat(false) {}
+    } audio_context;
 };
 
 ScriptEngine::ScriptEngine() : pImpl(std::make_unique<Impl>()) {
@@ -59,11 +66,66 @@ double ScriptEngine::evaluate(const std::string& expression) {
             combined_vars["b"] = pImpl->color_context.b;
         }
         
+        // Add audio data variables
+        if (combined_vars.find("beat") == combined_vars.end()) {
+            combined_vars["beat"] = pImpl->audio_context.is_beat ? 1.0 : 0.0;
+        }
+        
+        // Add audio waveform and spectrum variables (limited subset for common use)
+        if (pImpl->audio_context.visdata != nullptr) {
+            const AudioData& vis = *pImpl->audio_context.visdata;
+            
+            // Common waveform access points (v1-v8 for left channel waveform samples)
+            for (int i = 0; i < 8; i++) {
+                std::string var_name = "v" + std::to_string(i + 1);
+                if (combined_vars.find(var_name) == combined_vars.end()) {
+                    int sample_idx = i * 72; // Sample every 72nd sample for 8 points
+                    if (sample_idx < 576) {
+                        combined_vars[var_name] = static_cast<double>(vis[0][0][sample_idx]) / 127.0;
+                    }
+                }
+            }
+            
+            // Right channel equivalents (vr1-vr8)  
+            for (int i = 0; i < 8; i++) {
+                std::string var_name = "vr" + std::to_string(i + 1);
+                if (combined_vars.find(var_name) == combined_vars.end()) {
+                    int sample_idx = i * 72;
+                    if (sample_idx < 576) {
+                        combined_vars[var_name] = static_cast<double>(vis[0][1][sample_idx]) / 127.0;
+                    }
+                }
+            }
+            
+            // Spectrum data (s1-s8 for frequency bins)
+            for (int i = 0; i < 8; i++) {
+                std::string var_name = "s" + std::to_string(i + 1);
+                if (combined_vars.find(var_name) == combined_vars.end()) {
+                    int sample_idx = i * 72;
+                    if (sample_idx < 576) {
+                        combined_vars[var_name] = static_cast<double>(vis[1][0][sample_idx]) / 127.0;
+                    }
+                }
+            }
+        }
+        
         Lexer lexer(expression);
         Parser parser(lexer);
         auto ast = parser.parse();
         
-        return ast->evaluate(combined_vars);
+        double result = ast->evaluate(combined_vars);
+        
+        // Update user variables with any assignments that occurred
+        for (const auto& [name, value] : combined_vars) {
+            // Only update user variables (not AVS built-ins)
+            if (name != "x" && name != "y" && name != "w" && name != "h" && 
+                name != "r" && name != "g" && name != "b" && name != "beat" &&
+                name.substr(0, 1) != "v" && name.substr(0, 1) != "s") {
+                pImpl->variables[name] = value;
+            }
+        }
+        
+        return result;
     } catch (const std::exception& e) {
         pImpl->last_error = e.what();
         return 0.0;
@@ -92,6 +154,46 @@ double ScriptEngine::get_variable(const std::string& name) {
     if (name == "g") return pImpl->color_context.g;
     if (name == "b") return pImpl->color_context.b;
     
+    // Audio variables
+    if (name == "beat") return pImpl->audio_context.is_beat ? 1.0 : 0.0;
+    
+    if (pImpl->audio_context.visdata != nullptr) {
+        const AudioData& vis = *pImpl->audio_context.visdata;
+        
+        // Waveform variables v1-v8 (left channel)
+        for (int i = 0; i < 8; i++) {
+            std::string var_name = "v" + std::to_string(i + 1);
+            if (name == var_name) {
+                int sample_idx = i * 72;
+                if (sample_idx < 576) {
+                    return static_cast<double>(vis[0][0][sample_idx]) / 127.0;
+                }
+            }
+        }
+        
+        // Right channel variables vr1-vr8
+        for (int i = 0; i < 8; i++) {
+            std::string var_name = "vr" + std::to_string(i + 1);
+            if (name == var_name) {
+                int sample_idx = i * 72;
+                if (sample_idx < 576) {
+                    return static_cast<double>(vis[0][1][sample_idx]) / 127.0;
+                }
+            }
+        }
+        
+        // Spectrum variables s1-s8
+        for (int i = 0; i < 8; i++) {
+            std::string var_name = "s" + std::to_string(i + 1);
+            if (name == var_name) {
+                int sample_idx = i * 72;
+                if (sample_idx < 576) {
+                    return static_cast<double>(vis[1][0][sample_idx]) / 127.0;
+                }
+            }
+        }
+    }
+    
     return 0.0; // Default to 0 if variable not found
 }
 
@@ -106,6 +208,11 @@ void ScriptEngine::set_color_context(double red, double green, double blue) {
     pImpl->color_context.r = red;
     pImpl->color_context.g = green;
     pImpl->color_context.b = blue;
+}
+
+void ScriptEngine::set_audio_context(const AudioData& visdata, bool is_beat) {
+    pImpl->audio_context.visdata = &visdata;
+    pImpl->audio_context.is_beat = is_beat;
 }
 
 bool ScriptEngine::has_error() const {

@@ -16,6 +16,7 @@ enum class TokenType {
     RPAREN,
     COMMA,
     ASSIGN,
+    SEMICOLON,
     END_OF_INPUT
 };
 

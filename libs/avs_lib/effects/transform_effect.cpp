@@ -44,6 +44,10 @@ bool TransformEffect::compile_expressions() {
     script_engine_->set_pixel_context(50, 50, 100, 100);
     script_engine_->set_color_context(0.5, 0.5, 0.5);
     
+    // Set dummy audio context for testing
+    AudioData dummy_audio = {};
+    script_engine_->set_audio_context(dummy_audio, false);
+    
     double test_x = script_engine_->evaluate(x_expr);
     if (script_engine_->has_error()) {
         expressions_valid_ = false;
@@ -151,6 +155,9 @@ int TransformEffect::render(AudioData visdata, int isBeat,
                           uint32_t* framebuffer, uint32_t* fbout,
                           int w, int h) {
     if (!is_enabled()) return 0;
+    
+    // Set audio context for all expressions in this frame
+    script_engine_->set_audio_context(*reinterpret_cast<const AudioData*>(visdata), isBeat != 0);
     
     // Compile expressions if needed
     if (!compile_expressions()) {

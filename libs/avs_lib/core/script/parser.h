@@ -11,13 +11,13 @@ namespace avs {
 // Abstract syntax tree nodes
 struct ASTNode {
     virtual ~ASTNode() = default;
-    virtual double evaluate(const std::map<std::string, double>& variables) const = 0;
+    virtual double evaluate(std::map<std::string, double>& variables) const = 0;
 };
 
 struct NumberNode : public ASTNode {
     double value;
     NumberNode(double v) : value(v) {}
-    double evaluate(const std::map<std::string, double>& variables) const override {
+    double evaluate(std::map<std::string, double>& variables) const override {
         return value;
     }
 };
@@ -25,7 +25,7 @@ struct NumberNode : public ASTNode {
 struct VariableNode : public ASTNode {
     std::string name;
     VariableNode(const std::string& n) : name(n) {}
-    double evaluate(const std::map<std::string, double>& variables) const override {
+    double evaluate(std::map<std::string, double>& variables) const override {
         auto it = variables.find(name);
         return (it != variables.end()) ? it->second : 0.0;
     }
@@ -39,7 +39,7 @@ struct BinaryOpNode : public ASTNode {
     BinaryOpNode(std::unique_ptr<ASTNode> l, TokenType o, std::unique_ptr<ASTNode> r)
         : left(std::move(l)), right(std::move(r)), op(o) {}
         
-    double evaluate(const std::map<std::string, double>& variables) const override {
+    double evaluate(std::map<std::string, double>& variables) const override {
         double l_val = left->evaluate(variables);
         double r_val = right->evaluate(variables);
         
@@ -60,7 +60,7 @@ struct UnaryOpNode : public ASTNode {
     UnaryOpNode(TokenType o, std::unique_ptr<ASTNode> operand)
         : operand(std::move(operand)), op(o) {}
         
-    double evaluate(const std::map<std::string, double>& variables) const override {
+    double evaluate(std::map<std::string, double>& variables) const override {
         double val = operand->evaluate(variables);
         switch (op) {
             case TokenType::MINUS: return -val;
@@ -77,11 +77,9 @@ struct AssignmentNode : public ASTNode {
     AssignmentNode(const std::string& name, std::unique_ptr<ASTNode> val)
         : variable_name(name), value(std::move(val)) {}
         
-    double evaluate(const std::map<std::string, double>& variables) const override {
+    double evaluate(std::map<std::string, double>& variables) const override {
         double result = value->evaluate(variables);
-        // For assignment, we need a way to modify the ScriptEngine's state
-        // This is a simplified implementation - in a real parser, we'd need
-        // a callback mechanism or different evaluation context
+        variables[variable_name] = result;
         return result;
     }
 };
@@ -92,7 +90,7 @@ struct FunctionCallNode : public ASTNode {
     
     FunctionCallNode(const std::string& name) : function_name(name) {}
     
-    double evaluate(const std::map<std::string, double>& variables) const override {
+    double evaluate(std::map<std::string, double>& variables) const override {
         std::vector<double> arg_values;
         for (const auto& arg : arguments) {
             arg_values.push_back(arg->evaluate(variables));
@@ -120,6 +118,20 @@ struct FunctionCallNode : public ASTNode {
     }
 };
 
+struct StatementSequenceNode : public ASTNode {
+    std::vector<std::unique_ptr<ASTNode>> statements;
+    
+    StatementSequenceNode() {}
+    
+    double evaluate(std::map<std::string, double>& variables) const override {
+        double last_result = 0.0;
+        for (const auto& stmt : statements) {
+            last_result = stmt->evaluate(variables);
+        }
+        return last_result; // Return result of last statement
+    }
+};
+
 class Parser {
 public:
     explicit Parser(Lexer& lexer);
@@ -128,7 +140,11 @@ public:
 private:
     Lexer& lexer;
     
+    std::unique_ptr<ASTNode> parse_statement_sequence();
+    std::unique_ptr<ASTNode> parse_statement();
+    std::unique_ptr<ASTNode> parse_assignment_or_expression();
     std::unique_ptr<ASTNode> parse_expression();
+    std::unique_ptr<ASTNode> parse_expression_with_first_term(std::unique_ptr<ASTNode> first_term);
     std::unique_ptr<ASTNode> parse_term();
     std::unique_ptr<ASTNode> parse_factor();
 };

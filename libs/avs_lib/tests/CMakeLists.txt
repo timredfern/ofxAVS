@@ -42,6 +42,8 @@ add_executable(avs_tests
     test_integration.cpp
     test_avs_variables.cpp
     test_transform_effect.cpp
+    test_audio_variables.cpp
+    test_assignment_expressions.cpp
 )
 
 target_link_libraries(avs_tests PRIVATE 

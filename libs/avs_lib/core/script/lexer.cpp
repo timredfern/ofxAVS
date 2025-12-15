@@ -39,6 +39,7 @@ Token Lexer::next_token() {
         case ')': return Token(TokenType::RPAREN);
         case ',': return Token(TokenType::COMMA);
         case '=': return Token(TokenType::ASSIGN);
+        case ';': return Token(TokenType::SEMICOLON);
         default:
             // Unknown character, skip it
             return next_token();
