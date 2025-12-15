@@ -11,26 +11,60 @@ namespace avs {
 class ScriptEngine;
 
 /**
- * Transform Lookup Table Utility
+ * Interpolation modes for grid-based coordinate lookup
+ * 
+ * These modes control how the discrete grid values are interpolated
+ * when applied to the full-resolution output image:
+ * 
+ * NONE: No interpolation - each output pixel uses the nearest grid point.
+ *       Creates the characteristic "stepped" or "quantized" artifacts
+ *       that were a hallmark of classic AVS Transform effects.
+ *       Best for: Authentic retro AVS look, dramatic stepped distortions
+ * 
+ * LINEAR: Bilinear interpolation between grid points for smooth gradients.
+ *         Eliminates stepping artifacts but maintains the performance
+ *         benefits of grid-based evaluation.
+ *         Best for: Modern smooth transforms, subtle distortions
+ * 
+ * NEAREST: Nearest neighbor interpolation - sharper than linear but
+ *          less blocky than none. Each pixel uses the closest grid value
+ *          but transitions are still abrupt.
+ *          Best for: Pixelated/retro effects with sharp transitions
+ */
+enum class InterpolationMode {
+    NONE,      // No interpolation - blocky/stepped effect (classic AVS)
+    LINEAR,    // Bilinear interpolation - smooth transforms  
+    NEAREST    // Nearest neighbor - sharp but less blocky than none
+};
+
+/**
+ * Coordinate Lookup Table Utility
  * 
  * Generates and applies coordinate transformation lookup tables for AVS effects.
- * Based on the original AVS Transform effect implementation, this creates a
- * pre-computed mapping from output pixel coordinates to input pixel coordinates.
+ * This utility can be used by Transform, Movement, and other coordinate-mapping effects.
  * 
- * The lookup table approach creates the characteristic "stepped" artifacts of
- * classic AVS by evaluating expressions at discrete pixel centers rather than
- * continuously.
+ * Based on the original AVS approach, this creates a pre-computed grid mapping from 
+ * output coordinates to input coordinates. The grid resolution is configurable, with
+ * smaller grids creating more pronounced stepping artifacts characteristic of classic AVS.
+ * 
+ * Typical grid sizes:
+ * - 16x16: Heavy stepping, classic AVS look, 1KB memory
+ * - 32x32: Moderate stepping, 4KB memory  
+ * - 64x64: Subtle stepping, 16KB memory
+ * - Full resolution: No stepping, smooth transforms, high memory usage
  */
-class TransformLookupTable {
+class CoordinateLookupTable {
 public:
-    TransformLookupTable();
-    ~TransformLookupTable();
+    CoordinateLookupTable();
+    ~CoordinateLookupTable();
     
     /**
      * Generate lookup table from transformation expressions
      * 
      * @param width Output image width
-     * @param height Output image height  
+     * @param height Output image height
+     * @param grid_width Lookup table grid width (e.g. 16 for 16x16 grid)
+     * @param grid_height Lookup table grid height (e.g. 16 for 16x16 grid)
      * @param x_expr Expression for x coordinate transformation
      * @param y_expr Expression for y coordinate transformation
      * @param rectangular If true, use rectangular coordinates (x,y in [-1,1])
@@ -38,11 +72,13 @@ public:
      * @param subpixel If true, enable subpixel interpolation
      * @param audio_data Audio data for expressions (beat, v1-v8, etc)
      * @param wrap If true, coordinates wrap around image boundaries
+     * @param interp_mode Interpolation mode for grid upsampling
      */
-    void generate(int width, int height, 
+    void generate(int width, int height, int grid_width, int grid_height,
                  const std::string& x_expr, const std::string& y_expr,
                  bool rectangular, bool subpixel,
-                 const AudioData& audio_data, bool wrap = false);
+                 const AudioData& audio_data, bool wrap = false,
+                 InterpolationMode interp_mode = InterpolationMode::LINEAR);
     
     /**
      * Apply the lookup table transformation
@@ -73,10 +109,13 @@ public:
     
 private:
     std::vector<uint32_t> lookup_table_;
-    int width_;
-    int height_;
+    int output_width_;
+    int output_height_;
+    int grid_width_;
+    int grid_height_;
     bool subpixel_;
     bool wrap_;
+    InterpolationMode interp_mode_;
     
     // Helper methods
     void generate_rectangular(const std::string& x_expr, const std::string& y_expr,
@@ -87,6 +126,8 @@ private:
     uint32_t encode_lookup(double x, double y) const;
     uint32_t sample_with_interpolation(const uint32_t* input, uint32_t base_offset,
                                       uint32_t x_partial, uint32_t y_partial) const;
+    uint32_t interpolate_pixels(uint32_t p00, uint32_t p01, uint32_t p10, uint32_t p11, 
+                              double fx, double fy) const;
     
     // Clamp or wrap coordinates based on settings
     void clamp_or_wrap(double& x, double& y) const;

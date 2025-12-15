@@ -3,6 +3,7 @@
 #include "ofMain.h"
 #include "avs_lib/core/renderer.h"
 #include "avs_lib/core/builtin_effects.h"
+#include "avs_lib/core/coordinate_lookup_table.h"
 
 namespace avs {
 
@@ -21,7 +22,11 @@ public:
     
     // Effect management
     void addEffect(const std::string& effect_name);
-    void addTransformEffect(const std::string& x_expr, const std::string& y_expr);
+    void addTransformEffect(const std::string& x_expr, const std::string& y_expr, 
+                          int grid_width = 16, int grid_height = 16, 
+                          InterpolationMode interp_mode = InterpolationMode::NONE);
+    void addTransformEffect(const std::string& x_expr, const std::string& y_expr, 
+                          int grid_width, int grid_height, int interpolation);
     void addClearEffect(bool only_first = false, uint32_t color = 0xFF000000);
     void clearEffects();
     

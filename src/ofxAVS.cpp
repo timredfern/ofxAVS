@@ -105,7 +105,8 @@ void ofxAVS::addEffect(const std::string& effect_name) {
     }
 }
 
-void ofxAVS::addTransformEffect(const std::string& x_expr, const std::string& y_expr) {
+void ofxAVS::addTransformEffect(const std::string& x_expr, const std::string& y_expr,
+                              int grid_width, int grid_height, InterpolationMode interp_mode) {
     if (!initialized) return;
     
     auto effect = PluginManager::instance().create_effect("transform");
@@ -113,8 +114,26 @@ void ofxAVS::addTransformEffect(const std::string& x_expr, const std::string& y_
         // Configure the transform expressions
         effect->parameters().set_string("x_expr", x_expr);
         effect->parameters().set_string("y_expr", y_expr);
+        
+        // Configure grid resolution for classic AVS-style stepping
+        effect->parameters().set_int("grid_width", grid_width);
+        effect->parameters().set_int("grid_height", grid_height);
+        
+        // Configure interpolation mode using enum
+        effect->parameters().set_int("interpolation", static_cast<int>(interp_mode));
+        
         renderer->add_effect(std::move(effect));
     }
+}
+
+void ofxAVS::addTransformEffect(const std::string& x_expr, const std::string& y_expr,
+                              int grid_width, int grid_height, int interpolation) {
+    // Legacy method that accepts int - convert to enum
+    InterpolationMode mode = InterpolationMode::NONE;
+    if (interpolation == 1) mode = InterpolationMode::LINEAR;
+    else if (interpolation == 2) mode = InterpolationMode::NEAREST;
+    
+    addTransformEffect(x_expr, y_expr, grid_width, grid_height, mode);
 }
 
 void ofxAVS::addClearEffect(bool only_first, uint32_t color) {

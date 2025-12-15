@@ -14,7 +14,8 @@ enum class ParameterType {
     INT,
     BOOL,
     COLOR,
-    STRING
+    STRING,
+    ENUM
 };
 
 class Parameter {
@@ -26,6 +27,13 @@ public:
               Value min_value = 0.0, Value max_value = 1.0)
         : name_(name), type_(type), value_(default_value), 
           min_value_(min_value), max_value_(max_value) {}
+
+    // Constructor for enum parameters with option names
+    Parameter(const std::string& name, ParameterType type, int default_value,
+              const std::vector<std::string>& enum_options)
+        : name_(name), type_(type), value_(default_value), 
+          min_value_(0), max_value_(static_cast<int>(enum_options.size() - 1)),
+          enum_options_(enum_options) {}
 
     // Value access
     void set_value(const Value& value);
@@ -44,6 +52,18 @@ public:
     const Value& min_value() const { return min_value_; }
     const Value& max_value() const { return max_value_; }
     
+    // Enum-specific methods
+    const std::vector<std::string>& enum_options() const { return enum_options_; }
+    std::string enum_value_name() const {
+        if (type_ == ParameterType::ENUM && !enum_options_.empty()) {
+            int idx = as_int();
+            if (idx >= 0 && idx < static_cast<int>(enum_options_.size())) {
+                return enum_options_[idx];
+            }
+        }
+        return "";
+    }
+    
     // Change notifications
     void add_change_callback(ChangeCallback callback) {
         callbacks_.push_back(callback);
@@ -55,6 +75,7 @@ private:
     Value value_;
     Value min_value_;
     Value max_value_;
+    std::vector<std::string> enum_options_; // For ENUM type parameters
     std::vector<ChangeCallback> callbacks_;
     
     void notify_callbacks();

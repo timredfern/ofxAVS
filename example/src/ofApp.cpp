@@ -147,16 +147,20 @@ void ofApp::setupLookupTableDemo() {
     // Add audio-reactive transform effect using lookup table approach
     // This recreates the classic AVS stepped/quantized transform behavior
     // Audio variables: v1-v8 (waveform), beat, etc.
-    visualizer.addTransformEffect("x + sin(y * 6.28) * v1 * 0.1", "y + cos(x * 6.28) * v2 * 0.1");
+    // Use 16×16 grid with no interpolation for classic stepped look
+    visualizer.addTransformEffect("x + sin(y * 6.28) * v1 * 0.1", "y + cos(x * 6.28) * v2 * 0.1",
+                                16, 16, avs::InterpolationMode::NONE);
     
     // Add oscilloscope to draw audio waveform on top
     visualizer.addEffect("oscilloscope");
     
     ofLogNotice() << "Lookup table demo configured:";
     ofLogNotice() << "  1. Clear: only_first=true (feedback enabled)";
-    ofLogNotice() << "  2. Transform: Audio-reactive wave distortion with lookup tables";
+    ofLogNotice() << "  2. Transform: Audio-reactive wave distortion with 16×16 grid";
+    ofLogNotice() << "     - InterpolationMode::NONE for classic stepped artifacts";
+    ofLogNotice() << "     - Available modes: NONE (stepped), LINEAR (smooth), NEAREST (sharp)";
     ofLogNotice() << "  3. Oscilloscope: Audio waveform visualization";
-    ofLogNotice() << "Transform uses pre-computed lookup table (classic AVS behavior)";
+    ofLogNotice() << "Transform uses pre-computed lookup table (authentic AVS behavior)";
 }
 
 void ofApp::keyReleased(int key) {}

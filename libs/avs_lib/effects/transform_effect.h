@@ -1,7 +1,7 @@
 #pragma once
 
 #include "../core/effect_base.h"
-#include "../core/transform_lookup_table.h"
+#include "../core/coordinate_lookup_table.h"
 #include <memory>
 
 namespace avs {
@@ -37,10 +37,10 @@ public:
     std::string get_description() const override { return "Mathematical coordinate transformation"; }
     
     // For testing - access to lookup table
-    const TransformLookupTable& get_lookup_table() const { return lookup_table_; }
+    const CoordinateLookupTable& get_lookup_table() const { return lookup_table_; }
 
 private:
-    TransformLookupTable lookup_table_;
+    CoordinateLookupTable lookup_table_;
     
     // Expression state tracking
     std::string last_x_expr_;
@@ -48,6 +48,9 @@ private:
     bool last_rectangular_;
     bool last_subpixel_;
     bool last_wrap_;
+    int last_grid_width_;
+    int last_grid_height_;
+    InterpolationMode last_interp_mode_;
     int last_width_;
     int last_height_;
     bool table_valid_;
