@@ -8,11 +8,7 @@
 #   The location of your root openFrameworks installation
 #       (default) OF_ROOT = ../../.. 
 ################################################################################
-# Fixed: Use tilde expansion for portable home directory reference
-OF_ROOT = ~/workspace/openFrameworks
-
-# REMINDER: When building, export OF_ROOT environment variable:
-# export OF_ROOT=~/workspace/openFrameworks && make
+# OF_ROOT = .
 
 ################################################################################
 # PROJECT ROOT
