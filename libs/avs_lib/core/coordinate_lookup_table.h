@@ -40,18 +40,22 @@ enum class InterpolationMode {
 /**
  * Coordinate Lookup Table Utility
  * 
- * Generates and applies coordinate transformation lookup tables for AVS effects.
- * This utility can be used by Transform, Movement, and other coordinate-mapping effects.
+ * Generates grid-based coordinate transformation lookup tables for AVS effects.
+ * This utility stores transformed coordinates in a low-resolution grid and
+ * interpolates them for final output, creating the characteristic stepped
+ * distortions of classic AVS when interpolation is disabled.
  * 
- * Based on the original AVS approach, this creates a pre-computed grid mapping from 
- * output coordinates to input coordinates. The grid resolution is configurable, with
- * smaller grids creating more pronounced stepping artifacts characteristic of classic AVS.
+ * Key differences from full-resolution tables:
+ * - Stores coordinates, not pixel indices
+ * - Grid-based evaluation with interpolation support
+ * - Memory efficient: 16x16 grid = 1KB vs full res = width*height*4 bytes
+ * - Configurable interpolation modes for different visual effects
  * 
  * Typical grid sizes:
+ * - 8x8: Very blocky, extreme classic AVS look
  * - 16x16: Heavy stepping, classic AVS look, 1KB memory
  * - 32x32: Moderate stepping, 4KB memory  
  * - 64x64: Subtle stepping, 16KB memory
- * - Full resolution: No stepping, smooth transforms, high memory usage
  */
 class CoordinateLookupTable {
 public:
@@ -93,9 +97,14 @@ public:
                int width, int height, bool blend = false) const;
     
     /**
-     * Get lookup value for a specific output coordinate (for testing)
+     * Get interpolated coordinates for a specific grid position (for testing)
      */
-    uint32_t get_lookup(int x, int y) const;
+    std::pair<double, double> get_interpolated_coordinates(double grid_x, double grid_y) const;
+    
+    /**
+     * Set interpolation mode (for testing)
+     */
+    void set_interpolation_mode(InterpolationMode mode) { interp_mode_ = mode; }
     
     /**
      * Check if table was generated with subpixel interpolation
@@ -105,10 +114,11 @@ public:
     /**
      * Check if table is valid/generated
      */
-    bool is_valid() const { return !lookup_table_.empty(); }
+    bool is_valid() const { return !coordinate_grid_.empty(); }
     
 private:
-    std::vector<uint32_t> lookup_table_;
+    // Grid of coordinate pairs (x,y) stored as pairs of doubles
+    std::vector<std::pair<double, double>> coordinate_grid_;
     int output_width_;
     int output_height_;
     int grid_width_;
@@ -123,21 +133,20 @@ private:
     void generate_polar(const std::string& x_expr, const std::string& y_expr,
                        AudioData audio_data);
     
-    uint32_t encode_lookup(double x, double y) const;
-    uint32_t sample_with_interpolation(const uint32_t* input, uint32_t base_offset,
-                                       uint32_t x_partial, uint32_t y_partial) const;
+    // Coordinate interpolation methods
+    std::pair<double, double> interpolate_coordinates(double grid_x, double grid_y) const;
+    std::pair<double, double> get_grid_coordinates(int gx, int gy) const;
+    
+    // Pixel sampling and blending methods
+    uint32_t sample_pixel(const uint32_t* input, double x, double y) const;
     uint32_t interpolate_pixels(uint32_t p00, uint32_t p01, uint32_t p10, uint32_t p11, 
                               double fx, double fy) const;
-    
-    void apply_subpixel_write(uint32_t pixel, uint32_t* output, 
-                             uint32_t base_offset, uint32_t x_partial, uint32_t y_partial,
-                             bool blend) const;
-    
-    uint32_t apply_weight(uint32_t pixel, uint32_t weight) const;
     uint32_t blend_max(uint32_t a, uint32_t b) const;
     
-    // Clamp or wrap coordinates based on settings
+    // Coordinate transformation utilities
     void clamp_or_wrap(double& x, double& y) const;
+    std::pair<double, double> normalize_coordinates(int pixel_x, int pixel_y) const;
+    std::pair<double, double> denormalize_coordinates(double norm_x, double norm_y) const;
 };
 
 } // namespace avs

@@ -46,6 +46,7 @@ add_executable(avs_tests
     test_audio_variables.cpp
     test_assignment_expressions.cpp
     test_coordinate_lookup_table.cpp
+    test_coordinate_interpolation.cpp
     test_enum_parameter.cpp
     test_movement_presets.cpp
 )

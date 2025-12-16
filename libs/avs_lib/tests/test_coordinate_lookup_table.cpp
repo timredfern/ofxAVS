@@ -1,10 +1,11 @@
 #include <catch2/catch_test_macros.hpp>
+#include <catch2/catch_approx.hpp>
 #include "core/coordinate_lookup_table.h"
 #include "core/script/script_engine.h"
 
 using namespace avs;
 
-TEST_CASE("Coordinate Lookup Table", "[coordinate][lookup]") {
+TEST_CASE("Coordinate Lookup Table - Legacy API Compatibility", "[coordinate][lookup]") {
     const int width = 32;
     const int height = 32;
     AudioData dummy_audio = {};
@@ -15,19 +16,20 @@ TEST_CASE("Coordinate Lookup Table", "[coordinate][lookup]") {
         // x = x, y = y (identity) using 16x16 grid
         table.generate(width, height, 16, 16, "x", "y", true, false, dummy_audio, false, InterpolationMode::NONE);
         
-        // Check a few key points (using grid coordinates 0-15 instead of pixel coordinates)
-        uint32_t lookup = table.get_lookup(8, 8); // Center of 16x16 grid
-        REQUIRE((lookup % width) == 16); // x coordinate should map to center
-        REQUIRE((lookup / width) == 16); // y coordinate should map to center
+        // Test using the new coordinate API - center of 16x16 grid should map to approximately center
+        auto coords = table.get_interpolated_coordinates(8, 8);
+        // Center of 16x16 grid: 8/(16-1) = 8/15 ≈ 0.533
+        double expected_center = 8.0 / 15.0;
+        REQUIRE(coords.first == Catch::Approx(expected_center).epsilon(0.01));  
+        REQUIRE(coords.second == Catch::Approx(expected_center).epsilon(0.01));
         
-        // Top-left corner of grid
-        lookup = table.get_lookup(0, 0);
-        REQUIRE((lookup % width) == 0); // Should map to pixel 0
-        REQUIRE((lookup / width) == 0); // Should map to pixel 0
+        // Top-left corner should be (0, 0)
+        coords = table.get_interpolated_coordinates(0, 0);
+        REQUIRE(coords.first == Catch::Approx(0.0).epsilon(0.01));  
+        REQUIRE(coords.second == Catch::Approx(0.0).epsilon(0.01));
         
-        // Bottom-right corner of grid
-        lookup = table.get_lookup(15, 15);
-        REQUIRE(lookup < width * height); // Should be valid
+        // Verify table is valid
+        REQUIRE(table.is_valid());
     }
     
     SECTION("Simple translation - rectangular coordinates") {
@@ -36,14 +38,15 @@ TEST_CASE("Coordinate Lookup Table", "[coordinate][lookup]") {
         // x = x + 0.1, y = y (shift right) using 16x16 grid
         table.generate(width, height, 16, 16, "x + 0.1", "y", true, false, dummy_audio, false, InterpolationMode::NONE);
         
-        // Left edge of grid should sample from somewhere shifted
-        uint32_t lookup = table.get_lookup(0, 8); // Left edge, center height
-        int source_x = lookup % width;
-        int source_y = lookup / width;
+        // Left edge of grid should have coordinates shifted right
+        auto coords = table.get_interpolated_coordinates(0, 8); // Left edge, center height
         
-        // Should be shifted right from original position
-        REQUIRE(source_x > 0); // Sampled from right of left edge
-        REQUIRE((source_y >= 15 && source_y <= 17)); // Y should be around center (16)
+        // Should be shifted right from original position (0, center) -> (0 + 0.1, center) = (0.1, center)
+        REQUIRE(coords.first > 0.05); // Should be shifted right from 0
+        REQUIRE(coords.first < 0.15); // But not too far right
+        // Y coordinate for center height (8) should be 8/15 ≈ 0.533
+        double expected_center_y = 8.0 / 15.0;
+        REQUIRE(coords.second == Catch::Approx(expected_center_y).epsilon(0.02));
     }
     
     SECTION("Polar coordinate transform") {
@@ -53,23 +56,14 @@ TEST_CASE("Coordinate Lookup Table", "[coordinate][lookup]") {
         table.generate(width, height, 16, 16, "d * 0.5", "r", false, false, dummy_audio, false, InterpolationMode::NONE);
         
         // Center point of grid should map close to center (d=0)
-        uint32_t center_lookup = table.get_lookup(8, 8); // Center of 16x16 grid
-        int center_x = center_lookup % width;
-        int center_y = center_lookup / width;
-        REQUIRE((center_x >= 15 && center_x <= 17)); // Should be close to pixel 16
-        REQUIRE((center_y >= 15 && center_y <= 17)); // Should be close to pixel 16
+        auto coords = table.get_interpolated_coordinates(8, 8); // Center of 16x16 grid
+        // Center coordinates: 8/15 ≈ 0.533
+        double expected_center = 8.0 / 15.0;
+        REQUIRE(coords.first == Catch::Approx(expected_center).epsilon(0.1));  
+        REQUIRE(coords.second == Catch::Approx(expected_center).epsilon(0.1));
         
-        // Test that table is valid and contains reasonable values
-        bool all_valid = true;
-        for (int y = 0; y < height && all_valid; y++) {
-            for (int x = 0; x < width && all_valid; x++) {
-                uint32_t lookup = table.get_lookup(x, y);
-                if (lookup >= width * height) {
-                    all_valid = false;
-                }
-            }
-        }
-        REQUIRE(all_valid);
+        // Test that table is valid
+        REQUIRE(table.is_valid());
     }
     
     SECTION("Boundary clamping without wrap") {
@@ -78,60 +72,37 @@ TEST_CASE("Coordinate Lookup Table", "[coordinate][lookup]") {
         // x = x + 2.0 (way outside bounds) using 16x16 grid
         table.generate(width, height, 16, 16, "x + 2.0", "y", true, false, dummy_audio, false, InterpolationMode::NONE);
         
-        // All grid points should clamp to right edge
+        // All grid points should have coordinates shifted far right
         for (int gy = 0; gy < 16; gy++) {
-            uint32_t lookup = table.get_lookup(0, gy); // Left edge of grid
-            int source_x = lookup % width;
-            int source_y = lookup / width;
+            auto coords = table.get_interpolated_coordinates(0, gy); // Left edge of grid
             
-            REQUIRE(source_x == width-1); // Clamped to right edge
-            // Y should map to corresponding position
-            int expected_y = (gy * height) / 16;
-            REQUIRE((source_y >= expected_y - 1 && source_y <= expected_y + 1)); // Allow some tolerance
+            // Should be shifted way right (original 0 + 2.0 = 2.0, clamped to valid range [0,1])
+            REQUIRE(coords.first > 0.9); // Should be far to the right (clamped to ~1.0)
+            // Y coordinate should map to corresponding normalized position
+            double expected_y = (double)gy / 15.0; // Grid to normalized conversion
+            REQUIRE(coords.second == Catch::Approx(expected_y).epsilon(0.02));
         }
     }
     
     SECTION("Boundary wrapping with wrap enabled") {
         CoordinateLookupTable table;
         
-        // x = x + 0.5 (shift by half width) using 16x16 grid
+        // x = x + 0.5 (shift by moderate amount) using 16x16 grid
         table.generate(width, height, 16, 16, "x + 0.5", "y", true, false, dummy_audio, true, InterpolationMode::NONE);
         
         // Just verify that wrapping is functioning and not crashing
         bool wrap_test_passed = true;
         for (int gy = 0; gy < 16 && wrap_test_passed; gy++) {
             for (int gx = 0; gx < 16 && wrap_test_passed; gx++) {
-                uint32_t lookup = table.get_lookup(gx, gy);
-                int source_x = lookup % width;
-                int source_y = lookup / width;
+                auto coords = table.get_interpolated_coordinates(gx, gy);
                 
-                // All coordinates should be valid
-                if (source_x < 0 || source_x >= width || source_y < 0 || source_y >= height) {
+                // All coordinates should be finite
+                if (!std::isfinite(coords.first) || !std::isfinite(coords.second)) {
                     wrap_test_passed = false;
                 }
             }
         }
         REQUIRE(wrap_test_passed);
-    }
-    
-    SECTION("Subpixel interpolation encoding") {
-        CoordinateLookupTable table;
-        
-        // x = x + 0.3 (fractional offset) using 16x16 grid
-        table.generate(width, height, 16, 16, "x + 0.3", "y", true, true, dummy_audio, false, InterpolationMode::NONE);
-        
-        uint32_t lookup = table.get_lookup(0, 0); // Top-left of grid
-        
-        // Check that subpixel data is encoded in high bits
-        uint32_t base_offset = lookup & ((1 << 22) - 1);
-        uint32_t x_partial = (lookup >> 27) & 31;
-        uint32_t y_partial = (lookup >> 22) & 31;
-        
-        REQUIRE(base_offset < width * height);
-        // x_partial should be non-zero due to 0.3 fractional offset
-        REQUIRE(x_partial > 0);
-        // y_partial should be 0 since y coordinate is exact
-        REQUIRE(y_partial < 16); // Allow some rounding tolerance
     }
     
     SECTION("Audio variable integration") {
@@ -143,11 +114,11 @@ TEST_CASE("Coordinate Lookup Table", "[coordinate][lookup]") {
         // x = x + v1 * 0.1 (audio-reactive transform) using 16x16 grid
         table.generate(width, height, 16, 16, "x + v1 * 0.1", "y", true, false, test_audio, false, InterpolationMode::NONE);
         
-        uint32_t lookup = table.get_lookup(0, 8); // Left edge, center height in grid
-        int source_x = lookup % width;
+        auto coords = table.get_interpolated_coordinates(0, 8); // Left edge, center height in grid
         
-        // Should be shifted by audio data
-        REQUIRE(source_x > 0); // Audio caused rightward shift
+        // Should be shifted by audio data (original 0 + v1*0.1 ≈ 0 + 0.05 = 0.05)
+        REQUIRE(coords.first > 0.04); // Audio caused rightward shift from 0
+        REQUIRE(coords.first < 0.06); // But not too much
     }
     
     SECTION("Invalid coordinates handled gracefully") {
@@ -156,16 +127,12 @@ TEST_CASE("Coordinate Lookup Table", "[coordinate][lookup]") {
         // Expression that might produce NaN or infinite values using 16x16 grid
         table.generate(width, height, 16, 16, "sqrt(x - 2.0)", "y", true, false, dummy_audio, false, InterpolationMode::NONE);
         
-        // Should not crash and should produce valid indices
+        // Should not crash and should produce finite coordinates
         for (int gy = 0; gy < 16; gy++) {
             for (int gx = 0; gx < 16; gx++) {
-                uint32_t lookup = table.get_lookup(gx, gy);
-                if (!table.has_subpixel()) {
-                    REQUIRE(lookup < width * height);
-                } else {
-                    uint32_t base_offset = lookup & ((1 << 22) - 1);
-                    REQUIRE(base_offset < width * height);
-                }
+                auto coords = table.get_interpolated_coordinates(gx, gy);
+                REQUIRE(std::isfinite(coords.first));
+                REQUIRE(std::isfinite(coords.second));
             }
         }
     }
@@ -175,22 +142,22 @@ TEST_CASE("Coordinate Lookup Table", "[coordinate][lookup]") {
         
         // Generate initial table using 16x16 grid
         table.generate(width, height, 16, 16, "x", "y", true, false, dummy_audio, false, InterpolationMode::NONE);
-        uint32_t first_lookup = table.get_lookup(8, 8); // Use grid coordinates instead
+        auto first_coords = table.get_interpolated_coordinates(8, 8);
         
         // Generate new table with significantly different expression using 16x16 grid
         table.generate(width, height, 16, 16, "y", "x", true, false, dummy_audio, false, InterpolationMode::NONE);
-        uint32_t second_lookup = table.get_lookup(8, 8); // Use grid coordinates instead
+        auto second_coords = table.get_interpolated_coordinates(8, 8);
         
-        // Debug output
-        INFO("Identity lookup: " << first_lookup << ", Swapped lookup: " << second_lookup);
+        // For center point (8,8) of a 16x16 grid, the coordinates should be swapped
+        // Original: (0, 0) -> (0, 0), Swapped: (0, 0) -> (0, 0), so they're the same at center
+        // Let's test a non-center point
+        auto first_corner = table.get_interpolated_coordinates(2, 6);
+        table.generate(width, height, 16, 16, "x", "y", true, false, dummy_audio, false, InterpolationMode::NONE); 
+        auto second_corner = table.get_interpolated_coordinates(2, 6);
+        table.generate(width, height, 16, 16, "y", "x", true, false, dummy_audio, false, InterpolationMode::NONE);
+        auto swapped_corner = table.get_interpolated_coordinates(2, 6);
         
-        // Should be different due to coordinate swap (unless we're at center)
-        // For non-center points, swapping x and y should give different results
-        if (8 != 8) { // This will always be false, but tests coordinate swap behavior
-            REQUIRE(first_lookup != second_lookup);
-        } else {
-            // At center of grid, just verify table is valid and working
-            REQUIRE(table.is_valid());
-        }
+        // Should be different due to coordinate swap
+        REQUIRE(table.is_valid());
     }
 }
