@@ -47,6 +47,7 @@ add_executable(avs_tests
     test_assignment_expressions.cpp
     test_coordinate_lookup_table.cpp
     test_coordinate_interpolation.cpp
+    test_dynamic_movement_effect.cpp
     test_enum_parameter.cpp
     test_movement_presets.cpp
 )

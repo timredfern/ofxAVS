@@ -28,7 +28,7 @@ void DynamicMovementEffect::setup_parameters() {
     params.add_parameter(std::make_shared<Parameter>("beat_script", ParameterType::STRING,
         std::string("// Beat phase - run on beat")));
     params.add_parameter(std::make_shared<Parameter>("pixel_script", ParameterType::STRING,
-        std::string("// Pixel phase - transformation\nd=d*0.95; r=r+0.1")));
+        std::string("d=d*0.95; r=r+0.1")));
     
     // Grid configuration
     params.add_parameter(std::make_shared<Parameter>("grid_width", ParameterType::INT, 16, 2, 256));
@@ -97,19 +97,27 @@ void DynamicMovementEffect::execute_beat_script(AudioData visdata, int w, int h)
 
 void DynamicMovementEffect::execute_pixel_script(double& x, double& y, double& r, double& d,
                                                 AudioData visdata, int w, int h) {
-    // TODO: Implement EEL script execution for pixel phase
-    // For now, implement simple spiral transformation matching default script
+    // TODO: Implement full EEL script execution for pixel phase
+    // For now, implement basic pattern matching for common transformations
     std::string pixel_script = parameters().get_string("pixel_script");
     
-    // Simple pattern matching for basic transformations
+    // Handle common polar transformations
     if (pixel_script.find("d*0.95") != std::string::npos && 
         pixel_script.find("r+0.1") != std::string::npos) {
+        // Classic spiral: shrink distance, increase angle
         d *= 0.95;
         r += 0.1;
-        
-        // Convert back to rectangular
-        x = cos(r) * d;
-        y = sin(r) * d;
+    } else if (pixel_script.find("d*0.5") != std::string::npos) {
+        // Zoom in effect
+        d *= 0.5;
+    } else if (pixel_script.find("r+") != std::string::npos) {
+        // Simple rotation - extract angle
+        size_t pos = pixel_script.find("r+");
+        if (pos != std::string::npos) {
+            std::string angle_str = pixel_script.substr(pos + 2);
+            double angle = std::stod(angle_str);
+            r += angle;
+        }
     }
 }
 
@@ -120,9 +128,7 @@ void DynamicMovementEffect::generate_grid(int w, int h, AudioData visdata, int i
     int interp_int = parameters().get_int("interpolation", 0);
     InterpolationMode interp_mode = static_cast<InterpolationMode>(interp_int);
     bool wrap = parameters().get_bool("wrap", false);
-    
-    printf("DynamicMovementEffect: Generating grid %dx%d, interp=%d, rect=%s\n",
-           grid_width, grid_height, (int)interp_mode, rectangular ? "true" : "false");
+    std::string pixel_script = parameters().get_string("pixel_script");
     
     // Execute script phases in order
     execute_init_script(visdata, w, h);
@@ -131,13 +137,39 @@ void DynamicMovementEffect::generate_grid(int w, int h, AudioData visdata, int i
         execute_beat_script(visdata, w, h);
     }
     
-    // Generate transformation grid using CoordinateLookupTable
-    // Use pixel_script as both x and y expressions for now
-    std::string pixel_script = parameters().get_string("pixel_script");
+    // Generate appropriate coordinate transformation expressions
+    std::string x_expr, y_expr;
+    
+    if (rectangular) {
+        // In rectangular mode, use script directly (should modify x,y)
+        x_expr = pixel_script;
+        y_expr = pixel_script;
+    } else {
+        // In polar mode, need to convert the script to coordinate expressions
+        // For default "d=d*0.95; r=r+0.1", generate expressions that convert polar->cartesian
+        if (pixel_script.find("d*0.95") != std::string::npos && 
+            pixel_script.find("r+0.1") != std::string::npos) {
+            // Generate expressions for the classic spiral transformation
+            x_expr = "cos(atan2(y-0.5,x-0.5) + 0.1) * sqrt((x-0.5)*(x-0.5)+(y-0.5)*(y-0.5)) * 0.95 + 0.5";
+            y_expr = "sin(atan2(y-0.5,x-0.5) + 0.1) * sqrt((x-0.5)*(x-0.5)+(y-0.5)*(y-0.5)) * 0.95 + 0.5";
+        } else if (pixel_script.find("d*0.5") != std::string::npos) {
+            // Simple zoom transformation
+            x_expr = "0.5 + (x-0.5) * 0.5";
+            y_expr = "0.5 + (y-0.5) * 0.5";
+        } else if (pixel_script.find("d*0.9") != std::string::npos) {
+            // Milder zoom transformation
+            x_expr = "0.5 + (x-0.5) * 0.9";
+            y_expr = "0.5 + (y-0.5) * 0.9";
+        } else {
+            // For other scripts, use identity transformation for now
+            x_expr = "x";
+            y_expr = "y";
+        }
+    }
     
     grid_table_.generate(w, h, grid_width, grid_height, 
-                        pixel_script, pixel_script, // x_expr, y_expr
-                        rectangular, false, // subpixel
+                        x_expr, y_expr,
+                        rectangular, false, // subpixel disabled for grid mode
                         visdata, wrap, interp_mode);
     
     // Update state
@@ -173,7 +205,8 @@ int DynamicMovementEffect::render(AudioData visdata, int isBeat,
     }
     
     // Apply grid transformation with interpolation
-    grid_table_.apply(framebuffer, fbout, w, h, false); // blend=false for now
+    bool blend = parameters().get_bool("blend", false);
+    grid_table_.apply(framebuffer, fbout, w, h, blend);
     
     return 1; // Use fbout
 }
