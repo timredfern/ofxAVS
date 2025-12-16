@@ -1,4 +1,5 @@
 #include "ofApp.h"
+#include "avs_lib/core/plugin_manager.h"
 
 void ofApp::setup() {
     ofSetWindowTitle("ofxAVS Example");
@@ -136,26 +137,22 @@ void ofApp::setupOscilloscopeDynamicMovement() {
     // Clear any existing effects
     visualizer.clearEffects();
     
-    // Create classic AVS-style effect chain:
-    // 1. Clear effect with feedback (partial clear creates trails)
-    // 2. Oscilloscope draws audio waveform 
-    // 3. Dynamic Movement effect applies grid-based transformations
+    // Simple 2-effect chain for manual debugging
+    ofLogNotice() << "Setting up minimal chain: Oscilloscope + Dynamic Movement";
     
-    // Add clear effect configured for feedback (only clear first frame)
-    visualizer.addClearEffect(true); // only_first=true enables feedback trails
-    
-    // Add oscilloscope to draw audio waveform
+    // 1. Add oscilloscope (we know this works)
     visualizer.addEffect("oscilloscope");
+    ofLogNotice() << "  - Added oscilloscope effect";
     
-    // Add dynamic movement effect with classic spiral transformation
-    visualizer.addEffect("dynamic_movement");
+    // 2. Add dynamic movement with downward drift: x=x; y=y-0.1
+    //visualizer.addEffect("dynamic_movement");
+    ofLogNotice() << "  - Added dynamic_movement effect";
+    ofLogNotice() << "  - Default script should be: x=x; y=y-0.1 (downward drift)";
     
-    ofLogNotice() << "Oscilloscope + Dynamic Movement configured:";
-    ofLogNotice() << "  1. Clear: only_first=true (feedback trails enabled)";
-    ofLogNotice() << "  2. Oscilloscope: Audio waveform visualization";
-    ofLogNotice() << "  3. Dynamic Movement: Grid-based transformations (spiral effect)";
-    ofLogNotice() << "     - Default script: d=d*0.95; r=r+0.1 (classic spiral)";
-    ofLogNotice() << "     - Grid-based evaluation for authentic AVS stepping artifacts";
+    ofLogNotice() << "Minimal 2-effect chain ready for debugging:";
+    ofLogNotice() << "  - Effect 1: Oscilloscope (audio waveform)";
+    ofLogNotice() << "  - Effect 2: Dynamic Movement (x=x; y=y-0.1)";
+    ofLogNotice() << "  - NO clear effect for clean debugging";
 }
 
 void ofApp::keyReleased(int key) {}

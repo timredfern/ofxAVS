@@ -28,14 +28,14 @@ void DynamicMovementEffect::setup_parameters() {
     params.add_parameter(std::make_shared<Parameter>("beat_script", ParameterType::STRING,
         std::string("// Beat phase - run on beat")));
     params.add_parameter(std::make_shared<Parameter>("pixel_script", ParameterType::STRING,
-        std::string("d=d*0.95; r=r+0.1")));
+        std::string("x=x; y=y-0.01")));
     
     // Grid configuration
     params.add_parameter(std::make_shared<Parameter>("grid_width", ParameterType::INT, 16, 2, 256));
     params.add_parameter(std::make_shared<Parameter>("grid_height", ParameterType::INT, 16, 2, 256));
     
     // Coordinate system
-    params.add_parameter(std::make_shared<Parameter>("rectangular", ParameterType::BOOL, false)); // Default: polar
+    params.add_parameter(std::make_shared<Parameter>("rectangular", ParameterType::BOOL, true)); // Default: rectangular for x,y
     
     // Interpolation mode
     std::vector<std::string> interp_options = {"None (Stepped)", "Linear", "Nearest"};
@@ -142,10 +142,14 @@ void DynamicMovementEffect::generate_grid(int w, int h, AudioData visdata, int i
     
     if (rectangular) {
         // In rectangular mode, use script directly (should modify x,y)
-        // For "x" identity script, preserve as-is
         if (pixel_script == "x") {
             x_expr = "x";
             y_expr = "y";
+        } else if (pixel_script.find("x=x") != std::string::npos && 
+                   pixel_script.find("y=y-0.01") != std::string::npos) {
+            // Downward drift: x=x; y=y-0.01
+            x_expr = "x";
+            y_expr = "y-0.01";
         } else {
             x_expr = pixel_script;
             y_expr = pixel_script;
