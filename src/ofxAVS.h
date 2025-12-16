@@ -31,6 +31,10 @@ public:
     void addDynamicMovementEffect(const std::string& script = "x=x; y=y-0.01",
                                  bool rectangular = true,
                                  int grid_width = 16, int grid_height = 16);
+    void addDynamicMovementEffect(const std::string& script,
+                                 bool rectangular,
+                                 int grid_width, int grid_height,
+                                 InterpolationMode interp_mode);
     void clearEffects();
     
     // Effect parameter configuration

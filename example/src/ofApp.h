@@ -48,4 +48,8 @@ private:
     // Movement expressions
     std::string current_expression;
     std::vector<std::pair<std::string, std::string>> preset_expressions;
+    
+    // Interpolation mode
+    avs::InterpolationMode current_interpolation_mode;
+    std::vector<std::pair<std::string, avs::InterpolationMode>> interpolation_modes;
 };

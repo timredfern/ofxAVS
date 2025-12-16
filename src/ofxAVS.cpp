@@ -123,6 +123,25 @@ void ofxAVS::addDynamicMovementEffect(const std::string& script, bool rectangula
     }
 }
 
+void ofxAVS::addDynamicMovementEffect(const std::string& script, bool rectangular, 
+                                     int grid_width, int grid_height,
+                                     InterpolationMode interp_mode) {
+    if (!initialized) return;
+    
+    auto effect = PluginManager::instance().create_effect("dynamic_movement");
+    if (effect) {
+        // Configure the effect before adding it
+        effect->parameters().set_string("pixel_script", script);
+        effect->parameters().set_bool("rectangular", rectangular);
+        effect->parameters().set_int("grid_width", grid_width);
+        effect->parameters().set_int("grid_height", grid_height);
+        effect->parameters().set_int("interpolation", static_cast<int>(interp_mode));
+        
+        effect_refs.push_back(effect.get());
+        renderer->add_effect(std::move(effect));
+    }
+}
+
 void ofxAVS::clearEffects() {
     if (!initialized) return;
     

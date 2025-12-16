@@ -44,6 +44,14 @@ void ofApp::setup() {
         {"Wave Y", "x=x; y=y+sin(x*10)*0.02"}
     };
     
+    // Setup interpolation modes
+    interpolation_modes = {
+        {"None (Stepped/Classic AVS)", avs::InterpolationMode::NONE},
+        {"Linear (Smooth)", avs::InterpolationMode::LINEAR},
+        {"Nearest", avs::InterpolationMode::NEAREST}
+    };
+    current_interpolation_mode = avs::InterpolationMode::LINEAR;
+    
     // Set up default oscilloscope with dynamic movement
     setupOscilloscopeDynamicMovement();
     
@@ -96,13 +104,21 @@ void ofApp::draw() {
         ofDrawBitmapString(ofToString(i) + ": " + preset_expressions[i].first + marker, 20, 150 + i * 20);
     }
     
+    // Draw interpolation mode
+    ofDrawBitmapString("INTERPOLATION MODE:", 20, 350);
+    for (size_t i = 0; i < interpolation_modes.size(); i++) {
+        std::string marker = (interpolation_modes[i].second == current_interpolation_mode) ? " <--" : "";
+        ofDrawBitmapString(interpolation_modes[i].first + marker, 20, 370 + i * 20);
+    }
+    
     // Draw controls
     ofDrawBitmapString("CONTROLS:", ofGetWidth() - 300, 130);
     ofDrawBitmapString("0-9: Select preset expression", ofGetWidth() - 300, 150);
     ofDrawBitmapString("e: Enter custom expression", ofGetWidth() - 300, 170);
-    ofDrawBitmapString("d: Reload current expression", ofGetWidth() - 300, 190);
-    ofDrawBitmapString("c: Clear all effects", ofGetWidth() - 300, 210);
-    ofDrawBitmapString("SPACE: Toggle auto-cycle", ofGetWidth() - 300, 230);
+    ofDrawBitmapString("i: Cycle interpolation mode", ofGetWidth() - 300, 190);
+    ofDrawBitmapString("d: Reload current expression", ofGetWidth() - 300, 210);
+    ofDrawBitmapString("c: Clear all effects", ofGetWidth() - 300, 230);
+    ofDrawBitmapString("SPACE: Toggle auto-cycle", ofGetWidth() - 300, 250);
     
     // Draw audio info
     ofDrawBitmapString("Audio: " + std::to_string(num_input_channels) + "ch @ " + 
@@ -130,6 +146,31 @@ void ofApp::keyPressed(int key) {
             if (!input.empty()) {
                 setupMovementChain(input);
                 ofLogNotice() << "Custom expression set: " << input;
+            }
+            break;
+        }
+        
+        case 'i': {
+            // Cycle through interpolation modes
+            for (size_t i = 0; i < interpolation_modes.size(); i++) {
+                if (interpolation_modes[i].second == current_interpolation_mode) {
+                    current_interpolation_mode = interpolation_modes[(i + 1) % interpolation_modes.size()].second;
+                    break;
+                }
+            }
+            // Reload current effect with new interpolation mode
+            if (!current_expression.empty()) {
+                setupMovementChain(current_expression);
+                
+                // Find current mode name for logging
+                std::string mode_name = "Unknown";
+                for (const auto& mode : interpolation_modes) {
+                    if (mode.second == current_interpolation_mode) {
+                        mode_name = mode.first;
+                        break;
+                    }
+                }
+                ofLogNotice() << "Interpolation mode: " << mode_name;
             }
             break;
         }
@@ -183,9 +224,10 @@ void ofApp::setupMovementChain(const std::string& expression) {
     
     // 2. Add dynamic movement with custom expression
     visualizer.addDynamicMovementEffect(
-        expression,     // The movement script
-        true,          // rectangular coordinates (for x,y expressions)
-        16, 16         // grid resolution
+        expression,                  // The movement script
+        true,                       // rectangular coordinates (for x,y expressions)
+        16, 16,                     // grid resolution
+        current_interpolation_mode  // interpolation mode
     );
     ofLogNotice() << "  - Added dynamic movement with expression: " << expression;
     

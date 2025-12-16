@@ -78,8 +78,6 @@ void CoordinateLookupTable::generate_rectangular(const std::string& x_expr, cons
             } else {
                 // Evaluate separate expressions for x and y
                 dest_norm_x = engine.evaluate(x_expr);
-                engine.set_variable("x", norm_x);
-                engine.set_variable("y", norm_y);
                 dest_norm_y = engine.evaluate(y_expr);
             }
             
@@ -194,6 +192,16 @@ std::pair<double, double> CoordinateLookupTable::interpolate_coordinates(double 
         int gy = (int)grid_y;
         double fx = grid_x - gx;
         double fy = grid_y - gy;
+        
+        // Handle edge case where grid_x/grid_y are exactly at the boundary
+        if (gx >= grid_width_ - 1) {
+            gx = grid_width_ - 2;
+            fx = 1.0;
+        }
+        if (gy >= grid_height_ - 1) {
+            gy = grid_height_ - 2;
+            fy = 1.0;
+        }
         
         // Clamp to valid grid range
         gx = std::clamp(gx, 0, grid_width_ - 2);

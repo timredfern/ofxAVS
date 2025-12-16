@@ -7,7 +7,7 @@ namespace avs {
 
 DynamicMovementEffect::DynamicMovementEffect()
     : last_width_(0), last_height_(0), last_grid_width_(0), last_grid_height_(0),
-      last_rectangular_(false), last_interp_mode_(InterpolationMode::NONE),
+      last_rectangular_(false), last_interp_mode_(InterpolationMode::LINEAR),
       last_wrap_(false), last_blend_(false), script_initialized_(false)
 {
     // Initialize script variables  
@@ -39,7 +39,7 @@ void DynamicMovementEffect::setup_parameters() {
     
     // Interpolation mode
     std::vector<std::string> interp_options = {"None (Stepped)", "Linear", "Nearest"};
-    params.add_parameter(std::make_shared<Parameter>("interpolation", ParameterType::ENUM, 0, interp_options));
+    params.add_parameter(std::make_shared<Parameter>("interpolation", ParameterType::ENUM, 1, interp_options));
     
     // Rendering options
     params.add_parameter(std::make_shared<Parameter>("wrap", ParameterType::BOOL, false));

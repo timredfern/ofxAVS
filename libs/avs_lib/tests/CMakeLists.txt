@@ -47,6 +47,18 @@ add_executable(avs_tests
     test_assignment_expressions.cpp
     test_coordinate_lookup_table.cpp
     test_coordinate_interpolation.cpp
+    test_coordinate_grid.cpp
+    test_coordinate_debug.cpp
+    test_coordinate_fix.cpp
+    test_identity_only.cpp
+    test_interpolation_bug.cpp
+    test_grid_calculation.cpp
+    test_interpolation_fix.cpp
+    test_coordinate_precision.cpp
+    test_grid_debug.cpp
+    test_debug_detailed.cpp
+    test_grid_population.cpp
+    test_script_trace.cpp
     test_dynamic_movement_effect.cpp
     test_enum_parameter.cpp
     test_movement_presets.cpp
