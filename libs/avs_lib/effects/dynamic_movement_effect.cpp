@@ -137,44 +137,19 @@ void DynamicMovementEffect::generate_grid(int w, int h, AudioData visdata, int i
         execute_beat_script(visdata, w, h);
     }
     
-    // Generate appropriate coordinate transformation expressions
+    // For rectangular mode, just pass the script directly to the grid generator
+    // The CoordinateLookupTable will execute it properly using the script engine
     std::string x_expr, y_expr;
     
     if (rectangular) {
-        // In rectangular mode, use script directly (should modify x,y)
-        if (pixel_script == "x") {
-            x_expr = "x";
-            y_expr = "y";
-        } else if (pixel_script.find("x=x") != std::string::npos && 
-                   pixel_script.find("y=y-0.01") != std::string::npos) {
-            // Downward drift: x=x; y=y-0.01
-            x_expr = "x";
-            y_expr = "y-0.01";
-        } else {
-            x_expr = pixel_script;
-            y_expr = pixel_script;
-        }
+        // In rectangular mode, the pixel script should contain assignments like "x=x; y=y-0.01"
+        // Pass the script to be executed by the script engine in CoordinateLookupTable
+        x_expr = pixel_script;
+        y_expr = pixel_script;
     } else {
-        // In polar mode, need to convert the script to coordinate expressions
-        // For default "d=d*0.95; r=r+0.1", generate expressions that convert polar->cartesian
-        if (pixel_script.find("d*0.95") != std::string::npos && 
-            pixel_script.find("r+0.1") != std::string::npos) {
-            // Generate expressions for the classic spiral transformation
-            x_expr = "cos(atan2(y-0.5,x-0.5) + 0.1) * sqrt((x-0.5)*(x-0.5)+(y-0.5)*(y-0.5)) * 0.95 + 0.5";
-            y_expr = "sin(atan2(y-0.5,x-0.5) + 0.1) * sqrt((x-0.5)*(x-0.5)+(y-0.5)*(y-0.5)) * 0.95 + 0.5";
-        } else if (pixel_script.find("d*0.5") != std::string::npos) {
-            // Simple zoom transformation
-            x_expr = "0.5 + (x-0.5) * 0.5";
-            y_expr = "0.5 + (y-0.5) * 0.5";
-        } else if (pixel_script.find("d*0.9") != std::string::npos) {
-            // Milder zoom transformation
-            x_expr = "0.5 + (x-0.5) * 0.9";
-            y_expr = "0.5 + (y-0.5) * 0.9";
-        } else {
-            // For other scripts, use identity transformation for now
-            x_expr = "x";
-            y_expr = "y";
-        }
+        // In polar mode, similar approach but for d,r coordinates
+        x_expr = pixel_script;
+        y_expr = pixel_script;
     }
     
     grid_table_.generate(w, h, grid_width, grid_height, 

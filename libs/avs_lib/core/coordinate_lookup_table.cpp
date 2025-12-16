@@ -41,16 +41,18 @@ void CoordinateLookupTable::generate(int width, int height, int grid_width, int 
 void CoordinateLookupTable::generate_rectangular(const std::string& x_expr, const std::string& y_expr,
                                                AudioData audio_data)
 {
-    ScriptEngine x_engine, y_engine;
+    ScriptEngine engine;
     
-    // Set audio context for both engines
-    x_engine.set_audio_context(audio_data, false);
-    y_engine.set_audio_context(audio_data, false);
+    // Set audio context
+    engine.set_audio_context(audio_data, false);
+    
+    // Check if both expressions are the same (indicating a multi-statement script)
+    bool is_multi_statement = (x_expr == y_expr);
     
     // Generate coordinate transformations for each grid point
     for (int gy = 0; gy < grid_height_; gy++) {
         for (int gx = 0; gx < grid_width_; gx++) {
-            // Convert grid coordinates to normalized coordinates [-1, 1]
+            // Convert grid coordinates to normalized coordinates [0, 1]
             auto norm_coords = normalize_coordinates(gx, gy);
             double norm_x = norm_coords.first;
             double norm_y = norm_coords.second;
@@ -58,18 +60,28 @@ void CoordinateLookupTable::generate_rectangular(const std::string& x_expr, cons
             // Set pixel context (convert grid to pixel coordinates for context)
             int pixel_x = (gx * output_width_) / grid_width_;
             int pixel_y = (gy * output_height_) / grid_height_;
-            x_engine.set_pixel_context(pixel_x, pixel_y, output_width_, output_height_);
-            y_engine.set_pixel_context(pixel_x, pixel_y, output_width_, output_height_);
+            engine.set_pixel_context(pixel_x, pixel_y, output_width_, output_height_);
             
             // Set normalized coordinates as variables
-            x_engine.set_variable("x", norm_x);
-            x_engine.set_variable("y", norm_y);
-            y_engine.set_variable("x", norm_x);
-            y_engine.set_variable("y", norm_y);
+            engine.set_variable("x", norm_x);
+            engine.set_variable("y", norm_y);
             
-            // Evaluate transformation expressions to get destination coordinates
-            double dest_norm_x = x_engine.evaluate(x_expr);
-            double dest_norm_y = y_engine.evaluate(y_expr);
+            double dest_norm_x, dest_norm_y;
+            
+            if (is_multi_statement) {
+                // Execute the script once (it should contain assignments like "x=x; y=y-0.01")
+                engine.evaluate(x_expr);
+                
+                // Read back the modified x and y values
+                dest_norm_x = engine.get_variable("x");
+                dest_norm_y = engine.get_variable("y");
+            } else {
+                // Evaluate separate expressions for x and y
+                dest_norm_x = engine.evaluate(x_expr);
+                engine.set_variable("x", norm_x);
+                engine.set_variable("y", norm_y);
+                dest_norm_y = engine.evaluate(y_expr);
+            }
             
             // Handle invalid results (NaN, inf)
             if (!std::isfinite(dest_norm_x)) dest_norm_x = norm_x;

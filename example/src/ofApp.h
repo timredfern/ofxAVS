@@ -43,4 +43,9 @@ private:
     
     // Setup methods
     void setupOscilloscopeDynamicMovement();
+    void setupMovementChain(const std::string& expression);
+    
+    // Movement expressions
+    std::string current_expression;
+    std::vector<std::pair<std::string, std::string>> preset_expressions;
 };

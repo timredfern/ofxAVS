@@ -101,6 +101,24 @@ void ofxAVS::addEffect(const std::string& effect_name) {
     
     auto effect = PluginManager::instance().create_effect(effect_name);
     if (effect) {
+        effect_refs.push_back(effect.get());
+        renderer->add_effect(std::move(effect));
+    }
+}
+
+void ofxAVS::addDynamicMovementEffect(const std::string& script, bool rectangular, 
+                                     int grid_width, int grid_height) {
+    if (!initialized) return;
+    
+    auto effect = PluginManager::instance().create_effect("dynamic_movement");
+    if (effect) {
+        // Configure the effect before adding it
+        effect->parameters().set_string("pixel_script", script);
+        effect->parameters().set_bool("rectangular", rectangular);
+        effect->parameters().set_int("grid_width", grid_width);
+        effect->parameters().set_int("grid_height", grid_height);
+        
+        effect_refs.push_back(effect.get());
         renderer->add_effect(std::move(effect));
     }
 }
@@ -109,6 +127,7 @@ void ofxAVS::clearEffects() {
     if (!initialized) return;
     
     renderer->clear_effects();
+    effect_refs.clear();
 }
 
 void ofxAVS::setSize(int w, int h) {
@@ -161,6 +180,42 @@ void ofxAVS::updateTexture() {
     // Direct copy - RGBA format matches templated pixel format
     std::memcpy(pixels.getData(), output_buffer.data(), width * height * sizeof(uint32_t));
     texture.loadData(pixels);
+}
+
+void ofxAVS::setEffectParameter(size_t effect_index, const std::string& param_name, double value) {
+    if (effect_index < effect_refs.size() && effect_refs[effect_index]) {
+        // ParameterGroup stores doubles as strings internally
+        effect_refs[effect_index]->parameters().set_string(param_name, std::to_string(value));
+    }
+}
+
+void ofxAVS::setEffectParameter(size_t effect_index, const std::string& param_name, const std::string& value) {
+    if (effect_index < effect_refs.size() && effect_refs[effect_index]) {
+        effect_refs[effect_index]->parameters().set_string(param_name, value);
+    }
+}
+
+void ofxAVS::setEffectParameter(size_t effect_index, const std::string& param_name, bool value) {
+    if (effect_index < effect_refs.size() && effect_refs[effect_index]) {
+        effect_refs[effect_index]->parameters().set_bool(param_name, value);
+    }
+}
+
+void ofxAVS::setEffectParameter(size_t effect_index, const std::string& param_name, int value) {
+    if (effect_index < effect_refs.size() && effect_refs[effect_index]) {
+        effect_refs[effect_index]->parameters().set_int(param_name, value);
+    }
+}
+
+size_t ofxAVS::getEffectCount() const {
+    return effect_refs.size();
+}
+
+EffectBase* ofxAVS::getEffect(size_t index) const {
+    if (index < effect_refs.size()) {
+        return effect_refs[index];
+    }
+    return nullptr;
 }
 
 } // namespace avs

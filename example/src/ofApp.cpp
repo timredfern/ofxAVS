@@ -30,18 +30,33 @@ void ofApp::setup() {
     effect_cycle_time = 5.0f;
     last_effect_change = 0;
     
-    // Set up oscilloscope with dynamic movement and feedback:
-    // 1. Clear effect for feedback control (partial clear)
-    // 2. Oscilloscope to draw audio waveform
-    // 3. Dynamic movement effect for grid-based transformations
+    // Setup preset movement expressions
+    preset_expressions = {
+        {"Downward drift", "x=x; y=y-0.01"},
+        {"Upward drift", "x=x; y=y+0.01"},
+        {"Rightward drift", "x=x+0.01; y=y"},
+        {"Leftward drift", "x=x-0.01; y=y"},
+        {"Zoom in", "x=0.5+(x-0.5)*0.95; y=0.5+(y-0.5)*0.95"},
+        {"Zoom out", "x=0.5+(x-0.5)*1.05; y=0.5+(y-0.5)*1.05"},
+        {"Rotate", "x=0.5+(x-0.5)*cos(0.05)-(y-0.5)*sin(0.05); y=0.5+(x-0.5)*sin(0.05)+(y-0.5)*cos(0.05)"},
+        {"Swirl", "x=0.5+(x-0.5)*cos((x*x+y*y)*0.1)-(y-0.5)*sin((x*x+y*y)*0.1); y=0.5+(x-0.5)*sin((x*x+y*y)*0.1)+(y-0.5)*cos((x*x+y*y)*0.1)"},
+        {"Wave X", "x=x+sin(y*10)*0.02; y=y"},
+        {"Wave Y", "x=x; y=y+sin(x*10)*0.02"}
+    };
+    
+    // Set up default oscilloscope with dynamic movement
     setupOscilloscopeDynamicMovement();
     
     ofLogNotice() << "ofxAVS Example Started - Oscilloscope + Dynamic Movement";
-    ofLogNotice() << "Effect Chain: Clear (feedback) + Oscilloscope + Dynamic Movement";
-    ofLogNotice() << "Press keys 1-4 to change effects";
-    ofLogNotice() << "Press SPACE to toggle auto-cycling";
-    ofLogNotice() << "Press 'c' to clear effects";
-    ofLogNotice() << "Press 'd' to reload oscilloscope + dynamic movement";
+    ofLogNotice() << "";
+    ofLogNotice() << "MOVEMENT EXPRESSION CONTROLS:";
+    ofLogNotice() << "  0-9: Select preset expressions";
+    ofLogNotice() << "  e: Enter custom expression (console input)";
+    ofLogNotice() << "";
+    ofLogNotice() << "OTHER CONTROLS:";
+    ofLogNotice() << "  d: Reload current expression";
+    ofLogNotice() << "  c: Clear all effects";
+    ofLogNotice() << "  SPACE: Toggle auto-cycle effects";
 }
 
 void ofApp::update() {
@@ -70,38 +85,54 @@ void ofApp::draw() {
     // Draw UI
     ofSetColor(255);
     ofDrawBitmapString("ofxAVS Example - Oscilloscope + Dynamic Movement", 20, 30);
-    ofDrawBitmapString("Effect Chain: Clear (feedback) + Oscilloscope + Dynamic Movement", 20, 50);
+    ofDrawBitmapString("Current Expression: " + current_expression, 20, 50);
     ofDrawBitmapString("FPS: " + ofToString(ofGetFrameRate(), 1), 20, 70);
-    ofDrawBitmapString("Auto-cycle: " + std::string(auto_cycle_effects ? "ON" : "OFF"), 20, 90);
-    ofDrawBitmapString("Beat Detected: " + std::string(visualizer.isBeat() ? "YES" : "NO"), 20, 110);
+    ofDrawBitmapString("Beat: " + std::string(visualizer.isBeat() ? "YES" : "NO"), 20, 90);
     
-    ofDrawBitmapString("Controls:", 20, 150);
-    ofDrawBitmapString("1-4: Select single effect", 20, 170);
-    ofDrawBitmapString("d: Reload oscilloscope + dynamic movement", 20, 190);
-    ofDrawBitmapString("c: Clear effects", 20, 210);
-    ofDrawBitmapString("r: Add random effect", 20, 230);
-    ofDrawBitmapString("SPACE: Toggle auto-cycle", 20, 250);
+    // Draw preset expressions list
+    ofDrawBitmapString("PRESET EXPRESSIONS:", 20, 130);
+    for (size_t i = 0; i < preset_expressions.size() && i < 10; i++) {
+        std::string marker = (preset_expressions[i].second == current_expression) ? " <--" : "";
+        ofDrawBitmapString(ofToString(i) + ": " + preset_expressions[i].first + marker, 20, 150 + i * 20);
+    }
+    
+    // Draw controls
+    ofDrawBitmapString("CONTROLS:", ofGetWidth() - 300, 130);
+    ofDrawBitmapString("0-9: Select preset expression", ofGetWidth() - 300, 150);
+    ofDrawBitmapString("e: Enter custom expression", ofGetWidth() - 300, 170);
+    ofDrawBitmapString("d: Reload current expression", ofGetWidth() - 300, 190);
+    ofDrawBitmapString("c: Clear all effects", ofGetWidth() - 300, 210);
+    ofDrawBitmapString("SPACE: Toggle auto-cycle", ofGetWidth() - 300, 230);
     
     // Draw audio info
-    ofDrawBitmapString("Audio Input: " + std::to_string(num_input_channels) + " channels", 20, ofGetHeight() - 60);
-    ofDrawBitmapString("Sample Rate: " + std::to_string(sample_rate) + " Hz", 20, ofGetHeight() - 40);
-    ofDrawBitmapString("Buffer Size: " + std::to_string(buffer_size), 20, ofGetHeight() - 20);
+    ofDrawBitmapString("Audio: " + std::to_string(num_input_channels) + "ch @ " + 
+                      std::to_string(sample_rate) + "Hz", 20, ofGetHeight() - 20);
 }
 
 void ofApp::keyPressed(int key) {
+    // Handle number keys for preset expressions
+    if (key >= '0' && key <= '9') {
+        int index = key - '0';
+        if (index < preset_expressions.size()) {
+            setupMovementChain(preset_expressions[index].second);
+            ofLogNotice() << "Selected preset: " << preset_expressions[index].first;
+        }
+        return;
+    }
+    
     switch(key) {
-        case '1':
-        case '2':  
-        case '3':
-        case '4':
-            current_effect = key - '1';
-            if (current_effect < effect_names.size()) {
-                visualizer.clearEffects();
-                visualizer.addEffect(effect_names[current_effect]);
-                auto_cycle_effects = false;
-                ofLogNotice() << "Switched to effect: " << effect_names[current_effect];
+        case 'e': {
+            // Enter custom expression
+            std::string input;
+            ofLogNotice() << "Enter movement expression (e.g., x=x+0.01; y=y-0.01):";
+            std::cout << "Expression: ";
+            std::getline(std::cin, input);
+            if (!input.empty()) {
+                setupMovementChain(input);
+                ofLogNotice() << "Custom expression set: " << input;
             }
             break;
+        }
             
         case ' ':
             auto_cycle_effects = !auto_cycle_effects;
@@ -111,19 +142,18 @@ void ofApp::keyPressed(int key) {
             
         case 'c':
             visualizer.clearEffects();
+            current_expression = "";
             ofLogNotice() << "Cleared all effects";
             break;
             
-        case 'r':
-            visualizer.clearEffects();
-            current_effect = ofRandom(effect_names.size());
-            visualizer.addEffect(effect_names[current_effect]);
-            ofLogNotice() << "Random effect: " << effect_names[current_effect];
-            break;
-            
         case 'd':
-            setupOscilloscopeDynamicMovement();
-            ofLogNotice() << "Reloaded oscilloscope + dynamic movement";
+            if (!current_expression.empty()) {
+                setupMovementChain(current_expression);
+                ofLogNotice() << "Reloaded expression: " << current_expression;
+            } else {
+                setupOscilloscopeDynamicMovement();
+                ofLogNotice() << "Reloaded default oscilloscope + dynamic movement";
+            }
             break;
     }
 }
@@ -137,22 +167,29 @@ void ofApp::setupOscilloscopeDynamicMovement() {
     // Clear any existing effects
     visualizer.clearEffects();
     
-    // Simple 2-effect chain for manual debugging
-    ofLogNotice() << "Setting up minimal chain: Oscilloscope + Dynamic Movement";
+    // Setup with configurable movement expression
+    setupMovementChain("x=x; y=y-0.01");  // Default: downward drift
+}
+
+void ofApp::setupMovementChain(const std::string& expression) {
+    // Clear any existing effects
+    visualizer.clearEffects();
     
-    // 1. Add oscilloscope (we know this works)
+    ofLogNotice() << "Setting up movement chain with expression: " << expression;
+    
+    // 1. Add oscilloscope for audio visualization
     visualizer.addEffect("oscilloscope");
     ofLogNotice() << "  - Added oscilloscope effect";
     
-    // 2. Add dynamic movement with downward drift: x=x; y=y-0.1
-    //visualizer.addEffect("dynamic_movement");
-    ofLogNotice() << "  - Added dynamic_movement effect";
-    ofLogNotice() << "  - Default script should be: x=x; y=y-0.1 (downward drift)";
+    // 2. Add dynamic movement with custom expression
+    visualizer.addDynamicMovementEffect(
+        expression,     // The movement script
+        true,          // rectangular coordinates (for x,y expressions)
+        16, 16         // grid resolution
+    );
+    ofLogNotice() << "  - Added dynamic movement with expression: " << expression;
     
-    ofLogNotice() << "Minimal 2-effect chain ready for debugging:";
-    ofLogNotice() << "  - Effect 1: Oscilloscope (audio waveform)";
-    ofLogNotice() << "  - Effect 2: Dynamic Movement (x=x; y=y-0.1)";
-    ofLogNotice() << "  - NO clear effect for clean debugging";
+    current_expression = expression;
 }
 
 void ofApp::keyReleased(int key) {}

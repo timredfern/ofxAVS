@@ -28,7 +28,19 @@ public:
     void addTransformEffect(const std::string& x_expr, const std::string& y_expr, 
                           int grid_width, int grid_height, int interpolation);
     void addClearEffect(bool only_first = false, uint32_t color = 0xFF000000);
+    void addDynamicMovementEffect(const std::string& script = "x=x; y=y-0.01",
+                                 bool rectangular = true,
+                                 int grid_width = 16, int grid_height = 16);
     void clearEffects();
+    
+    // Effect parameter configuration
+    void setEffectParameter(size_t effect_index, const std::string& param_name, double value);
+    void setEffectParameter(size_t effect_index, const std::string& param_name, const std::string& value);
+    void setEffectParameter(size_t effect_index, const std::string& param_name, bool value);
+    void setEffectParameter(size_t effect_index, const std::string& param_name, int value);
+    
+    // Get last added effect index for easier configuration
+    size_t getEffectCount() const;
     
     // Beat detection
     void setBeatThreshold(float threshold) { beat_threshold = threshold; }
@@ -42,9 +54,11 @@ private:
     void processAudioData();
     void detectBeat();
     void updateTexture();
+    EffectBase* getEffect(size_t index) const;
     
     // Core AVS components
     std::unique_ptr<DefaultRenderer> renderer;
+    std::vector<EffectBase*> effect_refs; // Non-owning references for parameter access
     
     // OpenFrameworks integration
     ofTexture texture;
