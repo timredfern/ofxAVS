@@ -77,7 +77,7 @@ public:
     void generate(int width, int height, int grid_width, int grid_height,
                  const std::string& x_expr, const std::string& y_expr,
                  bool rectangular, bool subpixel,
-                 const AudioData& audio_data, bool wrap = false,
+                 AudioData audio_data, bool wrap = false,
                  InterpolationMode interp_mode = InterpolationMode::LINEAR);
     
     /**
@@ -119,9 +119,9 @@ private:
     
     // Helper methods
     void generate_rectangular(const std::string& x_expr, const std::string& y_expr,
-                            const AudioData& audio_data);
+                            AudioData audio_data);
     void generate_polar(const std::string& x_expr, const std::string& y_expr,
-                       const AudioData& audio_data);
+                       AudioData audio_data);
     
     uint32_t encode_lookup(double x, double y) const;
     uint32_t sample_with_interpolation(const uint32_t* input, uint32_t base_offset,

@@ -2,7 +2,7 @@
 
 #include <string>
 #include <memory>
-#include "effect_base.h"
+#include "../effect_base.h"
 
 namespace avs {
 
@@ -28,7 +28,7 @@ public:
     // AVS-specific context
     void set_pixel_context(int pixel_x, int pixel_y, int width, int height);
     void set_color_context(double red, double green, double blue);
-    void set_audio_context(const AudioData& visdata, bool is_beat);
+    void set_audio_context(AudioData visdata, bool is_beat);
     
     // Error handling
     bool has_error() const;

@@ -222,8 +222,8 @@ void ScriptEngine::set_color_context(double red, double green, double blue) {
     pImpl->color_context.b = blue;
 }
 
-void ScriptEngine::set_audio_context(const AudioData& visdata, bool is_beat) {
-    pImpl->audio_context.visdata = &visdata;
+void ScriptEngine::set_audio_context(AudioData visdata, bool is_beat) {
+    pImpl->audio_context.visdata = visdata;
     pImpl->audio_context.is_beat = is_beat;
 }
 

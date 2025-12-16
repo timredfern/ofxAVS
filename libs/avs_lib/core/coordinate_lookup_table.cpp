@@ -16,7 +16,7 @@ CoordinateLookupTable::~CoordinateLookupTable() = default;
 void CoordinateLookupTable::generate(int width, int height, int grid_width, int grid_height,
                                   const std::string& x_expr, const std::string& y_expr,
                                   bool rectangular, bool subpixel,
-                                  const AudioData& audio_data, bool wrap,
+                                  AudioData audio_data, bool wrap,
                                   InterpolationMode interp_mode)
 {
     output_width_ = width;
@@ -35,7 +35,7 @@ void CoordinateLookupTable::generate(int width, int height, int grid_width, int 
 }
 
 void CoordinateLookupTable::generate_rectangular(const std::string& x_expr, const std::string& y_expr,
-                                               const AudioData& audio_data)
+                                               AudioData audio_data)
 {
     ScriptEngine x_engine, y_engine;
     
@@ -90,7 +90,7 @@ void CoordinateLookupTable::generate_rectangular(const std::string& x_expr, cons
 }
 
 void CoordinateLookupTable::generate_polar(const std::string& x_expr, const std::string& y_expr,
-                                         const AudioData& audio_data)
+                                         AudioData audio_data)
 {
     ScriptEngine x_engine, y_engine; // x_expr affects 'd', y_expr affects 'r'
     

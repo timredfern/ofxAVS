@@ -12,11 +12,12 @@ option(BUILD_EXAMPLES "Build example applications" ON)
 add_library(avs_core STATIC
     core/effect_base.h
     core/renderer.h
-    core/renderer.cpp
     core/parameter.h
     core/parameter.cpp
     core/plugin_manager.h
     core/plugin_manager.cpp
+    core/coordinate_lookup_table.h
+    core/coordinate_lookup_table.cpp
 )
 
 target_include_directories(avs_core PUBLIC .)
@@ -29,6 +30,10 @@ add_library(avs_effects STATIC
     effects/oscilloscope_effect.cpp
     effects/blur_effect.h
     effects/blur_effect.cpp
+    effects/movement_effect.h
+    effects/movement_effect.cpp
+    effects/dynamic_movement_effect.h
+    effects/dynamic_movement_effect.cpp
     core/builtin_effects.h
     core/builtin_effects.cpp
 )
@@ -39,7 +44,7 @@ target_include_directories(avs_effects PUBLIC .)
 # Example application
 if(BUILD_EXAMPLES)
     add_executable(avs_example
-        examples/standalone_example.cpp
+        example/src/main.cpp
     )
     
     target_link_libraries(avs_example PRIVATE avs_core avs_effects)
