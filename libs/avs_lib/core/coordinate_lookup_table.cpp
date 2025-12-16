@@ -7,7 +7,7 @@
 namespace avs {
 
 CoordinateLookupTable::CoordinateLookupTable()
-    : output_width_(0), output_height_(0), grid_width_(0), grid_height_(0), subpixel_(false), wrap_(false), interp_mode_(InterpolationMode::LINEAR)
+    : output_width_(0), output_height_(0), subpixel_(false), wrap_(false)
 {
 }
 
@@ -21,14 +21,11 @@ void CoordinateLookupTable::generate(int width, int height, int grid_width, int 
 {
     output_width_ = width;
     output_height_ = height;
-    grid_width_ = grid_width;
-    grid_height_ = grid_height;
     subpixel_ = subpixel;
     wrap_ = wrap;
-    interp_mode_ = interp_mode;
     
-    // Allocate lookup table for grid (not full resolution)
-    lookup_table_.resize(grid_width * grid_height);
+    // Allocate full-resolution lookup table like original AVS
+    lookup_table_.resize(width * height);
     
     if (rectangular) {
         generate_rectangular(x_expr, y_expr, audio_data);
@@ -51,45 +48,43 @@ void CoordinateLookupTable::generate_rectangular(const std::string& x_expr, cons
     double x_scale = 1.0 / w2;
     double y_scale = 1.0 / h2;
     
-    // Generate lookup table at grid points, not every pixel
-    for (int gy = 0; gy < grid_height_; gy++) {
-        for (int gx = 0; gx < grid_width_; gx++) {
-            // Map grid position to output pixel position
-            double px = (gx * output_width_) / (double)grid_width_;
-            double py = (gy * output_height_) / (double)grid_height_;
+    // Generate lookup table for every pixel (original AVS approach)
+    for (int y = 0; y < output_height_; y++) {
+        for (int x = 0; x < output_width_; x++) {
+            // Convert source pixel coordinates to normalized [-1, 1] range
+            double xd = x - w2;
+            double yd = y - h2;
+            double norm_x = xd * x_scale;
+            double norm_y = yd * y_scale;
             
-            // Convert pixel coordinates to normalized [-1, 1] range
-            double norm_x = (px - w2) * x_scale;
-            double norm_y = (py - h2) * y_scale;
+            // Set pixel context for expressions
+            x_engine.set_pixel_context(x, y, output_width_, output_height_);
+            y_engine.set_pixel_context(x, y, output_width_, output_height_);
             
-            // Set pixel context for expressions (using actual pixel position)
-            x_engine.set_pixel_context((int)px, (int)py, output_width_, output_height_);
-            y_engine.set_pixel_context((int)px, (int)py, output_width_, output_height_);
-            
-            // Also set normalized coordinates as variables
+            // Set normalized coordinates as variables
             x_engine.set_variable("x", norm_x);
             x_engine.set_variable("y", norm_y);
             y_engine.set_variable("x", norm_x);
             y_engine.set_variable("y", norm_y);
             
-            // Evaluate transformation expressions
-            double new_x = x_engine.evaluate(x_expr);
-            double new_y = y_engine.evaluate(y_expr);
+            // Evaluate transformation expressions to get destination coordinates
+            double dest_norm_x = x_engine.evaluate(x_expr);
+            double dest_norm_y = y_engine.evaluate(y_expr);
             
             // Handle invalid results (NaN, inf)
-            if (!std::isfinite(new_x)) new_x = norm_x;
-            if (!std::isfinite(new_y)) new_y = norm_y;
+            if (!std::isfinite(dest_norm_x)) dest_norm_x = norm_x;
+            if (!std::isfinite(dest_norm_y)) dest_norm_y = norm_y;
             
-            // Convert back to pixel coordinates
-            double pixel_x = (new_x + 1.0) * w2;
-            double pixel_y = (new_y + 1.0) * h2;
+            // Convert back to pixel coordinates - this is the DESTINATION pixel
+            double dest_pixel_x = (dest_norm_x + 1.0) * w2;
+            double dest_pixel_y = (dest_norm_y + 1.0) * h2;
             
-            // Apply clamping or wrapping
-            clamp_or_wrap(pixel_x, pixel_y);
+            // Apply clamping or wrapping to destination coordinates
+            clamp_or_wrap(dest_pixel_x, dest_pixel_y);
             
-            // Store in grid lookup table
-            int grid_idx = gy * grid_width_ + gx;
-            lookup_table_[grid_idx] = encode_lookup(pixel_x, pixel_y);
+            // Store destination offset in lookup table
+            int src_idx = y * output_width_ + x;
+            lookup_table_[src_idx] = encode_lookup(dest_pixel_x, dest_pixel_y);
         }
     }
 }
@@ -108,21 +103,18 @@ void CoordinateLookupTable::generate_polar(const std::string& x_expr, const std:
     double w2 = output_width_ / 2.0;
     double h2 = output_height_ / 2.0;
     
-    // Generate lookup table at grid points
-    for (int gy = 0; gy < grid_height_; gy++) {
-        for (int gx = 0; gx < grid_width_; gx++) {
-            // Map grid position to output pixel position
-            double px = (gx * output_width_) / (double)grid_width_;
-            double py = (gy * output_height_) / (double)grid_height_;
+    // Generate lookup table for every pixel
+    for (int y = 0; y < output_height_; y++) {
+        for (int x = 0; x < output_width_; x++) {
             // Convert to polar coordinates
-            double xd = px - w2;
-            double yd = py - h2;
+            double xd = x - w2;
+            double yd = y - h2;
             double d = std::sqrt(xd * xd + yd * yd) * inv_max_d; // normalized distance [0,1]
             double r = std::atan2(yd, xd) + M_PI * 0.5; // angle [0, 2π]
             
             // Set context
-            x_engine.set_pixel_context((int)px, (int)py, output_width_, output_height_);
-            y_engine.set_pixel_context((int)px, (int)py, output_width_, output_height_);
+            x_engine.set_pixel_context(x, y, output_width_, output_height_);
+            y_engine.set_pixel_context(x, y, output_width_, output_height_);
             
             // Set polar variables
             x_engine.set_variable("d", d);
@@ -142,15 +134,15 @@ void CoordinateLookupTable::generate_polar(const std::string& x_expr, const std:
             new_d *= max_d; // denormalize distance
             new_r -= M_PI * 0.5; // adjust angle offset
             
-            double pixel_x = w2 + std::cos(new_r) * new_d;
-            double pixel_y = h2 + std::sin(new_r) * new_d;
+            double dest_pixel_x = w2 + std::cos(new_r) * new_d;
+            double dest_pixel_y = h2 + std::sin(new_r) * new_d;
             
             // Apply clamping or wrapping
-            clamp_or_wrap(pixel_x, pixel_y);
+            clamp_or_wrap(dest_pixel_x, dest_pixel_y);
             
-            // Store in grid lookup table
-            int grid_idx = gy * grid_width_ + gx;
-            lookup_table_[grid_idx] = encode_lookup(pixel_x, pixel_y);
+            // Store in lookup table
+            int src_idx = y * output_width_ + x;
+            lookup_table_[src_idx] = encode_lookup(dest_pixel_x, dest_pixel_y);
         }
     }
 }
@@ -187,7 +179,7 @@ void CoordinateLookupTable::clamp_or_wrap(double& x, double& y) const
 uint32_t CoordinateLookupTable::encode_lookup(double x, double y) const
 {
     if (subpixel_) {
-        // Encode with subpixel interpolation data
+        // Encode with subpixel interpolation data (like original AVS)
         int base_x = (int)x;
         int base_y = (int)y;
         
@@ -229,85 +221,118 @@ void CoordinateLookupTable::apply(const uint32_t* input, uint32_t* output,
 {
     if (lookup_table_.empty() || width != output_width_ || height != output_height_) {
         // Invalid table or size mismatch, copy input to output
-        std::copy(input, input + width * height, output);
+        std::copy(input, input + width * height, output);;
         return;
     }
     
     const uint32_t OFFSET_MASK = (1 << 22) - 1;
     
-    for (int y = 0; y < height; y++) {
-        for (int x = 0; x < width; x++) {
-            int pixel_idx = y * width + x;
+    // Inverse mapping like original AVS: for each output pixel, find which input pixel to read
+    for (int dest_y = 0; dest_y < height; dest_y++) {
+        for (int dest_x = 0; dest_x < width; dest_x++) {
+            int dest_idx = dest_y * width + dest_x;
             
-            // Map pixel position to grid position
-            double grid_x = (x * grid_width_) / (double)width;
-            double grid_y = (y * grid_height_) / (double)height;
+            // Calculate grid coordinates for this output pixel
+            double grid_x = (dest_x * grid_width_) / (double)width;
+            double grid_y = (dest_y * grid_height_) / (double)height;
             
-            // Get grid indices and fractional parts
-            int gx0 = (int)grid_x;
-            int gy0 = (int)grid_y;
-            int gx1 = std::min(gx0 + 1, grid_width_ - 1);
-            int gy1 = std::min(gy0 + 1, grid_height_ - 1);
+            int gx = (int)grid_x;
+            int gy = (int)grid_y;
             
-            double fx = grid_x - gx0;
-            double fy = grid_y - gy0;
+            // Clamp to valid grid range
+            gx = std::min(gx, grid_width_ - 1);
+            gy = std::min(gy, grid_height_ - 1);
             
-            // Get lookup values from grid corners
-            uint32_t lookup00 = lookup_table_[gy0 * grid_width_ + gx0];
-            uint32_t lookup01 = lookup_table_[gy0 * grid_width_ + gx1];
-            uint32_t lookup10 = lookup_table_[gy1 * grid_width_ + gx0];
-            uint32_t lookup11 = lookup_table_[gy1 * grid_width_ + gx1];
-            
-            uint32_t pixel;
-            
-            if (subpixel_) {
-                // For subpixel mode, each lookup contains interpolation data
-                uint32_t base_offset = lookup00 & OFFSET_MASK;
-                uint32_t x_partial = (lookup00 >> 27) & 31;
-                uint32_t y_partial = (lookup00 >> 22) & 31;
-                pixel = sample_with_interpolation(input, base_offset, x_partial, y_partial);
+            if (interp_mode_ == InterpolationMode::NONE) {
+                // No interpolation - use nearest grid point
+                uint32_t lookup = lookup_table_[gy * grid_width_ + gx];
+                uint32_t src_offset = subpixel_ ? (lookup & OFFSET_MASK) : lookup;
+                if (src_offset < width * height) {
+                    output[dest_idx] = input[src_offset];
+                } else {
+                    output[dest_idx] = 0;
+                }
             } else {
-                // Apply grid interpolation based on mode
-                switch (interp_mode_) {
-                    case InterpolationMode::NONE:
-                        // No interpolation - use nearest grid point (classic stepped look)
-                        pixel = input[lookup00];
-                        break;
-                        
-                    case InterpolationMode::NEAREST:
-                        // Nearest neighbor within grid
-                        {
-                            uint32_t lookup = (fx < 0.5 && fy < 0.5) ? lookup00 :
-                                            (fx >= 0.5 && fy < 0.5) ? lookup01 :
-                                            (fx < 0.5 && fy >= 0.5) ? lookup10 : lookup11;
-                            pixel = input[lookup];
-                        }
-                        break;
-                        
-                    case InterpolationMode::LINEAR:
-                    default:
-                        // Bilinear interpolation between grid lookups for smooth results
-                        {
-                            uint32_t p00 = input[lookup00];
-                            uint32_t p01 = input[lookup01]; 
-                            uint32_t p10 = input[lookup10];
-                            uint32_t p11 = input[lookup11];
-                            pixel = interpolate_pixels(p00, p01, p10, p11, fx, fy);
-                        }
-                        break;
+                // Interpolate between coordinate transformations
+                int gx1 = std::min(gx + 1, grid_width_ - 1);
+                int gy1 = std::min(gy + 1, grid_height_ - 1);
+                
+                // Calculate fractional position within grid cell
+                double fx = grid_x - gx;
+                double fy = grid_y - gy;
+                
+                // Get lookup coordinates from grid corners
+                uint32_t lookup00 = lookup_table_[gy * grid_width_ + gx];
+                uint32_t lookup01 = lookup_table_[gy * grid_width_ + gx1]; 
+                uint32_t lookup10 = lookup_table_[gy1 * grid_width_ + gx];
+                uint32_t lookup11 = lookup_table_[gy1 * grid_width_ + gx1];
+                
+                // Decode coordinates from lookups
+                double x00 = (lookup00 % width);
+                double y00 = (lookup00 / width);
+                double x01 = (lookup01 % width);
+                double y01 = (lookup01 / width);
+                double x10 = (lookup10 % width);
+                double y10 = (lookup10 / width);
+                double x11 = (lookup11 % width);
+                double y11 = (lookup11 / width);
+                
+                // Interpolate coordinates
+                double interp_x = (x00 * (1.0 - fx) + x01 * fx) * (1.0 - fy) + 
+                                 (x10 * (1.0 - fx) + x11 * fx) * fy;
+                double interp_y = (y00 * (1.0 - fx) + y01 * fx) * (1.0 - fy) + 
+                                 (y10 * (1.0 - fx) + y11 * fx) * fy;
+                
+                // Sample from interpolated coordinate
+                int src_x = (int)(interp_x + 0.5);
+                int src_y = (int)(interp_y + 0.5);
+                
+                if (src_x >= 0 && src_x < width && src_y >= 0 && src_y < height) {
+                    output[dest_idx] = input[src_y * width + src_x];
+                } else {
+                    output[dest_idx] = 0;
                 }
             }
-            
-            if (blend) {
-                // Simple average blend
-                uint32_t existing = output[pixel_idx];
-                uint32_t r = ((pixel & 0xFF0000) + (existing & 0xFF0000)) / 2;
-                uint32_t g = ((pixel & 0x00FF00) + (existing & 0x00FF00)) / 2;
-                uint32_t b = ((pixel & 0x0000FF) + (existing & 0x0000FF)) / 2;
-                uint32_t a = ((pixel & 0xFF000000) + (existing & 0xFF000000)) / 2;
-                output[pixel_idx] = (a & 0xFF000000) | (r & 0xFF0000) | (g & 0x00FF00) | (b & 0x0000FF);
-            } else {
-                output[pixel_idx] = pixel;
+        }
+    }
+}
+
+void CoordinateLookupTable::apply_subpixel_write(uint32_t pixel, uint32_t* output, 
+                                               uint32_t base_offset, uint32_t x_partial, uint32_t y_partial,
+                                               bool blend) const
+{
+    // Get base coordinates
+    int base_x = base_offset % output_width_;
+    int base_y = base_offset / output_width_;
+    
+    // Convert partials to [0,1] range
+    double fx = x_partial / 32.0;
+    double fy = y_partial / 32.0;
+    
+    // Distribute pixel to four corners based on fractional position
+    if (base_x < output_width_ - 1 && base_y < output_height_ - 1) {
+        uint32_t weights[4] = {
+            (uint32_t)((1.0 - fx) * (1.0 - fy) * 256),
+            (uint32_t)(fx * (1.0 - fy) * 256),
+            (uint32_t)((1.0 - fx) * fy * 256),
+            (uint32_t)(fx * fy * 256)
+        };
+        
+        uint32_t offsets[4] = {
+            base_offset,
+            base_offset + 1,
+            base_offset + output_width_,
+            base_offset + output_width_ + 1
+        };
+        
+        for (int i = 0; i < 4; i++) {
+            if (weights[i] > 0 && offsets[i] < output_width_ * output_height_) {
+                uint32_t weighted_pixel = apply_weight(pixel, weights[i]);
+                if (blend) {
+                    output[offsets[i]] = blend_max(weighted_pixel, output[offsets[i]]);
+                } else {
+                    output[offsets[i]] = weighted_pixel;
+                }
             }
         }
     }
@@ -322,11 +347,14 @@ uint32_t CoordinateLookupTable::sample_with_interpolation(const uint32_t* input,
     int base_x = base_offset % output_width_;
     int base_y = base_offset / output_width_;
     
-    // Sample four neighboring pixels
+    // Sample four neighboring pixels with bounds checking
     uint32_t p11 = input[base_offset];
-    uint32_t p21 = (base_x + 1 < output_width_) ? input[base_offset + 1] : p11;
-    uint32_t p12 = (base_y + 1 < output_height_) ? input[base_offset + output_width_] : p11;
-    uint32_t p22 = (base_x + 1 < output_width_ && base_y + 1 < output_height_) ? 
+    uint32_t p21 = (base_x + 1 < output_width_ && base_offset + 1 < output_width_ * output_height_) ? 
+                   input[base_offset + 1] : p11;
+    uint32_t p12 = (base_y + 1 < output_height_ && base_offset + output_width_ < output_width_ * output_height_) ? 
+                   input[base_offset + output_width_] : p11;
+    uint32_t p22 = (base_x + 1 < output_width_ && base_y + 1 < output_height_ && 
+                   base_offset + output_width_ + 1 < output_width_ * output_height_) ? 
                    input[base_offset + output_width_ + 1] : p11;
     
     // Convert partial coordinates to [0,1] range
@@ -362,12 +390,32 @@ uint32_t CoordinateLookupTable::interpolate_pixels(uint32_t p00, uint32_t p01, u
     return (a << 24) | (r << 16) | (g << 8) | b;
 }
 
+uint32_t CoordinateLookupTable::apply_weight(uint32_t pixel, uint32_t weight) const
+{
+    uint32_t r = ((pixel >> 16) & 0xFF) * weight / 256;
+    uint32_t g = ((pixel >> 8) & 0xFF) * weight / 256;
+    uint32_t b = (pixel & 0xFF) * weight / 256;
+    uint32_t a = ((pixel >> 24) & 0xFF) * weight / 256;
+    
+    return (a << 24) | (r << 16) | (g << 8) | b;
+}
+
+uint32_t CoordinateLookupTable::blend_max(uint32_t a, uint32_t b) const
+{
+    uint32_t r = std::max((a >> 16) & 0xFF, (b >> 16) & 0xFF);
+    uint32_t g = std::max((a >> 8) & 0xFF, (b >> 8) & 0xFF);
+    uint32_t b_val = std::max(a & 0xFF, b & 0xFF);
+    uint32_t alpha = std::max((a >> 24) & 0xFF, (b >> 24) & 0xFF);
+    
+    return (alpha << 24) | (r << 16) | (g << 8) | b_val;
+}
+
 uint32_t CoordinateLookupTable::get_lookup(int x, int y) const
 {
-    if (x < 0 || x >= grid_width_ || y < 0 || y >= grid_height_) {
+    if (x < 0 || x >= output_width_ || y < 0 || y >= output_height_) {
         return 0;
     }
-    return lookup_table_[y * grid_width_ + x];
+    return lookup_table_[y * output_width_ + x];
 }
 
 } // namespace avs

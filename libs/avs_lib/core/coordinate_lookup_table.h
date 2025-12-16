@@ -125,9 +125,16 @@ private:
     
     uint32_t encode_lookup(double x, double y) const;
     uint32_t sample_with_interpolation(const uint32_t* input, uint32_t base_offset,
-                                      uint32_t x_partial, uint32_t y_partial) const;
+                                       uint32_t x_partial, uint32_t y_partial) const;
     uint32_t interpolate_pixels(uint32_t p00, uint32_t p01, uint32_t p10, uint32_t p11, 
                               double fx, double fy) const;
+    
+    void apply_subpixel_write(uint32_t pixel, uint32_t* output, 
+                             uint32_t base_offset, uint32_t x_partial, uint32_t y_partial,
+                             bool blend) const;
+    
+    uint32_t apply_weight(uint32_t pixel, uint32_t weight) const;
+    uint32_t blend_max(uint32_t a, uint32_t b) const;
     
     // Clamp or wrap coordinates based on settings
     void clamp_or_wrap(double& x, double& y) const;

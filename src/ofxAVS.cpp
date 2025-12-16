@@ -120,6 +120,7 @@ void ofxAVS::addTransformEffect(const std::string& x_expr, const std::string& y_
         effect->parameters().set_int("grid_height", grid_height);
         
         // Configure interpolation mode using enum
+        printf("DEBUG: ofxAVS::addTransformEffect setting interpolation to %d\n", static_cast<int>(interp_mode));
         effect->parameters().set_int("interpolation", static_cast<int>(interp_mode));
         
         renderer->add_effect(std::move(effect));

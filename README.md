@@ -24,11 +24,17 @@ This project ports the complete AVS system to modern C++ while maintaining compa
 - **3 effects ported**: Clear, Oscilloscope, Blur
 - **Standalone examples** - Test library without OpenFrameworks
 
-### Future Phases 🚧
-- **NS-EEL scripting engine** - Complete expression evaluator port
-- **Original preset loading** - Load classic .avs files
-- **Complete effect library** - All 50+ original effects
-- **OpenFrameworks integration** - Real-time GUI and audio
+### In Progress 🚧
+- **Script engine architecture** - Multi-phase execution system (init/frame/beat/pixel/point)
+- **Transform effect refactoring** - Split into MovementEffect and DynamicMovementEffect
+- **Coordinate systems** - Full-resolution vs grid-based interpolation
+- **AVS compatibility system** - Exact preset loading and effect behavior
+
+### Future Phases 📋
+- **Complete effect library** - All 54+ original effects with authentic behavior
+- **NS-EEL scripting engine** - Complete expression evaluator with all functions
+- **OpenFrameworks integration** - Real-time GUI and audio input
+- **UI architecture** - Effect chain editing and parameter controls
 
 ## Architecture
 
@@ -36,18 +42,25 @@ This project ports the complete AVS system to modern C++ while maintaining compa
 ofxAVS/
 ├── src/
 │   ├── ofxAVS.h/cpp           # 🚧 Future: OF integration layer
-│   └── avs_lib/               # ✅ Complete embedded AVS library
-│       ├── core/              # Core rendering engine
-│       │   ├── renderer.h     # Main effect chain processor
-│       │   ├── effect_base.h  # Base class for all effects
-│       │   ├── parameter.h    # Modern parameter system
-│       │   └── plugin_manager.h # Effect registration & creation
-│       ├── effects/           # Ported AVS effects
-│       │   ├── clear_effect.h
-│       │   ├── oscilloscope_effect.h  
-│       │   └── blur_effect.h
-│       └── examples/          # Standalone library examples
-│           └── standalone/    # PPM image output demo
+├── libs/avs_lib/              # ✅ Complete embedded AVS library
+│   ├── ARCHITECTURE.md        # 📋 Complete architecture documentation
+│   ├── EFFECTS.md             # 📋 Catalog of all 54+ AVS effects
+│   ├── SCRIPT_ARCHITECTURE.md # 📋 Script engine design
+│   ├── core/                  # Core rendering engine
+│   │   ├── script/            # 🚧 Multi-phase script execution
+│   │   ├── transforms/        # 🚧 Coordinate transformation utilities
+│   │   ├── renderer.h         # Main effect chain processor
+│   │   ├── effect_base.h      # Base class for all effects
+│   │   ├── parameter.h        # Modern parameter system
+│   │   └── plugin_manager.h   # Effect registration & creation
+│   ├── effects/               # 🚧 Refactored AVS effects
+│   │   ├── movement_effect.h          # Trans/Movement (23 presets + custom)
+│   │   ├── dynamic_movement_effect.h  # Trans/Dynamic Movement (grid-based)
+│   │   ├── superscope_effect.h        # Render/SuperScope (point rendering)
+│   │   ├── clear_effect.h             # ✅ Screen clearing
+│   │   ├── oscilloscope_effect.h      # ✅ Waveform visualization
+│   │   └── blur_effect.h              # ✅ Box blur
+│   └── tests/                 # ✅ Comprehensive effect testing
 └── addon_config.mk           # OpenFrameworks addon configuration
 ```
 
@@ -150,11 +163,13 @@ echo "ofxAVS" >> addons.make
 | Clear | ✅ Done | Low | Screen clearing with blend modes |
 | Oscilloscope | ✅ Done | Low | Audio waveform visualization |  
 | Blur | ✅ Done | Medium | Box blur with configurable strength |
-| Brightness | 🔧 Next | Low | Simple pixel intensity adjustment |
-| Movement | 🔧 Next | Medium | Coordinate transformations |
-| Superscope | 🚧 Later | High | Requires NS-EEL scripting engine |
+| Movement | 🚧 In Progress | High | 23 presets + custom scripting, full-resolution lookup |
+| Dynamic Movement | 🚧 In Progress | High | Grid-based coordinate interpolation |
+| SuperScope | 🚧 In Progress | High | Point-phase audio rendering with scripting |
+| Simple Spectrum | 📋 Planned | Medium | Basic spectrum visualization |
+| Water | 📋 Planned | High | Physics simulation with scripting |
 
-**Goal**: Port the 20 most popular effects that cover 90% of preset usage.
+**Current Focus**: Establish script engine architecture and coordinate transformation systems before expanding effect library.
 
 ## Contributing
 
@@ -178,9 +193,9 @@ BSD 3-Clause - matches original AVS license
 ## Development Status
 
 **Phase 1 Complete** ✅ - Core library architecture and basic effects  
-**Phase 2 In Progress** 🚧 - OpenFrameworks integration  
-**Phase 3 Planned** 📋 - NS-EEL scripting and preset loading  
-**Phase 4 Future** 🔮 - Complete effect library and community tools  
+**Phase 2 In Progress** 🚧 - Script engine architecture and transform effect refactoring  
+**Phase 3 Planned** 📋 - Complete effect library with authentic AVS behavior  
+**Phase 4 Future** 🔮 - OpenFrameworks integration and UI architecture  
 
 ---
 

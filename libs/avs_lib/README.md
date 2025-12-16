@@ -291,15 +291,18 @@ public:
 - Standalone example and build system
 
 ### In Progress 🚧
-- OpenFrameworks integration layer
-- Real-time audio input processing
-- GUI parameter controls
+- Script engine refactoring for multi-phase execution
+- Transform effect split (Movement vs Dynamic Movement)
+- Coordinate lookup table optimization
 
 ### Planned 📋
-- NS-EEL scripting engine port
-- Original .avs preset loading
-- Complete effect library (50+ effects)
-- Performance optimizations (SIMD, threading)
+- MovementEffect with 23 built-in presets + custom scripting
+- DynamicMovementEffect with grid-based coordinate interpolation
+- SuperScopeEffect with point-phase audio rendering
+- Complete NS-EEL scripting system
+- Original .avs preset loading and compatibility
+- Complete effect library (54+ effects matching original AVS)
+- UI architecture for effect chain editing
 
 ---
 

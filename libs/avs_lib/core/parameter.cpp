@@ -103,7 +103,7 @@ void ParameterGroup::set_float(const std::string& name, double value) {
 
 void ParameterGroup::set_int(const std::string& name, int value) {
     auto param = get_parameter(name);
-    if (param && param->type() == ParameterType::INT) {
+    if (param && (param->type() == ParameterType::INT || param->type() == ParameterType::ENUM)) {
         param->set_value(value);
     }
 }

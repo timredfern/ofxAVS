@@ -137,22 +137,18 @@ void ofApp::setupLookupTableDemo() {
     visualizer.clearEffects();
     
     // Demonstrate new lookup table-based Transform effect:
-    // 1. Clear effect that only clears on first frame (enables feedback)
-    // 2. Transform effect with audio-reactive distortion using pre-computed lookup tables
-    // 3. Oscilloscope draws fresh audio waveform on top
+    // 1. Oscilloscope draws audio waveform first
+    // 2. Transform effect moves the waveform down 
+    // 3. Clear effect provides feedback
+    
+    // Add oscilloscope to draw audio waveform
+    visualizer.addEffect("oscilloscope");
+    
+    // Add transform effect to move the waveform down
+    visualizer.addTransformEffect("x", "y-0.01", 16, 16, avs::InterpolationMode::LINEAR);
     
     // Add clear effect configured for feedback (only clear first frame)
     visualizer.addClearEffect(true); // only_first=true enables feedback
-    
-    // Add audio-reactive transform effect using lookup table approach
-    // This recreates the classic AVS stepped/quantized transform behavior
-    // Audio variables: v1-v8 (waveform), beat, etc.
-    // Use 16×16 grid with no interpolation for classic stepped look
-    visualizer.addTransformEffect("x + sin(y * 6.28) * v1 * 0.1", "y + cos(x * 6.28) * v2 * 0.1",
-                                16, 16, avs::InterpolationMode::NONE);
-    
-    // Add oscilloscope to draw audio waveform on top
-    visualizer.addEffect("oscilloscope");
     
     ofLogNotice() << "Lookup table demo configured:";
     ofLogNotice() << "  1. Clear: only_first=true (feedback enabled)";

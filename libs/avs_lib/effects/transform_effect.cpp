@@ -88,6 +88,8 @@ int TransformEffect::render(AudioData visdata, int isBeat,
         InterpolationMode interp_mode = static_cast<InterpolationMode>(interp_int);
         
         // Generate new lookup table with grid resolution
+        printf("DEBUG: Transform effect generating lookup table with grid %dx%d, interp_mode=%d\n", 
+               grid_width, grid_height, (int)interp_mode);
         lookup_table_.generate(w, h, grid_width, grid_height, x_expr, y_expr, 
                              rectangular, subpixel, 
                              *reinterpret_cast<const AudioData*>(visdata), wrap, interp_mode);
