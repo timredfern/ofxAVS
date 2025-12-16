@@ -130,11 +130,18 @@ cmake .. && make
 
 ### As OpenFrameworks Addon
 ```bash
-# Clone into your OF addons directory
+# Clone into your OF addons directory  
 cd openFrameworks/addons
 git clone [repo-url] ofxAVS
 
-# Add to your project's addons.make
+# IMPORTANT: Set OF_ROOT environment variable before building
+export OF_ROOT=/path/to/your/openFrameworks
+
+# Build the example
+cd ofxAVS/example
+make
+
+# For your own projects, add to addons.make
 echo "ofxAVS" >> addons.make
 ```
 

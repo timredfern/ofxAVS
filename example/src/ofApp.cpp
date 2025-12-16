@@ -22,25 +22,25 @@ void ofApp::setup() {
     // Visualizer setup
     visualizer.setup(512, 512);
     
-    // Demo effects setup for layered visualization
-    effect_names = {"clear", "oscilloscope", "blur", "transform"};
+    // Demo effects setup for oscilloscope + dynamic movement
+    effect_names = {"clear", "oscilloscope", "dynamic_movement", "transform"};
     current_effect = 0;
     auto_cycle_effects = false; // Disable auto cycling for manual control
     effect_cycle_time = 5.0f;
     last_effect_change = 0;
     
-    // Set up layered effect chain demonstrating new lookup table-based transform:
-    // 1. Clear effect for feedback control
-    // 2. Transform effect with audio-reactive scaling using lookup tables  
-    // 3. Oscilloscope to draw audio waveform on top
-    setupLookupTableDemo();
+    // Set up oscilloscope with dynamic movement and feedback:
+    // 1. Clear effect for feedback control (partial clear)
+    // 2. Oscilloscope to draw audio waveform
+    // 3. Dynamic movement effect for grid-based transformations
+    setupOscilloscopeDynamicMovement();
     
-    ofLogNotice() << "ofxAVS Example Started - Layered Effects Mode";
-    ofLogNotice() << "Effect Chain: Transform (1.05x scale) + Oscilloscope";
+    ofLogNotice() << "ofxAVS Example Started - Oscilloscope + Dynamic Movement";
+    ofLogNotice() << "Effect Chain: Clear (feedback) + Oscilloscope + Dynamic Movement";
     ofLogNotice() << "Press keys 1-4 to change effects";
     ofLogNotice() << "Press SPACE to toggle auto-cycling";
     ofLogNotice() << "Press 'c' to clear effects";
-    ofLogNotice() << "Press 'l' to reload layered effects";
+    ofLogNotice() << "Press 'd' to reload oscilloscope + dynamic movement";
 }
 
 void ofApp::update() {
@@ -68,15 +68,15 @@ void ofApp::draw() {
     
     // Draw UI
     ofSetColor(255);
-    ofDrawBitmapString("ofxAVS Example - Layered Effects Demo", 20, 30);
-    ofDrawBitmapString("Effect Chain: Clear (feedback) + Transform (lookup table) + Oscilloscope", 20, 50);
+    ofDrawBitmapString("ofxAVS Example - Oscilloscope + Dynamic Movement", 20, 30);
+    ofDrawBitmapString("Effect Chain: Clear (feedback) + Oscilloscope + Dynamic Movement", 20, 50);
     ofDrawBitmapString("FPS: " + ofToString(ofGetFrameRate(), 1), 20, 70);
     ofDrawBitmapString("Auto-cycle: " + std::string(auto_cycle_effects ? "ON" : "OFF"), 20, 90);
     ofDrawBitmapString("Beat Detected: " + std::string(visualizer.isBeat() ? "YES" : "NO"), 20, 110);
     
     ofDrawBitmapString("Controls:", 20, 150);
     ofDrawBitmapString("1-4: Select single effect", 20, 170);
-    ofDrawBitmapString("l: Reload layered effects", 20, 190);
+    ofDrawBitmapString("d: Reload oscilloscope + dynamic movement", 20, 190);
     ofDrawBitmapString("c: Clear effects", 20, 210);
     ofDrawBitmapString("r: Add random effect", 20, 230);
     ofDrawBitmapString("SPACE: Toggle auto-cycle", 20, 250);
@@ -120,9 +120,9 @@ void ofApp::keyPressed(int key) {
             ofLogNotice() << "Random effect: " << effect_names[current_effect];
             break;
             
-        case 'l':
-            setupLookupTableDemo();
-            ofLogNotice() << "Reloaded lookup table demo";
+        case 'd':
+            setupOscilloscopeDynamicMovement();
+            ofLogNotice() << "Reloaded oscilloscope + dynamic movement";
             break;
     }
 }
@@ -132,31 +132,30 @@ void ofApp::audioIn(ofSoundBuffer& buffer) {
     visualizer.audioReceived(buffer.getBuffer().data(), buffer.getNumFrames(), buffer.getNumChannels());
 }
 
-void ofApp::setupLookupTableDemo() {
+void ofApp::setupOscilloscopeDynamicMovement() {
     // Clear any existing effects
     visualizer.clearEffects();
     
-    // Demonstrate new lookup table-based Transform effect:
-    // 1. Oscilloscope draws audio waveform first
-    // 2. Transform effect moves the waveform down 
-    // 3. Clear effect provides feedback
+    // Create classic AVS-style effect chain:
+    // 1. Clear effect with feedback (partial clear creates trails)
+    // 2. Oscilloscope draws audio waveform 
+    // 3. Dynamic Movement effect applies grid-based transformations
+    
+    // Add clear effect configured for feedback (only clear first frame)
+    visualizer.addClearEffect(true); // only_first=true enables feedback trails
     
     // Add oscilloscope to draw audio waveform
     visualizer.addEffect("oscilloscope");
     
-    // Add transform effect to move the waveform down
-    visualizer.addTransformEffect("x", "y-0.01", 16, 16, avs::InterpolationMode::LINEAR);
+    // Add dynamic movement effect with classic spiral transformation
+    visualizer.addEffect("dynamic_movement");
     
-    // Add clear effect configured for feedback (only clear first frame)
-    visualizer.addClearEffect(true); // only_first=true enables feedback
-    
-    ofLogNotice() << "Lookup table demo configured:";
-    ofLogNotice() << "  1. Clear: only_first=true (feedback enabled)";
-    ofLogNotice() << "  2. Transform: Audio-reactive wave distortion with 16×16 grid";
-    ofLogNotice() << "     - InterpolationMode::NONE for classic stepped artifacts";
-    ofLogNotice() << "     - Available modes: NONE (stepped), LINEAR (smooth), NEAREST (sharp)";
-    ofLogNotice() << "  3. Oscilloscope: Audio waveform visualization";
-    ofLogNotice() << "Transform uses pre-computed lookup table (authentic AVS behavior)";
+    ofLogNotice() << "Oscilloscope + Dynamic Movement configured:";
+    ofLogNotice() << "  1. Clear: only_first=true (feedback trails enabled)";
+    ofLogNotice() << "  2. Oscilloscope: Audio waveform visualization";
+    ofLogNotice() << "  3. Dynamic Movement: Grid-based transformations (spiral effect)";
+    ofLogNotice() << "     - Default script: d=d*0.95; r=r+0.1 (classic spiral)";
+    ofLogNotice() << "     - Grid-based evaluation for authentic AVS stepping artifacts";
 }
 
 void ofApp::keyReleased(int key) {}
