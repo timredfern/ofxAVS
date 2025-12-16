@@ -142,8 +142,14 @@ void DynamicMovementEffect::generate_grid(int w, int h, AudioData visdata, int i
     
     if (rectangular) {
         // In rectangular mode, use script directly (should modify x,y)
-        x_expr = pixel_script;
-        y_expr = pixel_script;
+        // For "x" identity script, preserve as-is
+        if (pixel_script == "x") {
+            x_expr = "x";
+            y_expr = "y";
+        } else {
+            x_expr = pixel_script;
+            y_expr = pixel_script;
+        }
     } else {
         // In polar mode, need to convert the script to coordinate expressions
         // For default "d=d*0.95; r=r+0.1", generate expressions that convert polar->cartesian
