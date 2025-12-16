@@ -24,7 +24,7 @@ Token Lexer::next_token() {
         return read_number();
     }
     
-    if (std::isalpha(ch) || ch == '_') {
+    if (std::isalpha(ch) || ch == '_' || ch == '$') {
         return read_identifier();
     }
     
@@ -76,7 +76,7 @@ Token Lexer::read_identifier() {
     size_t start = position;
     
     while (position < input.length() && 
-           (std::isalnum(input[position]) || input[position] == '_')) {
+           (std::isalnum(input[position]) || input[position] == '_' || input[position] == '$')) {
         position++;
     }
     

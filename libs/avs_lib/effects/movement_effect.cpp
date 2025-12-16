@@ -182,6 +182,7 @@ void MovementEffect::evaluate_movement_script(const std::string& script, double&
     
     // Set constants
     engine.set_variable("$PI", M_PI);
+    engine.set_variable("$E", M_E);
     engine.set_variable("sw", (double)w);  // screen width
     engine.set_variable("sh", (double)h);  // screen height
     

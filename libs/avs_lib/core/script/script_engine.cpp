@@ -68,6 +68,14 @@ double ScriptEngine::evaluate(const std::string& expression) {
             combined_vars["b"] = pImpl->color_context.b;
         }
         
+        // Add mathematical constants
+        if (combined_vars.find("$PI") == combined_vars.end()) {
+            combined_vars["$PI"] = M_PI;
+        }
+        if (combined_vars.find("$E") == combined_vars.end()) {
+            combined_vars["$E"] = M_E;
+        }
+        
         // Add audio data variables
         if (combined_vars.find("beat") == combined_vars.end()) {
             combined_vars["beat"] = pImpl->audio_context.is_beat ? 1.0 : 0.0;

@@ -112,6 +112,26 @@ struct FunctionCallNode : public ASTNode {
             return arg_values.size() > 0 ? std::log10(arg_values[0]) : 0.0;
         } else if (function_name == "pow") {
             return arg_values.size() > 1 ? std::pow(arg_values[0], arg_values[1]) : 0.0;
+        } else if (function_name == "atan2") {
+            return arg_values.size() > 1 ? std::atan2(arg_values[0], arg_values[1]) : 0.0;
+        } else if (function_name == "floor") {
+            return arg_values.size() > 0 ? std::floor(arg_values[0]) : 0.0;
+        } else if (function_name == "ceil") {
+            return arg_values.size() > 0 ? std::ceil(arg_values[0]) : 0.0;
+        } else if (function_name == "min") {
+            return arg_values.size() > 1 ? std::min(arg_values[0], arg_values[1]) : 0.0;
+        } else if (function_name == "max") {
+            return arg_values.size() > 1 ? std::max(arg_values[0], arg_values[1]) : 0.0;
+        } else if (function_name == "rand") {
+            return arg_values.size() > 0 ? static_cast<double>(rand()) / RAND_MAX * arg_values[0] : static_cast<double>(rand()) / RAND_MAX;
+        } else if (function_name == "asin") {
+            return arg_values.size() > 0 ? std::asin(arg_values[0]) : 0.0;
+        } else if (function_name == "acos") {
+            return arg_values.size() > 0 ? std::acos(arg_values[0]) : 0.0;
+        } else if (function_name == "atan") {
+            return arg_values.size() > 0 ? std::atan(arg_values[0]) : 0.0;
+        } else if (function_name == "exp") {
+            return arg_values.size() > 0 ? std::exp(arg_values[0]) : 0.0;
         }
         
         return 0.0; // Unknown function
