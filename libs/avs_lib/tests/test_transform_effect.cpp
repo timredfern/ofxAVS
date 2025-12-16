@@ -1,18 +1,18 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_approx.hpp>
-#include "effects/transform_effect.h"
+#include "effects/movement_effect.h"
 #include <vector>
 #include <cmath>
 
 using namespace avs;
 
-TEST_CASE("Transform Effect", "[transform]") {
-    TransformEffect effect;
+TEST_CASE("Movement Effect", "[movement]") {
+    MovementEffect effect;
     AudioData dummy_audio = {};
     
     SECTION("Basic effect properties") {
-        REQUIRE(effect.get_name() == "Transform");
-        REQUIRE(effect.get_description() == "Mathematical coordinate transformation");
+        REQUIRE(effect.get_name() == "Movement");
+        REQUIRE(effect.get_description() == "Trans / Movement - coordinate transformations with presets");
         REQUIRE(effect.is_enabled() == true);
     }
     
@@ -20,9 +20,9 @@ TEST_CASE("Transform Effect", "[transform]") {
         auto& params = effect.parameters();
         
         REQUIRE(params.get_bool("enabled") == true);
-        REQUIRE(params.get_string("x_expr") == "x");
-        REQUIRE(params.get_string("y_expr") == "y");
-        REQUIRE(params.get_bool("bilinear") == true);
+        REQUIRE(params.get_int("preset") == 0);
+        REQUIRE(params.get_string("custom_expr") == "d = d * 0.95; r = r + 0.1");
+        REQUIRE(params.get_bool("rectangular") == false);
         REQUIRE(params.get_bool("wrap") == false);
     }
     

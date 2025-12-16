@@ -25,7 +25,8 @@ add_library(avs_core_test STATIC
     ${AVS_LIB_ROOT}/core/script/lexer.cpp
     ${AVS_LIB_ROOT}/core/script/parser.cpp
     ${AVS_LIB_ROOT}/core/coordinate_lookup_table.cpp
-    ${AVS_LIB_ROOT}/effects/transform_effect.cpp
+    ${AVS_LIB_ROOT}/effects/movement_effect.cpp
+    ${AVS_LIB_ROOT}/effects/dynamic_movement_effect.cpp
 )
 
 target_include_directories(avs_core_test PUBLIC 
@@ -42,11 +43,11 @@ add_executable(avs_tests
     test_variables.cpp
     test_integration.cpp
     test_avs_variables.cpp
-    test_transform_effect.cpp
     test_audio_variables.cpp
     test_assignment_expressions.cpp
     test_coordinate_lookup_table.cpp
     test_enum_parameter.cpp
+    test_movement_presets.cpp
 )
 
 target_link_libraries(avs_tests PRIVATE 

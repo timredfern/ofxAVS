@@ -31,6 +31,9 @@ public:
     
     std::string get_name() const override { return "Movement"; }
     std::string get_description() const override { return "Trans / Movement - coordinate transformations with presets"; }
+    
+    // Public for testing
+    std::string get_preset_script(int preset_index) const;
 
 private:
     void setup_parameters();
@@ -38,13 +41,9 @@ private:
     void generate_lookup_table(int w, int h, AudioData visdata);
     void apply_transformation(uint32_t* input, uint32_t* output, int w, int h);
     
-    // Built-in preset transformations
-    void apply_preset_transformation(int preset_index, double& x, double& y, double& r, double& d, 
-                                   double max_d, int w, int h);
-    
-    // Custom script execution (future - for now just identity)
-    void evaluate_custom_script(double& x, double& y, double& r, double& d, 
-                               AudioData visdata, int w, int h);
+    // Script execution for both presets and custom expressions
+    void evaluate_movement_script(const std::string& script, double& x, double& y, double& r, double& d, 
+                                 AudioData visdata, int w, int h);
     
     // Full-resolution lookup table
     std::vector<int> lookup_table_;

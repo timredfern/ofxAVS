@@ -1,5 +1,6 @@
 #include "movement_effect.h"
 #include "../core/parameter.h"
+#include "../core/script/script_engine.h"
 #include <cmath>
 #include <algorithm>
 #include <cstring>
@@ -85,11 +86,15 @@ void MovementEffect::generate_lookup_table(int w, int h, AudioData visdata) {
             double out_x = nx, out_y = ny, out_r = r, out_d = d;
             
             if (preset_index < 24) {
-                // Use built-in preset
-                apply_preset_transformation(preset_index, out_x, out_y, out_r, out_d, max_d, w, h);
+                // Use built-in preset script
+                std::string script = get_preset_script(preset_index);
+                if (!script.empty()) {
+                    evaluate_movement_script(script, out_x, out_y, out_r, out_d, visdata, w, h);
+                }
             } else {
-                // Use custom script (future implementation)
-                evaluate_custom_script(out_x, out_y, out_r, out_d, visdata, w, h);
+                // Use custom script
+                std::string custom_script = parameters().get_string("custom_expr");
+                evaluate_movement_script(custom_script, out_x, out_y, out_r, out_d, visdata, w, h);
             }
             
             // Convert back to pixel coordinates
@@ -125,53 +130,72 @@ void MovementEffect::generate_lookup_table(int w, int h, AudioData visdata) {
     table_valid_ = true;
 }
 
-void MovementEffect::apply_preset_transformation(int preset_index, double& x, double& y, double& r, double& d, 
-                                                double max_d, int w, int h) {
-    // Implement a few key presets from r_trans.cpp
-    switch (preset_index) {
-        case 0: // none
-            break;
-            
-        case 1: // slight fuzzify  
-            x += (rand() / (double)RAND_MAX - 0.5) * 0.02;
-            y += (rand() / (double)RAND_MAX - 0.5) * 0.02;
-            break;
-            
-        case 3: // big swirl out
-            r += 0.1 - 0.2 * d;
-            d *= 0.96;
-            break;
-            
-        case 4: // medium swirl
-            d *= 0.99 * (1.0 - sin(r - M_PI * 0.5) / 32.0);
-            r += 0.03 * sin(d * M_PI * 4);
-            break;
-            
-        case 5: // sunburster
-            d *= 0.94 + (cos(r * 32.0) * 0.06);
-            break;
-            
-        case 12: // tunneling
-            r += 0.04;
-            d *= 0.96 + cos(d * M_PI) * 0.05;
-            break;
-            
-        default:
-            // For unimplemented presets, do identity transform
-            break;
-    }
+std::string MovementEffect::get_preset_script(int preset_index) const {
+    // Preset scripts from original AVS r_trans.cpp descriptions[]
+    static const std::vector<std::string> preset_scripts = {
+        "",  // 0: none
+        "",  // 1: slight fuzzify (needs special handling, not script-based)
+        "x=x+1/32", // 2: shift rotate left
+        "r = r + (0.1 - (0.2 * d)); d = d * 0.96", // 3: big swirl out
+        "d = d * (0.99 * (1.0 - sin(r-$PI*0.5) / 32.0)); r = r + (0.03 * sin(d * $PI * 4))", // 4: medium swirl
+        "d = d * (0.94 + (cos((r-$PI*0.5) * 32.0) * 0.06))", // 5: sunburster
+        "d = d * (1.01 + (cos((r-$PI*0.5) * 4) * 0.04)); r = r + (0.03 * sin(d * $PI * 4))", // 6: swirl to center
+        "",  // 7: blocky partial out (needs special handling)
+        "r = r + (0.1 * sin(d * $PI * 5))", // 8: swirling around both ways at once
+        "t = sin(d * $PI); d = d - (8*t*t*t*t*t)/sqrt((sw*sw+sh*sh)/4)", // 9: bubbling outward
+        "t = sin(d * $PI); d = d - (8*t*t*t*t*t)/sqrt((sw*sw+sh*sh)/4); t=cos(d*$PI/2.0); r= r + 0.1*t*t*t", // 10: bubbling outward with swirl
+        "d = d * (0.95 + (cos(((r-$PI*0.5) * 5.0) - ($PI / 2.50)) * 0.03))", // 11: 5 pointed distro
+        "r = r + 0.04; d = d * (0.96 + cos(d * $PI) * 0.05)", // 12: tunneling
+        "t = cos(d * $PI); r = r + (0.07 * t); d = d * (0.98 + t * 0.10)", // 13: bleedin'
+        "d=sqrt(x*x+y*y); r=atan2(y,x); r=r+0.1-0.2*d; d=d*0.96; x=cos(r)*d + 8/128; y=sin(r)*d", // 14: shifted big swirl out
+        "d = 0.15", // 15: psychotic beaming outward
+        "r = cos(r * 3)", // 16: cosine radial 3-way
+        "d = d * (1 - ((d - .35) * .5)); r = r + .1", // 17: spinny tube
+        "d = d * (1 - (sin((r-$PI*0.5) * 7) * .03)); r = r + (cos(d * 12) * .03)", // 18: radial swirlies
+        "d = d * (1 - (sin((r - $PI*0.5) * 12) * .05)); r = r + (cos(d * 18) * .05); d = d * (1-((d - .4) * .03)); r = r + ((d - .4) * .13)", // 19: swill
+        "x = x + (cos(y * 18) * .02); y = y + (sin(x * 14) * .03)", // 20: gridley
+        "x = x + (cos(abs(y-.5) * 8) * .02); y = y + (sin(abs(x-.5) * 8) * .05); x = x * .95; y = y * .95", // 21: grapevine
+        "y = y * ( 1 + (sin(r + $PI/2) * .3) ); x = x * ( 1 + (cos(r + $PI/2) * .3) ); x = x * .995; y = y * .995", // 22: quadrant
+        "y = (r*6)/($PI); x = d" // 23: 6-way kaleida
+    };
     
-    // Convert polar back to rectangular if needed
-    if (r != atan2(y, x) || d != sqrt(x*x + y*y)) {
-        x = cos(r) * d;
-        y = sin(r) * d;
+    if (preset_index >= 0 && preset_index < static_cast<int>(preset_scripts.size())) {
+        return preset_scripts[preset_index];
     }
+    return "";
 }
 
-void MovementEffect::evaluate_custom_script(double& x, double& y, double& r, double& d, 
-                                           AudioData visdata, int w, int h) {
-    // TODO: Implement EEL script execution
-    // For now, just do identity transform
+void MovementEffect::evaluate_movement_script(const std::string& script, double& x, double& y, double& r, double& d, 
+                                             AudioData visdata, int w, int h) {
+    if (script.empty()) {
+        return; // Identity transform
+    }
+    
+    // Set up script variables
+    static ScriptEngine engine;
+    
+    // Set coordinate variables
+    engine.set_variable("x", x);
+    engine.set_variable("y", y);
+    engine.set_variable("r", r);
+    engine.set_variable("d", d);
+    
+    // Set constants
+    engine.set_variable("$PI", M_PI);
+    engine.set_variable("sw", (double)w);  // screen width
+    engine.set_variable("sh", (double)h);  // screen height
+    
+    // Set audio variables if available
+    // TODO: Extract audio data from visdata
+    
+    // Execute script
+    engine.evaluate(script);
+    
+    // Get results back
+    x = engine.get_variable("x");
+    y = engine.get_variable("y");
+    r = engine.get_variable("r");
+    d = engine.get_variable("d");
 }
 
 void MovementEffect::apply_transformation(uint32_t* input, uint32_t* output, int w, int h) {

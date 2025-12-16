@@ -44,20 +44,19 @@ std::unique_ptr<ASTNode> Parser::parse_statement() {
 // Parse assignment or expression: IDENTIFIER '=' expression | expression
 std::unique_ptr<ASTNode> Parser::parse_assignment_or_expression() {
     // Check for assignment: IDENTIFIER '='
+    // But need to distinguish from function calls: IDENTIFIER '('
     if (lexer.peek_token().type == TokenType::IDENTIFIER) {
-        Token id_token = lexer.next_token();
+        // Look ahead to see if this is assignment (IDENTIFIER '=') or something else
+        Lexer temp_lexer = lexer;  // Make a copy to look ahead
+        temp_lexer.next_token(); // consume identifier
+        TokenType next_type = temp_lexer.peek_token().type;
         
-        if (lexer.peek_token().type == TokenType::ASSIGN) {
+        if (next_type == TokenType::ASSIGN) {
+            // This is an assignment
+            Token id_token = lexer.next_token();
             lexer.next_token(); // consume '='
             auto value = parse_expression();
             return std::make_unique<AssignmentNode>(id_token.value, std::move(value));
-        } else {
-            // Not an assignment, put the identifier token back by creating a variable node
-            // and continue parsing as an expression
-            auto var_node = std::make_unique<VariableNode>(id_token.value);
-            
-            // Continue parsing the rest of the expression
-            return parse_expression_with_first_term(std::move(var_node));
         }
     }
     

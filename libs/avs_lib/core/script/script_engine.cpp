@@ -1,9 +1,10 @@
 #include "script_engine.h"
-#include "lexer.h"
+#include "lexer.h" 
 #include "parser.h"
 #include <memory>
 #include <map>
 #include <stdexcept>
+#include <cstring>
 
 namespace avs {
 
@@ -22,10 +23,11 @@ public:
     } color_context = {0.0, 0.0, 0.0};
     
     struct AudioContext {
-        const AudioData* visdata;
+        AudioData visdata;
         bool is_beat;
+        bool has_data;
         
-        AudioContext() : visdata(nullptr), is_beat(false) {}
+        AudioContext() : is_beat(false), has_data(false) {}
     } audio_context;
 };
 
@@ -72,8 +74,8 @@ double ScriptEngine::evaluate(const std::string& expression) {
         }
         
         // Add audio waveform and spectrum variables (limited subset for common use)
-        if (pImpl->audio_context.visdata != nullptr) {
-            const AudioData& vis = *pImpl->audio_context.visdata;
+        if (pImpl->audio_context.has_data) {
+            const AudioData& vis = pImpl->audio_context.visdata;
             
             // Common waveform access points (v1-v8 for left channel waveform samples)
             for (int i = 0; i < 8; i++) {
@@ -117,13 +119,14 @@ double ScriptEngine::evaluate(const std::string& expression) {
         
         // Update user variables with any assignments that occurred
         for (const auto& [name, value] : combined_vars) {
-            // Only update user variables (not AVS built-ins)
-            // Check if this is a user variable by seeing if it was already in user variables
-            // or if it's not a built-in variable
-            bool is_builtin = (name == "x" || name == "y" || name == "w" || name == "h" || 
-                              name == "r" || name == "g" || name == "b" || name == "beat");
+            // Check if this variable existed in the user variables before evaluation
+            // If it did, or if it's a new assignment, update it
+            bool was_user_variable = (pImpl->variables.find(name) != pImpl->variables.end());
             
-            // Check for audio variables (v1-v8, vr1-vr8, s1-s8)
+            // AVS built-in variables that should not be persisted
+            bool is_builtin = (name == "w" || name == "h" || name == "beat");
+            
+            // Audio variables that should not be persisted (v1-v8, vr1-vr8, s1-s8)
             if (!is_builtin && name.length() >= 2) {
                 if ((name[0] == 'v' && name.length() == 2 && name[1] >= '1' && name[1] <= '8') ||
                     (name.substr(0, 2) == "vr" && name.length() == 3 && name[2] >= '1' && name[2] <= '8') ||
@@ -132,7 +135,8 @@ double ScriptEngine::evaluate(const std::string& expression) {
                 }
             }
             
-            if (!is_builtin) {
+            // Allow assignment to coordinate variables (x, y, r, g, b) - these can be set by user
+            if (!is_builtin || was_user_variable || name == "x" || name == "y" || name == "r" || name == "g" || name == "b") {
                 pImpl->variables[name] = value;
             }
         }
@@ -169,8 +173,8 @@ double ScriptEngine::get_variable(const std::string& name) {
     // Audio variables
     if (name == "beat") return pImpl->audio_context.is_beat ? 1.0 : 0.0;
     
-    if (pImpl->audio_context.visdata != nullptr) {
-        const AudioData& vis = *pImpl->audio_context.visdata;
+    if (pImpl->audio_context.has_data) {
+        const AudioData& vis = pImpl->audio_context.visdata;
         
         // Waveform variables v1-v8 (left channel)
         for (int i = 0; i < 8; i++) {
@@ -223,8 +227,9 @@ void ScriptEngine::set_color_context(double red, double green, double blue) {
 }
 
 void ScriptEngine::set_audio_context(AudioData visdata, bool is_beat) {
-    pImpl->audio_context.visdata = visdata;
+    std::memcpy(pImpl->audio_context.visdata, visdata, sizeof(AudioData));
     pImpl->audio_context.is_beat = is_beat;
+    pImpl->audio_context.has_data = true;
 }
 
 bool ScriptEngine::has_error() const {
