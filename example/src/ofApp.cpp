@@ -55,7 +55,7 @@ void ofApp::setup() {
     // Set up default oscilloscope with dynamic movement
     setupOscilloscopeDynamicMovement();
     
-    ofLogNotice() << "ofxAVS Example Started - Oscilloscope + Dynamic Movement";
+    ofLogNotice() << "ofxAVS Example Started - Oscilloscope + Dynamic Movement + Brightness";
     ofLogNotice() << "";
     ofLogNotice() << "MOVEMENT EXPRESSION CONTROLS:";
     ofLogNotice() << "  0-9: Select preset expressions";
@@ -92,7 +92,7 @@ void ofApp::draw() {
     
     // Draw UI
     ofSetColor(255);
-    ofDrawBitmapString("ofxAVS Example - Oscilloscope + Dynamic Movement", 20, 30);
+    ofDrawBitmapString("ofxAVS Example - Oscilloscope + Dynamic Movement + Brightness", 20, 30);
     ofDrawBitmapString("Current Expression: " + current_expression, 20, 50);
     ofDrawBitmapString("FPS: " + ofToString(ofGetFrameRate(), 1), 20, 70);
     ofDrawBitmapString("Beat: " + std::string(visualizer.isBeat() ? "YES" : "NO"), 20, 90);
@@ -193,7 +193,7 @@ void ofApp::keyPressed(int key) {
                 ofLogNotice() << "Reloaded expression: " << current_expression;
             } else {
                 setupOscilloscopeDynamicMovement();
-                ofLogNotice() << "Reloaded default oscilloscope + dynamic movement";
+                ofLogNotice() << "Reloaded default oscilloscope + dynamic movement + brightness";
             }
             break;
     }
@@ -218,28 +218,19 @@ void ofApp::setupMovementChain(const std::string& expression) {
     
     ofLogNotice() << "Setting up movement chain with expression: " << expression;
     
-    // 1. Add clear effect for fadeout/trails
-    auto clear_effect = visualizer.addEffect("clear");
-    if (clear_effect) {
-        clear_effect->parameters().set_color("color", 0xFF000000);  // Black
-        clear_effect->parameters().set_int("blend_mode", 3);         // Average (creates trails)
-        clear_effect->parameters().set_bool("only_first", false);    // Apply every frame
+    // 1. Add brightness effect for darkening/trails
+    auto brightness_effect = visualizer.addEffect("brightness");
+    if (brightness_effect) {
+        brightness_effect->parameters().set_int("brightness", -1);  // Slight darkening
     }
-    ofLogNotice() << "  - Added clear effect (fadeout/trails)";
+    ofLogNotice() << "  - Added brightness effect (-1)";
     
     // 2. Add oscilloscope for audio visualization
     visualizer.addEffect("oscilloscope");
     // Using default parameters (white color, left channel, dots)
     ofLogNotice() << "  - Added oscilloscope effect";
     
-    // 3. Add slight brightness boost to make trails more visible
-    auto brightness = visualizer.addEffect("brightness");
-    if (brightness) {
-        brightness->parameters().set_int("brightness", 10);  // +10 brightness boost
-    }
-    ofLogNotice() << "  - Added brightness effect (+10)";
-    
-    // 4. Add dynamic movement with custom expression
+    // 3. Add dynamic movement with custom expression
     auto movement = visualizer.addEffect("dynamic_movement");
     if (movement) {
         movement->parameters().set_string("pixel_script", expression);
