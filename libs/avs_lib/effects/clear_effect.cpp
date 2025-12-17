@@ -15,25 +15,50 @@ void ClearEffect::setup_parameters() {
     params.add_parameter(std::make_shared<Parameter>("enabled", ParameterType::BOOL, true));
     params.add_parameter(std::make_shared<Parameter>("color", ParameterType::COLOR, uint32_t(0xFF000000))); // Black with full alpha
     params.add_parameter(std::make_shared<Parameter>("only_first", ParameterType::BOOL, false));
-    params.add_parameter(std::make_shared<Parameter>("blend_mode", ParameterType::INT, 0, 0, 3)); // 0=replace, 1=add, 2=line, 3=avg
+    params.add_parameter(std::make_shared<Parameter>("blend_mode", ParameterType::INT, 0, 0, 4)); // 0=replace, 1=additive, 2=maximum, 3=average, 4=subtractive
 }
 
-// Blend macros ported from original (simplified for now)
-static uint32_t blend_replace(uint32_t dest, uint32_t src) { return src; }
+// Blend functions for different modes
+static uint32_t blend_replace(uint32_t dest, uint32_t src) { 
+    return src; 
+}
+
 static uint32_t blend_add(uint32_t dest, uint32_t src) {
     int r = ((dest >> 16) & 0xFF) + ((src >> 16) & 0xFF);
     int g = ((dest >> 8) & 0xFF) + ((src >> 8) & 0xFF);
     int b = (dest & 0xFF) + (src & 0xFF);
+    int a = ((dest >> 24) & 0xFF);
     if (r > 255) r = 255;
     if (g > 255) g = 255;
     if (b > 255) b = 255;
-    return (r << 16) | (g << 8) | b;
+    return (a << 24) | (r << 16) | (g << 8) | b;
 }
+
+static uint32_t blend_max(uint32_t dest, uint32_t src) {
+    int r = std::max((dest >> 16) & 0xFF, (src >> 16) & 0xFF);
+    int g = std::max((dest >> 8) & 0xFF, (src >> 8) & 0xFF);
+    int b = std::max(dest & 0xFF, src & 0xFF);
+    int a = ((dest >> 24) & 0xFF);
+    return (a << 24) | (r << 16) | (g << 8) | b;
+}
+
 static uint32_t blend_avg(uint32_t dest, uint32_t src) {
     int r = (((dest >> 16) & 0xFF) + ((src >> 16) & 0xFF)) / 2;
     int g = (((dest >> 8) & 0xFF) + ((src >> 8) & 0xFF)) / 2;
     int b = ((dest & 0xFF) + (src & 0xFF)) / 2;
-    return (r << 16) | (g << 8) | b;
+    int a = ((dest >> 24) & 0xFF);
+    return (a << 24) | (r << 16) | (g << 8) | b;
+}
+
+static uint32_t blend_sub(uint32_t dest, uint32_t src) {
+    int r = ((dest >> 16) & 0xFF) - ((src >> 16) & 0xFF);
+    int g = ((dest >> 8) & 0xFF) - ((src >> 8) & 0xFF);
+    int b = (dest & 0xFF) - (src & 0xFF);
+    int a = ((dest >> 24) & 0xFF);
+    if (r < 0) r = 0;
+    if (g < 0) g = 0;
+    if (b < 0) b = 0;
+    return (a << 24) | (r << 16) | (g << 8) | b;
 }
 
 int ClearEffect::render(AudioData visdata, int isBeat,
@@ -62,17 +87,22 @@ int ClearEffect::render(AudioData visdata, int isBeat,
                 p[i] = blend_add(p[i], color);
             }
             break;
-        case 2: // Line blend (simplified for now)
+        case 2: // Maximum
             for (int i = 0; i < pixel_count; i++) {
-                p[i] = blend_add(p[i], color);
+                p[i] = blend_max(p[i], color);
             }
             break;
-        case 3: // Average
+        case 3: // Average - this creates the fadeout/trail effect
             for (int i = 0; i < pixel_count; i++) {
                 p[i] = blend_avg(p[i], color);
             }
             break;
-        default: // Replace
+        case 4: // Subtractive
+            for (int i = 0; i < pixel_count; i++) {
+                p[i] = blend_sub(p[i], color);
+            }
+            break;
+        default: // Replace (0)
             for (int i = 0; i < pixel_count; i++) {
                 p[i] = color;
             }

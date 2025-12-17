@@ -218,17 +218,36 @@ void ofApp::setupMovementChain(const std::string& expression) {
     
     ofLogNotice() << "Setting up movement chain with expression: " << expression;
     
-    // 1. Add oscilloscope for audio visualization
+    // 1. Add clear effect for fadeout/trails
+    auto clear_effect = visualizer.addEffect("clear");
+    if (clear_effect) {
+        clear_effect->parameters().set_color("color", 0xFF000000);  // Black
+        clear_effect->parameters().set_int("blend_mode", 3);         // Average (creates trails)
+        clear_effect->parameters().set_bool("only_first", false);    // Apply every frame
+    }
+    ofLogNotice() << "  - Added clear effect (fadeout/trails)";
+    
+    // 2. Add oscilloscope for audio visualization
     visualizer.addEffect("oscilloscope");
+    // Using default parameters (white color, left channel, dots)
     ofLogNotice() << "  - Added oscilloscope effect";
     
-    // 2. Add dynamic movement with custom expression
-    visualizer.addDynamicMovementEffect(
-        expression,                  // The movement script
-        true,                       // rectangular coordinates (for x,y expressions)
-        16, 16,                     // grid resolution
-        current_interpolation_mode  // interpolation mode
-    );
+    // 3. Add slight brightness boost to make trails more visible
+    auto brightness = visualizer.addEffect("brightness");
+    if (brightness) {
+        brightness->parameters().set_int("brightness", 10);  // +10 brightness boost
+    }
+    ofLogNotice() << "  - Added brightness effect (+10)";
+    
+    // 4. Add dynamic movement with custom expression
+    auto movement = visualizer.addEffect("dynamic_movement");
+    if (movement) {
+        movement->parameters().set_string("pixel_script", expression);
+        movement->parameters().set_bool("rectangular", true);
+        movement->parameters().set_int("grid_width", 16);
+        movement->parameters().set_int("grid_height", 16);
+        movement->parameters().set_int("interpolation", static_cast<int>(current_interpolation_mode));
+    }
     ofLogNotice() << "  - Added dynamic movement with expression: " << expression;
     
     current_expression = expression;

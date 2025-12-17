@@ -20,31 +20,20 @@ public:
     void audioReceived(const float* input, int buffer_size, int num_channels);
     void setAudioData(const std::vector<float>& left, const std::vector<float>& right);
     
-    // Effect management
-    void addEffect(const std::string& effect_name);
-    void addTransformEffect(const std::string& x_expr, const std::string& y_expr, 
-                          int grid_width = 16, int grid_height = 16, 
-                          InterpolationMode interp_mode = InterpolationMode::NONE);
-    void addTransformEffect(const std::string& x_expr, const std::string& y_expr, 
-                          int grid_width, int grid_height, int interpolation);
-    void addClearEffect(bool only_first = false, uint32_t color = 0xFF000000);
-    void addDynamicMovementEffect(const std::string& script = "x=x; y=y-0.01",
-                                 bool rectangular = true,
-                                 int grid_width = 16, int grid_height = 16);
-    void addDynamicMovementEffect(const std::string& script,
-                                 bool rectangular,
-                                 int grid_width, int grid_height,
-                                 InterpolationMode interp_mode);
+    // Effect management - generic interface
+    EffectBase* addEffect(const std::string& effect_name);
     void clearEffects();
+    
+    // Access effects for configuration
+    EffectBase* getEffect(size_t index);
+    size_t getEffectCount() const;
     
     // Effect parameter configuration
     void setEffectParameter(size_t effect_index, const std::string& param_name, double value);
     void setEffectParameter(size_t effect_index, const std::string& param_name, const std::string& value);
     void setEffectParameter(size_t effect_index, const std::string& param_name, bool value);
     void setEffectParameter(size_t effect_index, const std::string& param_name, int value);
-    
-    // Get last added effect index for easier configuration
-    size_t getEffectCount() const;
+    void setEffectColor(size_t effect_index, const std::string& param_name, uint32_t color);
     
     // Beat detection
     void setBeatThreshold(float threshold) { beat_threshold = threshold; }

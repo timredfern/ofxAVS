@@ -96,51 +96,31 @@ void ofxAVS::setAudioData(const std::vector<float>& left, const std::vector<floa
     }
 }
 
-void ofxAVS::addEffect(const std::string& effect_name) {
-    if (!initialized) return;
+EffectBase* ofxAVS::addEffect(const std::string& effect_name) {
+    if (!initialized) return nullptr;
     
     auto effect = PluginManager::instance().create_effect(effect_name);
     if (effect) {
-        effect_refs.push_back(effect.get());
+        EffectBase* effect_ptr = effect.get();
+        effect_refs.push_back(effect_ptr);
         renderer->add_effect(std::move(effect));
+        return effect_ptr;
     }
+    return nullptr;
 }
 
-void ofxAVS::addDynamicMovementEffect(const std::string& script, bool rectangular, 
-                                     int grid_width, int grid_height) {
-    if (!initialized) return;
-    
-    auto effect = PluginManager::instance().create_effect("dynamic_movement");
-    if (effect) {
-        // Configure the effect before adding it
-        effect->parameters().set_string("pixel_script", script);
-        effect->parameters().set_bool("rectangular", rectangular);
-        effect->parameters().set_int("grid_width", grid_width);
-        effect->parameters().set_int("grid_height", grid_height);
-        
-        effect_refs.push_back(effect.get());
-        renderer->add_effect(std::move(effect));
+EffectBase* ofxAVS::getEffect(size_t index) {
+    if (index < effect_refs.size()) {
+        return effect_refs[index];
     }
+    return nullptr;
 }
 
-void ofxAVS::addDynamicMovementEffect(const std::string& script, bool rectangular, 
-                                     int grid_width, int grid_height,
-                                     InterpolationMode interp_mode) {
-    if (!initialized) return;
-    
-    auto effect = PluginManager::instance().create_effect("dynamic_movement");
-    if (effect) {
-        // Configure the effect before adding it
-        effect->parameters().set_string("pixel_script", script);
-        effect->parameters().set_bool("rectangular", rectangular);
-        effect->parameters().set_int("grid_width", grid_width);
-        effect->parameters().set_int("grid_height", grid_height);
-        effect->parameters().set_int("interpolation", static_cast<int>(interp_mode));
-        
-        effect_refs.push_back(effect.get());
-        renderer->add_effect(std::move(effect));
-    }
+
+size_t ofxAVS::getEffectCount() const {
+    return effect_refs.size();
 }
+
 
 void ofxAVS::clearEffects() {
     if (!initialized) return;
@@ -226,15 +206,11 @@ void ofxAVS::setEffectParameter(size_t effect_index, const std::string& param_na
     }
 }
 
-size_t ofxAVS::getEffectCount() const {
-    return effect_refs.size();
+void ofxAVS::setEffectColor(size_t effect_index, const std::string& param_name, uint32_t color) {
+    if (effect_index < effect_refs.size() && effect_refs[effect_index]) {
+        effect_refs[effect_index]->parameters().set_color(param_name, color);
+    }
 }
 
-EffectBase* ofxAVS::getEffect(size_t index) const {
-    if (index < effect_refs.size()) {
-        return effect_refs[index];
-    }
-    return nullptr;
-}
 
 } // namespace avs
