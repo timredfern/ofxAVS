@@ -59,9 +59,21 @@ add_executable(avs_tests
     test_debug_detailed.cpp
     test_grid_population.cpp
     test_script_trace.cpp
+    test_pixel_sampling.cpp
+    test_subpixel_artifacts.cpp
+    test_movement_artifacts.cpp
+    test_dynamic_movement_realistic.cpp
+    test_color_corruption.cpp
+    test_oscilloscope_corruption.cpp
+    test_exact_ofxavs_scenario.cpp
     test_dynamic_movement_effect.cpp
     test_enum_parameter.cpp
     test_movement_presets.cpp
+    test_sample_pixel_bug.cpp
+    test_pipeline_trace.cpp
+    test_bilinear_bug.cpp
+    test_interpolate_pixels_precision.cpp
+    test_subpixel_bug.cpp
 )
 
 target_link_libraries(avs_tests PRIVATE 

@@ -116,6 +116,12 @@ public:
      */
     bool is_valid() const { return !coordinate_grid_.empty(); }
     
+    /**
+     * Test pixel interpolation function directly (for debugging color corruption)
+     */
+    uint32_t interpolate_pixels(uint32_t p00, uint32_t p01, uint32_t p10, uint32_t p11, 
+                               double fx, double fy) const;
+    
 private:
     // Grid of coordinate pairs (x,y) stored as pairs of doubles
     std::vector<std::pair<double, double>> coordinate_grid_;
@@ -139,8 +145,6 @@ private:
     
     // Pixel sampling and blending methods
     uint32_t sample_pixel(const uint32_t* input, double x, double y) const;
-    uint32_t interpolate_pixels(uint32_t p00, uint32_t p01, uint32_t p10, uint32_t p11, 
-                              double fx, double fy) const;
     uint32_t blend_max(uint32_t a, uint32_t b) const;
     
     // Coordinate transformation utilities

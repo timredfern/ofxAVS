@@ -278,6 +278,16 @@ uint32_t CoordinateLookupTable::sample_pixel(const uint32_t* input, double x, do
         double fx = x - x0;
         double fy = y - y0;
         
+        // Handle edge case where coordinates are exactly at the boundary
+        if (x0 >= output_width_ - 1) {
+            x0 = output_width_ - 2;
+            fx = 1.0;
+        }
+        if (y0 >= output_height_ - 1) {
+            y0 = output_height_ - 2;
+            fy = 1.0;
+        }
+        
         // Bounds checking
         x0 = std::clamp(x0, 0, output_width_ - 2);
         y0 = std::clamp(y0, 0, output_height_ - 2);
@@ -320,25 +330,32 @@ void CoordinateLookupTable::clamp_or_wrap(double& x, double& y) const
 uint32_t CoordinateLookupTable::interpolate_pixels(uint32_t p00, uint32_t p01, uint32_t p10, uint32_t p11, 
                                                   double fx, double fy) const
 {
-    // Interpolate each color channel
+    // Convert to 8.8 fixed point (8 bits integer, 8 bits fraction)
+    int ifx = (int)(fx * 256.0);
+    int ify = (int)(fy * 256.0);
+    int ifx_inv = 256 - ifx;
+    int ify_inv = 256 - ify;
+    
+    // Interpolate each color channel using integer math
     auto interp_channel = [](uint32_t p00, uint32_t p01, uint32_t p10, uint32_t p11,
-                           double fx, double fy, int shift) -> uint32_t {
+                           int ifx, int ify, int ifx_inv, int ify_inv, int shift) -> uint32_t {
         int c00 = (p00 >> shift) & 0xFF;
         int c01 = (p01 >> shift) & 0xFF;
         int c10 = (p10 >> shift) & 0xFF;
         int c11 = (p11 >> shift) & 0xFF;
         
-        double c0 = c00 * (1.0 - fx) + c01 * fx;
-        double c1 = c10 * (1.0 - fx) + c11 * fx;
-        double result = c0 * (1.0 - fy) + c1 * fy;
+        // Bilinear interpolation with integer math
+        int c0 = (c00 * ifx_inv + c01 * ifx) >> 8;  // Top edge
+        int c1 = (c10 * ifx_inv + c11 * ifx) >> 8;  // Bottom edge
+        int result = (c0 * ify_inv + c1 * ify) >> 8; // Final
         
-        return (uint32_t)(result + 0.5) & 0xFF;
+        return result & 0xFF;
     };
     
-    uint32_t r = interp_channel(p00, p01, p10, p11, fx, fy, 16);
-    uint32_t g = interp_channel(p00, p01, p10, p11, fx, fy, 8);
-    uint32_t b = interp_channel(p00, p01, p10, p11, fx, fy, 0);
-    uint32_t a = interp_channel(p00, p01, p10, p11, fx, fy, 24);
+    uint32_t r = interp_channel(p00, p01, p10, p11, ifx, ify, ifx_inv, ify_inv, 16);
+    uint32_t g = interp_channel(p00, p01, p10, p11, ifx, ify, ifx_inv, ify_inv, 8);
+    uint32_t b = interp_channel(p00, p01, p10, p11, ifx, ify, ifx_inv, ify_inv, 0);
+    uint32_t a = interp_channel(p00, p01, p10, p11, ifx, ify, ifx_inv, ify_inv, 24);
     
     return (a << 24) | (r << 16) | (g << 8) | b;
 }
