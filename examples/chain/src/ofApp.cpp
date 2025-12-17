@@ -254,6 +254,7 @@ void ofApp::drawVisualization() {
     ofFill();
     
     // Draw the actual AVS visualization
+    ofSetColor(255);  // Reset to full white before drawing texture
     visualizer.draw(visualization_x, visualization_y, visualization_size, visualization_size);
     
     // Draw info
