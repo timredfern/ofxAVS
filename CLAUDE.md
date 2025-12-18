@@ -54,7 +54,7 @@ Files that implement AVS functionality or are based on original AVS algorithms:
 // Based on Advanced Visualization Studio by Nullsoft, Inc.
 // Original AVS Copyright (C) 2005 Nullsoft, Inc.
 // Modern C++ port Copyright (C) 2025 Tim Redfern
-// Licensed under MIT License
+// Licensed under MIT License - see LICENSE file in repository root
 ```
 
 ### For ofxAVS and original files
@@ -63,7 +63,7 @@ Files that are OpenFrameworks-specific or original implementations:
 ```cpp
 // ofxAVS - OpenFrameworks addon for Advanced Visualization Studio
 // Copyright (C) 2025 Tim Redfern
-// Licensed under MIT License
+// Licensed under MIT License - see LICENSE file in repository root
 ```
 
 ### Requirements
