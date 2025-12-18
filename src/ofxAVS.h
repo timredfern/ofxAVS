@@ -1,75 +1,98 @@
 #pragma once
 
 #include "ofMain.h"
-#include "avs_lib/core/renderer.h"
-#include "avs_lib/core/builtin_effects.h"
-#include "avs_lib/core/coordinate_lookup_table.h"
+#include "ofxImGui.h"
+#include "../libs/avs_lib/core/renderer.h"
+#include "../libs/avs_lib/core/plugin_manager.h"
+#include <vector>
+#include <map>
 
-namespace avs {
+// Effect chain item for the UI
+struct EffectChainItem {
+    std::string name;
+    std::string display_name;
+    bool enabled = true;
+};
+
+// Available effect info
+struct AvailableEffectInfo {
+    std::string name;
+    std::string display_name; 
+    std::string description;
+};
+
+// Parameter control state for UI
+struct ParameterControlState {
+    std::string control_id;
+    int int_value = 0;
+    float float_value = 0.0f;
+    bool bool_value = false;
+    ofColor color_value = ofColor(255, 255, 255);
+    
+    ParameterControlState() = default;
+    ParameterControlState(const std::string& id) : control_id(id) {}
+};
 
 class ofxAVS {
 public:
     ofxAVS();
     ~ofxAVS();
     
-    void setup(int width, int height);
+    // Setup and audio
+    void setup();
     void update();
-    void draw(float x, float y, float w, float h);
+    void setAudioData(const avs::AudioData& data);
     
-    // Audio input methods
-    void audioReceived(const float* input, int buffer_size, int num_channels);
-    void setAudioData(const std::vector<float>& left, const std::vector<float>& right);
+    // Rendering
+    void draw(int x, int y, int width, int height);
+    void drawUI();
     
-    // Effect management - generic interface
-    EffectBase* addEffect(const std::string& effect_name);
-    void clearEffects();
+    // Effect chain management
+    void addEffectToChain(const std::string& effectName);
+    void removeEffectFromChain(int index);
+    void moveEffectUp(int index);
+    void moveEffectDown(int index);
+    void toggleEffectEnabled(int index);
     
-    // Access effects for configuration
-    EffectBase* getEffect(size_t index);
-    size_t getEffectCount() const;
+    // UI panel management
+    void setSelectedEffect(int index);
+    int getSelectedEffect() const { return selected_effect_index; }
     
-    // Effect parameter configuration
-    void setEffectParameter(size_t effect_index, const std::string& param_name, double value);
-    void setEffectParameter(size_t effect_index, const std::string& param_name, const std::string& value);
-    void setEffectParameter(size_t effect_index, const std::string& param_name, bool value);
-    void setEffectParameter(size_t effect_index, const std::string& param_name, int value);
-    void setEffectColor(size_t effect_index, const std::string& param_name, uint32_t color);
-    
-    // Beat detection
-    void setBeatThreshold(float threshold) { beat_threshold = threshold; }
-    bool isBeat() const { return is_beat; }
-    
-    // Rendering options
-    void setSize(int width, int height);
-    ofTexture& getTexture() { return texture; }
-    
+    // Effect chain access
+    const std::vector<EffectChainItem>& getEffectChain() const { return effect_chain; }
+    const std::vector<AvailableEffectInfo>& getAvailableEffects() const { return available_effects; }
+
 private:
-    void processAudioData();
-    void detectBeat();
-    void updateTexture();
-    EffectBase* getEffect(size_t index) const;
-    
     // Core AVS components
-    std::unique_ptr<DefaultRenderer> renderer;
-    std::vector<EffectBase*> effect_refs; // Non-owning references for parameter access
-    
-    // OpenFrameworks integration
+    std::unique_ptr<avs::DefaultRenderer> renderer;
     ofTexture texture;
     ofPixels pixels;
-    
-    // Audio processing
-    AudioData vis_data;
-    std::vector<float> audio_buffer_left;
-    std::vector<float> audio_buffer_right;
-    float beat_threshold;
-    bool is_beat;
-    float last_audio_peak;
-    
-    // Rendering state
-    int width, height;
     std::vector<uint32_t> framebuffer;
     std::vector<uint32_t> output_buffer;
-    bool initialized;
+    int width, height;
+    avs::AudioData current_audio_data;
+    
+    // Effect chain and UI state
+    std::vector<EffectChainItem> effect_chain;
+    std::vector<AvailableEffectInfo> available_effects;
+    int selected_effect_index = -1;
+    
+    // UI control states
+    std::map<std::string, ParameterControlState> control_states;
+    
+    // UI panel dimensions
+    int chain_panel_width = 200;
+    int available_panel_width = 300; 
+    int parameters_panel_width = 250;
+    
+    // Internal methods
+    void initializeAvailableEffects();
+    void rebuildEffectChain();
+    void updateEffectParameters();
+    void initializeParameterDefaults();
+    
+    // UI rendering methods
+    void drawChainPanel();
+    void drawAvailableEffectsPanel();
+    void drawParametersPanel();
 };
-
-} // namespace avs

@@ -1,5 +1,6 @@
 #include "brightness_effect.h"
 #include "../core/plugin_manager.h"
+#include "../core/ui.h"
 #include <algorithm>
 
 namespace avs {
@@ -101,7 +102,7 @@ static const avs::PluginInfo effect_info {
         return std::make_unique<BrightnessEffect>();
     },
     .ui_layout = {
-        effect_info.name,
+        "brightness",
         {
             // Enable checkbox
             {

@@ -111,7 +111,7 @@ static const avs::PluginInfo effect_info {
         return std::make_unique<BlurEffect>();
     },
     .ui_layout = {
-        "blur",
+        "Blur",
         {
             // Blur strength slider
             {

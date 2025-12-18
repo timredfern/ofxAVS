@@ -1,5 +1,6 @@
 #include "clear_effect.h"
 #include "../core/plugin_manager.h"
+#include "../core/ui.h"
 #include <memory>
 
 namespace avs {
@@ -122,7 +123,7 @@ static const avs::PluginInfo effect_info {
         return std::make_unique<ClearEffect>();
     },
     .ui_layout = {
-        "clear",
+        "Clear",
         {
             // Color selection button
             {

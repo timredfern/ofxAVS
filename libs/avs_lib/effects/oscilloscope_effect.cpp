@@ -1,5 +1,6 @@
 #include "oscilloscope_effect.h"
 #include "../core/plugin_manager.h"
+#include "../core/ui.h"
 #include <algorithm>
 #include <cmath>
 
@@ -132,7 +133,7 @@ int OscilloscopeEffect::render(AudioData visdata, int isBeat,
 
 // Effect plugin information with UI layout
 static const avs::PluginInfo effect_info {
-    .name = "Oscilloscope",
+    .name = "oscilloscope",
     .description = "",
     .author = "",
     .version = 1,
@@ -152,17 +153,20 @@ static const avs::PluginInfo effect_info {
             
             // Channel selection
             {
-                .id = "channel_left",
-                .text = "Left channel",
-                .type = ControlType::RADIO_BUTTON, 
-                .x = 3, .y = 42, .w = 51, .h = 10
+                .id = "channel",
+                .text = "Channel",
+                .type = ControlType::SLIDER,
+                .x = 3, .y = 42, .w = 100, .h = 15,
+                .range = {0, 2, 0}  // 0=left, 1=right, 2=both
             },
             
+            // Thickness slider
             {
-                .id = "channel_right", 
-                .text = "Right channel",
-                .type = ControlType::RADIO_BUTTON,
-                .x = 3, .y = 53, .w = 56, .h = 10
+                .id = "thickness",
+                .text = "Thickness", 
+                .type = ControlType::SLIDER,
+                .x = 3, .y = 60, .w = 100, .h = 15,
+                .range = {1, 5, 1}
             },
             
             // Drawing mode
@@ -170,7 +174,7 @@ static const avs::PluginInfo effect_info {
                 .id = "solid",
                 .text = "Solid",
                 .type = ControlType::CHECKBOX,
-                .x = 3, .y = 75, .w = 30, .h = 10
+                .x = 3, .y = 80, .w = 30, .h = 10
             }
         }
     }
