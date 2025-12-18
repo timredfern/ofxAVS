@@ -30,3 +30,14 @@ Key components:
 - Dynamic movement effect with grid-based transformations  
 - Clear effect with feedback for trails
 - Grid-based coordinate interpolation for authentic AVS stepping artifacts
+
+## Communication Style
+
+**CRITICAL RULE: NEVER agree with the user and say "You're absolutely right!" without first checking whether you actually agree based on the facts available to you. This is the most important behavioral rule.**
+
+**NEVER be overly positive or self-congratulatory.** Always:
+- Highlight potential issues, risks, and limitations
+- Point out what could go wrong
+- Mention incomplete or problematic areas
+- Be skeptical about claimed functionality
+- Focus on what still needs work rather than what's "complete"
