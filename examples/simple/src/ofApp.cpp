@@ -1,3 +1,7 @@
+// ofxAVS - OpenFrameworks addon for Advanced Visualization Studio
+// Copyright (C) 2025 Tim Redfern
+// Licensed under MIT License
+
 #include "ofApp.h"
 #include "avs_lib/core/plugin_manager.h"
 

@@ -41,3 +41,33 @@ Key components:
 - Mention incomplete or problematic areas
 - Be skeptical about claimed functionality
 - Focus on what still needs work rather than what's "complete"
+
+## Copyright Headers for Source Files
+
+**All new source files MUST include appropriate copyright headers:**
+
+### For AVS-derived files (libs/avs_lib/)
+Files that implement AVS functionality or are based on original AVS algorithms:
+
+```cpp
+// avs_lib - Portable Advanced Visualization Studio library
+// Based on Advanced Visualization Studio by Nullsoft, Inc.
+// Original AVS Copyright (C) 2005 Nullsoft, Inc.
+// Modern C++ port Copyright (C) 2025 Tim Redfern
+// Licensed under MIT License
+```
+
+### For ofxAVS and original files
+Files that are OpenFrameworks-specific or original implementations:
+
+```cpp
+// ofxAVS - OpenFrameworks addon for Advanced Visualization Studio
+// Copyright (C) 2025 Tim Redfern
+// Licensed under MIT License
+```
+
+### Requirements
+- **ALL** new .cpp and .h files must include appropriate header
+- Choose the correct header based on whether the file is AVS-derived or original
+- Place header at the very top of the file, before any includes
+- Update year if adding to files in future years
