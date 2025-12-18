@@ -21,7 +21,7 @@ void register_builtin_effects() {
         info.factory = []() -> std::unique_ptr<EffectBase> {
             return std::make_unique<ClearEffect>();
         };
-        pm.register_effect("clear", info);
+        pm.register_effect(info);
     }
     
     // Register Oscilloscope effect
@@ -34,7 +34,7 @@ void register_builtin_effects() {
         info.factory = []() -> std::unique_ptr<EffectBase> {
             return std::make_unique<OscilloscopeEffect>();
         };
-        pm.register_effect("oscilloscope", info);
+        pm.register_effect(info);
     }
     
     // Register Blur effect
@@ -47,7 +47,7 @@ void register_builtin_effects() {
         info.factory = []() -> std::unique_ptr<EffectBase> {
             return std::make_unique<BlurEffect>();
         };
-        pm.register_effect("blur", info);
+        pm.register_effect(info);
     }
     
     // Register Movement effect
@@ -60,7 +60,7 @@ void register_builtin_effects() {
         info.factory = []() -> std::unique_ptr<EffectBase> {
             return std::make_unique<MovementEffect>();
         };
-        pm.register_effect("movement", info);
+        pm.register_effect(info);
     }
     
     // Register Dynamic Movement effect
@@ -73,7 +73,7 @@ void register_builtin_effects() {
         info.factory = []() -> std::unique_ptr<EffectBase> {
             return std::make_unique<DynamicMovementEffect>();
         };
-        pm.register_effect("dynamic_movement", info);
+        pm.register_effect(info);
     }
 }
 

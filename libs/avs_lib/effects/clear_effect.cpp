@@ -1,6 +1,5 @@
 #include "clear_effect.h"
 #include "../core/plugin_manager.h"
-#include "../core/ui_registry.h"
 #include <memory>
 
 namespace avs {

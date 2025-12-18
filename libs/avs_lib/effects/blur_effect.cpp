@@ -1,5 +1,6 @@
 #include "blur_effect.h"
 #include "../core/plugin_manager.h"
+#include "../core/ui.h"
 #include <algorithm>
 #include <cstring>
 
@@ -100,7 +101,43 @@ int BlurEffect::render(AudioData visdata, int isBeat,
     return 1; // Use output buffer
 }
 
-// Register the effect
-REGISTER_AVS_EFFECT("blur", BlurEffect);
+// Effect plugin information with UI layout
+static const avs::PluginInfo effect_info {
+    .name = "Blur",
+    .description = "Blur effect",
+    .author = "AVS Port",
+    .version = 1,
+    .factory = []() -> std::unique_ptr<avs::EffectBase> {
+        return std::make_unique<BlurEffect>();
+    },
+    .ui_layout = {
+        "blur",
+        {
+            // Blur strength slider
+            {
+                .id = "strength",
+                .text = "Strength",
+                .type = ControlType::SLIDER,
+                .x = 10, .y = 20, .w = 100, .h = 15,
+                .range = {0, 100, 50}
+            },
+            
+            // Blur radius slider
+            {
+                .id = "radius",
+                .text = "Radius",
+                .type = ControlType::SLIDER,
+                .x = 10, .y = 40, .w = 100, .h = 15,
+                .range = {1, 10, 2}
+            }
+        }
+    }
+};
+
+// Register effect at startup
+static bool register_ = []() {
+    PluginManager::instance().register_effect(effect_info);
+    return true;
+}();
 
 } // namespace avs
