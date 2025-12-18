@@ -8,9 +8,8 @@ void EffectUILayout::renderImGui(EffectBase* effect) const {
     if (!effect) return;
     
     // All AVS dialogs are 137x137
-    ImGui::BeginChild(getEffectName().c_str(), ImVec2(137, 137), true);
+    ImGui::BeginChild(effect_name.c_str(), ImVec2(137, 137), true);
     
-    auto controls = getControls();
     auto& params = effect->parameters();
     
     for (const auto& control : controls) {

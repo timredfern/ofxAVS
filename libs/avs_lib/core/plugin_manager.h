@@ -1,6 +1,7 @@
 #pragma once
 
 #include "effect_base.h"
+#include "ui.h"
 #include <string>
 #include <map>
 #include <memory>
@@ -19,6 +20,7 @@ struct PluginInfo {
     std::string author;
     int version;
     EffectFactory factory;
+    EffectUILayout ui_layout;
 };
 
 class PluginManager {
@@ -29,7 +31,7 @@ public:
     }
     
     // Register built-in effects
-    void register_effect(const std::string& id, const PluginInfo& info);
+    void register_effect(const PluginInfo& info);
     
     // Create effect instances
     std::unique_ptr<EffectBase> create_effect(const std::string& id);
@@ -37,6 +39,9 @@ public:
     // Query available effects
     std::vector<std::string> available_effects() const;
     PluginInfo get_effect_info(const std::string& id) const;
+    
+    // Get UI layout for an effect
+    const EffectUILayout* get_ui_layout(const std::string& id) const;
     
     // Future: dynamic plugin loading
     // bool load_plugin_library(const std::string& path);

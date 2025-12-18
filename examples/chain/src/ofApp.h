@@ -3,7 +3,7 @@
 #include "ofMain.h"
 #include "ofxAVS.h"
 #include "ofxImGui.h"
-#include "avs_lib/core/ui_layouts.h"
+#include "avs_lib/core/plugin_manager.h"
 
 class ofApp : public ofBaseApp {
 

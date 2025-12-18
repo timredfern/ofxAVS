@@ -35,35 +35,44 @@ struct ControlLayout {
 };
 
 /**
- * Base class for effect UI layout metadata
- * Provides original AVS dialog layout information for any UI system to use
+ * Data-driven effect UI layout
+ * Contains original AVS dialog layout information for any UI system to use
  * 
  * NOTE: All original AVS effect dialogs are 137x137 pixels
  */
 class EffectUILayout {
 public:
-    virtual ~EffectUILayout() = default;
+    std::string effect_name;
+    std::vector<ControlLayout> controls;
     
-    virtual std::vector<ControlLayout> getControls() const = 0;
-    virtual std::string getEffectName() const = 0;
+    // Constructor for easy initialization
+    EffectUILayout(const std::string& name, const std::vector<ControlLayout>& ctrls) 
+        : effect_name(name), controls(ctrls) {}
+    
+    // Default constructor
+    EffectUILayout() = default;
+    
+    // Accessor methods
+    const std::vector<ControlLayout>& getControls() const { return controls; }
+    const std::string& getEffectName() const { return effect_name; }
     
     // Helper methods for common operations
     ControlLayout getControl(const std::string& id) const {
-        for (const auto& control : getControls()) {
+        for (const auto& control : controls) {
             if (control.id == id) return control;
         }
         return {}; // Return empty if not found
     }
     
     bool hasControl(const std::string& id) const {
-        for (const auto& control : getControls()) {
+        for (const auto& control : controls) {
             if (control.id == id) return true;
         }
         return false;
     }
     
     // ImGui rendering method - implemented in .cpp file
-    virtual void renderImGui(class EffectBase* effect) const;
+    void renderImGui(class EffectBase* effect) const;
 };
 
 } // namespace avs

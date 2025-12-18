@@ -1,5 +1,6 @@
 #include "clear_effect.h"
 #include "../core/plugin_manager.h"
+#include "../core/ui_registry.h"
 #include <memory>
 
 namespace avs {
@@ -112,7 +113,63 @@ int ClearEffect::render(AudioData visdata, int isBeat,
     return 0; // Use input buffer (modified in place)
 }
 
-// Register the effect
-REGISTER_AVS_EFFECT("clear", ClearEffect);
+// Effect plugin information with UI layout
+static const avs::PluginInfo effect_info {
+    .name = "Clear",
+    .description = "",
+    .author = "",
+    .version = 1,
+    .factory = []() -> std::unique_ptr<avs::EffectBase> {
+        return std::make_unique<ClearEffect>();
+    },
+    .ui_layout = {
+        "clear",
+        {
+            // Color selection button
+            {
+                .id = "color",
+                .text = "Color", 
+                .type = ControlType::COLOR_BUTTON,
+                .x = 4, .y = 18, .w = 40, .h = 16
+            },
+            
+            // Blend mode selection
+            {
+                .id = "blend_replace",
+                .text = "Replace",
+                .type = ControlType::RADIO_BUTTON,
+                .x = 3, .y = 40, .w = 40, .h = 10
+            },
+            
+            {
+                .id = "blend_additive",
+                .text = "Additive",
+                .type = ControlType::RADIO_BUTTON, 
+                .x = 3, .y = 51, .w = 38, .h = 10
+            },
+            
+            {
+                .id = "blend_5050", 
+                .text = "50/50",
+                .type = ControlType::RADIO_BUTTON,
+                .x = 3, .y = 62, .w = 31, .h = 10
+            },
+            
+            // Only on first frame checkbox
+            {
+                .id = "only_first",
+                .text = "Only on first frame", 
+                .type = ControlType::CHECKBOX,
+                .x = 50, .y = 40, .w = 47, .h = 10
+            }
+        }
+    }
+};
+
+// Register effect at startup
+static bool register_ = []() {
+    PluginManager::instance().register_effect(effect_info);
+    return true;
+}();
 
 } // namespace avs

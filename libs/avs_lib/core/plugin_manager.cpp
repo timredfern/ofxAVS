@@ -2,8 +2,8 @@
 
 namespace avs {
 
-void PluginManager::register_effect(const std::string& id, const PluginInfo& info) {
-    registered_effects_[id] = info;
+void PluginManager::register_effect(const PluginInfo& info) {
+    registered_effects_[info.name] = info;
 }
 
 std::unique_ptr<EffectBase> PluginManager::create_effect(const std::string& id) {
@@ -25,6 +25,11 @@ std::vector<std::string> PluginManager::available_effects() const {
 PluginInfo PluginManager::get_effect_info(const std::string& id) const {
     auto it = registered_effects_.find(id);
     return (it != registered_effects_.end()) ? it->second : PluginInfo{};
+}
+
+const EffectUILayout* PluginManager::get_ui_layout(const std::string& id) const {
+    auto it = registered_effects_.find(id);
+    return (it != registered_effects_.end()) ? &it->second.ui_layout : nullptr;
 }
 
 } // namespace avs

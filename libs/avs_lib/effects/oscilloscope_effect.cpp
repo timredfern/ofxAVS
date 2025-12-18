@@ -1,5 +1,6 @@
 #include "oscilloscope_effect.h"
 #include "../core/plugin_manager.h"
+#include "../core/ui_registry.h"
 #include <algorithm>
 #include <cmath>
 
@@ -130,7 +131,56 @@ int OscilloscopeEffect::render(AudioData visdata, int isBeat,
     return 0; // Modified input buffer in place
 }
 
-// Register the effect
-REGISTER_AVS_EFFECT("oscilloscope", OscilloscopeEffect);
+// Effect plugin information with UI layout
+static const avs::PluginInfo effect_info {
+    .name = "Oscilloscope",
+    .description = "",
+    .author = "",
+    .version = 1,
+    .factory = []() -> std::unique_ptr<avs::EffectBase> {
+        return std::make_unique<OscilloscopeEffect>();
+    },
+    .ui_layout = {
+        "oscilloscope",
+        {
+            // Effect color button
+            {
+                .id = "color",
+                .text = "Color",
+                .type = ControlType::COLOR_BUTTON,
+                .x = 4, .y = 22, .w = 40, .h = 16
+            },
+            
+            // Channel selection
+            {
+                .id = "channel_left",
+                .text = "Left channel",
+                .type = ControlType::RADIO_BUTTON, 
+                .x = 3, .y = 42, .w = 51, .h = 10
+            },
+            
+            {
+                .id = "channel_right", 
+                .text = "Right channel",
+                .type = ControlType::RADIO_BUTTON,
+                .x = 3, .y = 53, .w = 56, .h = 10
+            },
+            
+            // Drawing mode
+            {
+                .id = "solid",
+                .text = "Solid",
+                .type = ControlType::CHECKBOX,
+                .x = 3, .y = 75, .w = 30, .h = 10
+            }
+        }
+    }
+};
+
+// Register effect at startup
+static bool register_ = []() {
+    PluginManager::instance().register_effect(effect_info);
+    return true;
+}();
 
 } // namespace avs

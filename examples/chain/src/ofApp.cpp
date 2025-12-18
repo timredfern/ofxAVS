@@ -275,7 +275,7 @@ void ofApp::drawParametersPanel() {
         const auto& effect_item = effect_chain[selected_effect_index];
         
         // Get UI layout for this effect
-        const avs::EffectUILayout* layout = avs::UILayoutRegistry::instance().getLayout(effect_item.name);
+        const avs::EffectUILayout* layout = avs::PluginManager::instance().get_ui_layout(effect_item.name);
         
         if (layout) {
             // Get the controls
