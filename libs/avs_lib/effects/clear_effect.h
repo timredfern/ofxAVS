@@ -9,6 +9,10 @@
 #include "../core/effect_base.h"
 
 namespace avs {
+struct PluginInfo;
+}
+
+namespace avs {
 
 class ClearEffect : public EffectBase {
 public:
@@ -22,6 +26,10 @@ public:
     
     std::string get_name() const override { return "Clear"; }
     std::string get_description() const override { return "Render / Clear screen"; }
+    const PluginInfo& get_plugin_info() const override { return effect_info; }
+    
+    static const PluginInfo effect_info;
+    
 
 private:
     int frame_counter_ = 0;

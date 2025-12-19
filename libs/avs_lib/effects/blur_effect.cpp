@@ -107,8 +107,8 @@ int BlurEffect::render(AudioData visdata, int isBeat,
     return 1; // Use output buffer
 }
 
-// Effect plugin information with UI layout
-static const avs::PluginInfo effect_info {
+// Static member definition
+const PluginInfo BlurEffect::effect_info {
     .name = "Blur",
     .description = "Blur effect",
     .author = "AVS Port",
@@ -141,8 +141,8 @@ static const avs::PluginInfo effect_info {
 };
 
 // Register effect at startup
-static bool register_ = []() {
-    PluginManager::instance().register_effect(effect_info);
+static bool register_blur = []() {
+    PluginManager::instance().register_effect(BlurEffect::effect_info);
     return true;
 }();
 

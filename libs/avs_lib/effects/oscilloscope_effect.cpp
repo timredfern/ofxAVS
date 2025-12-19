@@ -21,8 +21,9 @@ void OscilloscopeEffect::setup_parameters() {
     
     params.add_parameter(std::make_shared<Parameter>("enabled", ParameterType::BOOL, true));
     params.add_parameter(std::make_shared<Parameter>("color", ParameterType::COLOR, uint32_t(0xFFFFFFFF))); // White with full alpha
-    params.add_parameter(std::make_shared<Parameter>("channel", ParameterType::INT, 0, 0, 2)); // 0=left, 1=right, 2=both
-    params.add_parameter(std::make_shared<Parameter>("thickness", ParameterType::INT, 1, 1, 5));
+    params.add_parameter(std::make_shared<Parameter>("channel_left", ParameterType::BOOL, true));
+    params.add_parameter(std::make_shared<Parameter>("channel_right", ParameterType::BOOL, false)); 
+    params.add_parameter(std::make_shared<Parameter>("channel_both", ParameterType::BOOL, false));
     params.add_parameter(std::make_shared<Parameter>("solid", ParameterType::BOOL, false)); // false=dots, true=lines
 }
 
@@ -65,7 +66,9 @@ int OscilloscopeEffect::render(AudioData visdata, int isBeat,
     if (isBeat & 0x80000000) return 0;
     
     uint32_t color = parameters().get_color("color");
-    int channel = parameters().get_int("channel");
+    bool channel_left = parameters().get_bool("channel_left");
+    bool channel_right = parameters().get_bool("channel_right");
+    bool channel_both = parameters().get_bool("channel_both");
     bool solid = parameters().get_bool("solid");
     
     // Scale factors
@@ -75,17 +78,20 @@ int OscilloscopeEffect::render(AudioData visdata, int isBeat,
     
     // Choose which channel to display
     unsigned char* audio_data;
-    if (channel == 0) {
+    if (channel_left) {
         audio_data = (unsigned char*)&visdata[0][0][0]; // Left channel waveform
-    } else if (channel == 1) {
+    } else if (channel_right) {
         audio_data = (unsigned char*)&visdata[0][1][0]; // Right channel waveform
-    } else {
+    } else if (channel_both) {
         // Mix both channels - simplified
         static char mixed_data[576];
         for (int i = 0; i < 576; i++) {
             mixed_data[i] = (visdata[0][0][i] + visdata[0][1][i]) / 2;
         }
         audio_data = (unsigned char*)mixed_data;
+    } else {
+        // Default to left if no channel selected
+        audio_data = (unsigned char*)&visdata[0][0][0];
     }
     
     if (solid) {
@@ -137,9 +143,9 @@ int OscilloscopeEffect::render(AudioData visdata, int isBeat,
     return 0; // Modified input buffer in place
 }
 
-// Effect plugin information with UI layout
-static const avs::PluginInfo effect_info {
-    .name = "oscilloscope",
+// Static member definition
+const PluginInfo OscilloscopeEffect::effect_info {
+    .name = "Oscilloscope",
     .description = "",
     .author = "",
     .version = 1,
@@ -147,7 +153,7 @@ static const avs::PluginInfo effect_info {
         return std::make_unique<OscilloscopeEffect>();
     },
     .ui_layout = {
-        "oscilloscope",
+        "Oscilloscope",
         {
             // Effect color button
             {
@@ -157,22 +163,24 @@ static const avs::PluginInfo effect_info {
                 .x = 4, .y = 22, .w = 40, .h = 16
             },
             
-            // Channel selection
+            // Channel selection - radio buttons
             {
-                .id = "channel",
-                .text = "Channel",
-                .type = ControlType::SLIDER,
-                .x = 3, .y = 42, .w = 100, .h = 15,
-                .range = {0, 2, 0}  // 0=left, 1=right, 2=both
+                .id = "channel_left",
+                .text = "Left",
+                .type = ControlType::RADIO_BUTTON,
+                .x = 3, .y = 42, .w = 30, .h = 10
             },
-            
-            // Thickness slider
             {
-                .id = "thickness",
-                .text = "Thickness", 
-                .type = ControlType::SLIDER,
-                .x = 3, .y = 60, .w = 100, .h = 15,
-                .range = {1, 5, 1}
+                .id = "channel_right", 
+                .text = "Right",
+                .type = ControlType::RADIO_BUTTON,
+                .x = 35, .y = 42, .w = 30, .h = 10
+            },
+            {
+                .id = "channel_both",
+                .text = "Both", 
+                .type = ControlType::RADIO_BUTTON,
+                .x = 67, .y = 42, .w = 30, .h = 10
             },
             
             // Drawing mode
@@ -180,15 +188,15 @@ static const avs::PluginInfo effect_info {
                 .id = "solid",
                 .text = "Solid",
                 .type = ControlType::CHECKBOX,
-                .x = 3, .y = 80, .w = 30, .h = 10
+                .x = 3, .y = 60, .w = 30, .h = 10
             }
         }
     }
 };
 
 // Register effect at startup
-static bool register_ = []() {
-    PluginManager::instance().register_effect(effect_info);
+static bool register_oscilloscope = []() {
+    PluginManager::instance().register_effect(OscilloscopeEffect::effect_info);
     return true;
 }();
 
