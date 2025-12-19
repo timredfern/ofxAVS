@@ -31,6 +31,17 @@ void BrightnessEffect::setup_parameters() {
     
     // Mode: 0 = all channels, 1 = separate channels
     params.add_parameter(std::make_shared<Parameter>("mode", ParameterType::INT, 0, 0, 1));
+    
+    // UI button parameters
+    params.add_parameter(std::make_shared<Parameter>("red_reset", ParameterType::BOOL, false));
+    params.add_parameter(std::make_shared<Parameter>("green_reset", ParameterType::BOOL, false)); 
+    params.add_parameter(std::make_shared<Parameter>("blue_reset", ParameterType::BOOL, false));
+    
+    // Mode parameters  
+    params.add_parameter(std::make_shared<Parameter>("dissoc", ParameterType::BOOL, false));
+    params.add_parameter(std::make_shared<Parameter>("replace", ParameterType::BOOL, true));
+    params.add_parameter(std::make_shared<Parameter>("additive", ParameterType::BOOL, false));
+    params.add_parameter(std::make_shared<Parameter>("5050", ParameterType::BOOL, false));
 }
 
 int BrightnessEffect::render(AudioData visdata, int isBeat,
@@ -98,9 +109,9 @@ int BrightnessEffect::render(AudioData visdata, int isBeat,
     return 0; // Modified in place
 }
 
-// Effect plugin information with UI layout  
-static const avs::PluginInfo effect_info {
-    .name = "brightness",
+// Static member definition
+const PluginInfo BrightnessEffect::effect_info {
+    .name = "Brightness",
     .description = "",
     .author = "",
     .version = 1,
@@ -108,7 +119,7 @@ static const avs::PluginInfo effect_info {
         return std::make_unique<BrightnessEffect>();
     },
     .ui_layout = {
-        "brightness",
+        "Brightness",
         {
             // Enable checkbox
             {
@@ -203,8 +214,8 @@ static const avs::PluginInfo effect_info {
 };
 
 // Register effect at startup
-static bool register_ = []() {
-    PluginManager::instance().register_effect(effect_info);
+static bool register_brightness = []() {
+    PluginManager::instance().register_effect(BrightnessEffect::effect_info);
     return true;
 }();
 

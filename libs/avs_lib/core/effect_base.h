@@ -13,6 +13,9 @@
 
 namespace avs {
 
+// Forward declarations
+struct PluginInfo;
+
 // Keep original audio data format for easy porting
 typedef char AudioData[2][2][576];
 
@@ -30,6 +33,9 @@ public:
     // Effect identification
     virtual std::string get_name() const = 0;
     virtual std::string get_description() const = 0;
+    
+    // Plugin information
+    virtual const PluginInfo& get_plugin_info() const = 0;
     
     // Parameter system
     virtual ParameterGroup& parameters() { return parameters_; }

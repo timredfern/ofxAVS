@@ -8,6 +8,7 @@
 #include "ofxImGui.h"
 #include "../libs/avs_lib/core/renderer.h"
 #include "../libs/avs_lib/core/plugin_manager.h"
+#include "../libs/avs_lib/core/effect_base.h"
 #include <vector>
 #include <map>
 
@@ -15,7 +16,7 @@
 struct EffectChainItem {
     std::string name;
     std::string display_name;
-    bool enabled = true;
+    std::unique_ptr<avs::EffectBase> effect; // Store the actual effect instance
 };
 
 // Available effect info
@@ -56,7 +57,6 @@ public:
     void removeEffectFromChain(int index);
     void moveEffectUp(int index);
     void moveEffectDown(int index);
-    void toggleEffectEnabled(int index);
     
     // UI panel management
     void setSelectedEffect(int index);

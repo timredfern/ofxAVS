@@ -9,6 +9,10 @@
 #include "../core/effect_base.h"
 
 namespace avs {
+struct PluginInfo;
+}
+
+namespace avs {
 
 class BlurEffect : public EffectBase {
 public:
@@ -22,6 +26,9 @@ public:
     
     std::string get_name() const override { return "Blur"; }
     std::string get_description() const override { return "Blur effect"; }
+    const PluginInfo& get_plugin_info() const override { return effect_info; }
+    
+    static const PluginInfo effect_info;
 
 private:
     void setup_parameters();

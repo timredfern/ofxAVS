@@ -22,7 +22,9 @@ void ClearEffect::setup_parameters() {
     params.add_parameter(std::make_shared<Parameter>("enabled", ParameterType::BOOL, true));
     params.add_parameter(std::make_shared<Parameter>("color", ParameterType::COLOR, uint32_t(0xFF000000))); // Black with full alpha
     params.add_parameter(std::make_shared<Parameter>("only_first", ParameterType::BOOL, false));
-    params.add_parameter(std::make_shared<Parameter>("blend_mode", ParameterType::INT, 0, 0, 4)); // 0=replace, 1=additive, 2=maximum, 3=average, 4=subtractive
+    params.add_parameter(std::make_shared<Parameter>("blend_replace", ParameterType::BOOL, true));
+    params.add_parameter(std::make_shared<Parameter>("blend_additive", ParameterType::BOOL, false));
+    params.add_parameter(std::make_shared<Parameter>("blend_5050", ParameterType::BOOL, false));
 }
 
 // Blend functions for different modes
@@ -82,50 +84,38 @@ int ClearEffect::render(AudioData visdata, int isBeat,
     frame_counter_++;
     
     uint32_t color = parameters().get_color("color");
-    int blend_mode = parameters().get_int("blend_mode");
+    bool blend_replace = parameters().get_bool("blend_replace");
+    bool blend_additive = parameters().get_bool("blend_additive");
+    bool blend_5050 = parameters().get_bool("blend_5050");
     
     int pixel_count = w * h;
     uint32_t* p = framebuffer;
     
     // Apply clearing operation based on blend mode
-    switch (blend_mode) {
-        case 1: // Additive
-            for (int i = 0; i < pixel_count; i++) {
-                p[i] = blend_add(p[i], color);
-            }
-            break;
-        case 2: // Maximum
-            for (int i = 0; i < pixel_count; i++) {
-                p[i] = blend_max(p[i], color);
-            }
-            break;
-        case 3: // Average - this creates the fadeout/trail effect
-            for (int i = 0; i < pixel_count; i++) {
-                p[i] = blend_avg(p[i], color);
-            }
-            break;
-        case 4: // Subtractive
-            for (int i = 0; i < pixel_count; i++) {
-                p[i] = blend_sub(p[i], color);
-            }
-            break;
-        default: // Replace (0)
-            for (int i = 0; i < pixel_count; i++) {
-                p[i] = color;
-            }
-            break;
+    if (blend_additive) {
+        for (int i = 0; i < pixel_count; i++) {
+            p[i] = blend_add(p[i], color);
+        }
+    } else if (blend_5050) {
+        for (int i = 0; i < pixel_count; i++) {
+            p[i] = blend_avg(p[i], color);
+        }
+    } else { // Default to replace
+        for (int i = 0; i < pixel_count; i++) {
+            p[i] = color;
+        }
     }
     
     return 0; // Use input buffer (modified in place)
 }
 
-// Effect plugin information with UI layout
-static const avs::PluginInfo effect_info {
+// Static member definition
+const PluginInfo ClearEffect::effect_info {
     .name = "Clear",
     .description = "",
     .author = "",
     .version = 1,
-    .factory = []() -> std::unique_ptr<avs::EffectBase> {
+    .factory = []() -> std::unique_ptr<EffectBase> {
         return std::make_unique<ClearEffect>();
     },
     .ui_layout = {
@@ -173,8 +163,8 @@ static const avs::PluginInfo effect_info {
 };
 
 // Register effect at startup
-static bool register_ = []() {
-    PluginManager::instance().register_effect(effect_info);
+static bool register_clear = []() {
+    PluginManager::instance().register_effect(ClearEffect::effect_info);
     return true;
 }();
 
