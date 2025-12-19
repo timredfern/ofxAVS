@@ -40,7 +40,7 @@ void ofxAVS::setup() {
     
     // Add default effects to see something
     addEffectToChain("Clear");
-    addEffectToChain("oscilloscope");
+    addEffectToChain("Oscilloscope");
 }
 
 void ofxAVS::update() {
@@ -80,7 +80,7 @@ void ofxAVS::addEffectToChain(const std::string& effectName) {
     auto& item = effect_chain.back();
     item.name = effectName;
     item.display_name = displayName;
-    item.enabled = true;
+    item.effect = avs::PluginManager::instance().create_effect(effectName);
     
     rebuildEffectChain();
     
@@ -117,13 +117,6 @@ void ofxAVS::moveEffectDown(int index) {
     }
 }
 
-void ofxAVS::toggleEffectEnabled(int index) {
-    if (index >= 0 && index < effect_chain.size()) {
-        effect_chain[index].enabled = !effect_chain[index].enabled;
-        rebuildEffectChain();
-    }
-}
-
 void ofxAVS::setSelectedEffect(int index) {
     if (index >= -1 && index < effect_chain.size()) {
         selected_effect_index = index;
@@ -146,7 +139,7 @@ void ofxAVS::initializeAvailableEffects() {
         
         // Get effect info which contains description
         auto plugin_info = pm.get_effect_info(name);
-        info.display_name = plugin_info.name;
+        info.display_name = plugin_info.name.empty() ? name : plugin_info.name;
         info.description = plugin_info.description.empty() ? "AVS effect" : plugin_info.description;
         
         // Try to get UI layout for parameter count
@@ -166,9 +159,14 @@ void ofxAVS::rebuildEffectChain() {
     renderer->clear_effects();
     
     for (auto& effect_item : effect_chain) {
-        auto effect = avs::PluginManager::instance().create_effect(effect_item.name);
-        if (effect && effect_item.enabled) {
-            renderer->add_effect(std::move(effect));
+        if (effect_item.effect) {
+            // Clone the effect for the renderer since renderer takes ownership
+            auto cloned_effect = avs::PluginManager::instance().create_effect(effect_item.name);
+            if (cloned_effect) {
+                // Copy parameters from UI effect to renderer effect
+                // TODO: Implement parameter synchronization
+                renderer->add_effect(std::move(cloned_effect));
+            }
         }
     }
     
@@ -229,19 +227,20 @@ void ofxAVS::drawChainPanel() {
     if (ImGui::Begin("Effect Chain", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove)) {
         for (int i = 0; i < effect_chain.size(); i++) {
             const auto& item = effect_chain[i];
-            
+            bool is_selected = (i == selected_effect_index);
+
             // Selection highlighting
-            if (i == selected_effect_index) {
+            if (is_selected) {
                 ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.6f, 0.6f, 0.6f, 1.0f));
             }
             
-            // Effect button with enabled/disabled indicator
-            std::string label = (item.enabled ? "✓ " : "✗ ") + item.display_name;
+            // Effect button - use index for unique ID
+            std::string label = item.display_name + "##" + std::to_string(i);
             if (ImGui::Button(label.c_str(), ImVec2(180, 25))) {
                 setSelectedEffect(i);
             }
             
-            if (i == selected_effect_index) {
+            if (is_selected) {
                 ImGui::PopStyleColor();
             }
             
@@ -251,9 +250,6 @@ void ofxAVS::drawChainPanel() {
             }
             
             if (ImGui::BeginPopup(("effect_menu_" + std::to_string(i)).c_str())) {
-                if (ImGui::MenuItem("Toggle Enabled")) {
-                    toggleEffectEnabled(i);
-                }
                 if (ImGui::MenuItem("Move Up", nullptr, false, i > 0)) {
                     moveEffectUp(i);
                 }
@@ -315,73 +311,9 @@ void ofxAVS::drawParametersPanel() {
             // Get UI layout for this effect
             const avs::EffectUILayout* layout = avs::PluginManager::instance().get_ui_layout(effect_item.name);
             
-            if (layout) {
-                // Get the controls
-                auto controls = layout->getControls();
-                
-                // Create interactive controls
-                for (size_t i = 0; i < controls.size(); i++) {
-                    const auto& control = controls[i];
-                    
-                    // Push unique ID for this control
-                    ImGui::PushID((effect_item.name + "_" + control.id + "_" + std::to_string(i)).c_str());
-                    
-                    // Ensure control state exists
-                    std::string state_key = effect_item.name + "_" + control.id;
-                    if (control_states.find(state_key) == control_states.end()) {
-                        control_states[state_key] = ParameterControlState(control.id);
-                        control_states[state_key].int_value = control.range.default_val;
-                        control_states[state_key].float_value = (float)control.range.default_val;
-                    }
-                    
-                    auto& state = control_states[state_key];
-                    bool changed = false;
-                    
-                    // Create appropriate ImGui control based on type
-                    switch (control.type) {
-                        case avs::ControlType::SLIDER:
-                            ImGui::Text("%s", control.text.c_str());
-                            ImGui::SetNextItemWidth(200);
-                            changed = ImGui::SliderInt(("##" + control.id).c_str(), 
-                                &state.int_value, control.range.min, control.range.max, "%d");
-                            
-                            if (changed) {
-                                state.float_value = (float)state.int_value;
-                            }
-                            break;
-                            
-                        case avs::ControlType::CHECKBOX:
-                            changed = ImGui::Checkbox(control.text.c_str(), &state.bool_value);
-                            break;
-                            
-                        case avs::ControlType::COLOR_BUTTON:
-                            {
-                                float color[3] = {
-                                    state.color_value.r / 255.0f,
-                                    state.color_value.g / 255.0f,
-                                    state.color_value.b / 255.0f
-                                };
-                                if (ImGui::ColorEdit3(control.text.c_str(), color)) {
-                                    state.color_value.r = (int)(color[0] * 255);
-                                    state.color_value.g = (int)(color[1] * 255);
-                                    state.color_value.b = (int)(color[2] * 255);
-                                    changed = true;
-                                }
-                            }
-                            break;
-                            
-                        default:
-                            ImGui::Text("Unsupported control type");
-                            break;
-                    }
-                    
-                    // Update effect parameters if changed
-                    if (changed) {
-                        updateEffectParameters();
-                    }
-                    
-                    ImGui::PopID();
-                }
+            if (layout && effect_item.effect) {
+                // Use the stored effect instance for UI rendering
+                layout->renderImGui(effect_item.effect.get());
             } else {
                 ImGui::Text("No parameters available");
             }
