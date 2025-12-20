@@ -63,10 +63,6 @@ For reference when examining original AVS implementation:
 ## Render Effects
 Effects that generate new visual content from audio data or clear the screen.
 
-**Note on Dialogue Size:**
-While individual effect configuration dialogs (`IDD_CFG_*`) declare varying sizes in `res.rc` (e.g., 137x137, 233x214), these dialogs are displayed within a fixed-size host area in the main AVS Editor window. This host area is defined by the `IDC_EFFECTRECT` static control within `IDD_DIALOG1`, which has dimensions of **233 pixels wide by 214 pixels high**. This consistent visible area is likely what is perceived as "the same size" for all effect configuration windows in the original application.
-
-
 1. ### Clear
 - **Purpose**: Clears or blends framebuffer with a color to create trails/feedback
 - **Source File**: `r_clear.cpp`
