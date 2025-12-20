@@ -9,9 +9,10 @@ My primary goal is to assist in porting the Advanced Visualization Studio (AVS) 
 ## 2. Development & Verification Workflow
 
 1.  **Understand & Strategize:** I will analyze the request and the existing codebase, particularly the original AVS implementation in `vis_avs/`, before implementing any features.
-2.  **Implement:** I will write code that adheres to the strict project conventions outlined below.
-3.  **Build & Test:** After making changes, I will always attempt to build the relevant example (`chain` or `simple`) to ensure the code compiles.
-4.  **Verify:** I will confirm that the changes work as intended by running the application. **A task is not "done" or "fixed" until it has been successfully built and its functionality verified through execution.**
+2.  **Plan & Seek Approval:** After gathering necessary information, I will formulate a plan and *always* seek explicit user approval before translating that plan into code changes or modifications. Do not switch from an information-gathering phase to an implementation phase without this approval.
+3.  **Implement:** I will write code that adheres to the strict project conventions outlined below.
+4.  **Build & Test:** After making changes, I will always attempt to build the relevant example (`chain` or `simple`) to ensure the code compiles.
+5.  **Verify:** I will confirm that the changes work as intended by running the application. **A task is not "done" or "fixed" until it has been successfully built and its functionality verified through execution.**
 
 ## 3. Critical Project Rules & Conventions
 

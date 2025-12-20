@@ -14,7 +14,7 @@ namespace avs {
 DynamicMovementEffect::DynamicMovementEffect()
     : last_width_(0), last_height_(0), last_grid_width_(0), last_grid_height_(0),
       last_rectangular_(false), last_interp_mode_(InterpolationMode::LINEAR),
-      last_wrap_(false), last_blend_(false), script_initialized_(false)
+      last_wrap_(false), last_blend_(false), last_buffer_source_(0), script_initialized_(false)
 {
     // Initialize script variables  
     memset(script_vars_, 0, sizeof(script_vars_));
@@ -80,53 +80,6 @@ bool DynamicMovementEffect::needs_grid_regeneration(int w, int h, AudioData visd
            blend != last_blend_;
 }
 
-void DynamicMovementEffect::execute_init_script(AudioData visdata, int w, int h) {
-    // TODO: Implement EEL script execution for init phase
-    // For now, initialize script variables
-    if (!script_initialized_) {
-        for (int i = 0; i < 32; i++) {
-            script_vars_[i] = 0.0;
-        }
-        script_initialized_ = true;
-    }
-}
-
-void DynamicMovementEffect::execute_frame_script(AudioData visdata, int w, int h) {
-    // TODO: Implement EEL script execution for frame phase
-    // This would update persistent variables based on current frame state
-}
-
-void DynamicMovementEffect::execute_beat_script(AudioData visdata, int w, int h) {
-    // TODO: Implement EEL script execution for beat phase  
-    // This would update variables based on beat detection
-}
-
-void DynamicMovementEffect::execute_pixel_script(double& x, double& y, double& r, double& d,
-                                                AudioData visdata, int w, int h) {
-    // TODO: Implement full EEL script execution for pixel phase
-    // For now, implement basic pattern matching for common transformations
-    std::string pixel_script = parameters().get_string("pixel_script");
-    
-    // Handle common polar transformations
-    if (pixel_script.find("d*0.95") != std::string::npos && 
-        pixel_script.find("r+0.1") != std::string::npos) {
-        // Classic spiral: shrink distance, increase angle
-        d *= 0.95;
-        r += 0.1;
-    } else if (pixel_script.find("d*0.5") != std::string::npos) {
-        // Zoom in effect
-        d *= 0.5;
-    } else if (pixel_script.find("r+") != std::string::npos) {
-        // Simple rotation - extract angle
-        size_t pos = pixel_script.find("r+");
-        if (pos != std::string::npos) {
-            std::string angle_str = pixel_script.substr(pos + 2);
-            double angle = std::stod(angle_str);
-            r += angle;
-        }
-    }
-}
-
 void DynamicMovementEffect::generate_grid(int w, int h, AudioData visdata, int isBeat) {
     int grid_width = parameters().get_int("grid_width", 16);
     int grid_height = parameters().get_int("grid_height", 16);
@@ -176,6 +129,16 @@ void DynamicMovementEffect::generate_grid(int w, int h, AudioData visdata, int i
     last_interp_mode_ = interp_mode;
     last_wrap_ = wrap;
     last_blend_ = parameters().get_bool("blend", false);
+}
+
+DynamicMovementEffect::DynamicMovementEffect()
+    : last_width_(0), last_height_(0), last_grid_width_(0), last_grid_height_(0),
+      last_rectangular_(false), last_interp_mode_(InterpolationMode::LINEAR),
+      last_wrap_(false), last_blend_(false), script_initialized_(false)
+{
+    // Initialize script variables  
+    memset(script_vars_, 0, sizeof(script_vars_));
+    setup_parameters();
 }
 
 int DynamicMovementEffect::render(AudioData visdata, int isBeat,
