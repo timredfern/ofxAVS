@@ -25,6 +25,7 @@ void ClearEffect::setup_parameters() {
     params.add_parameter(std::make_shared<Parameter>("blend_replace", ParameterType::BOOL, true));
     params.add_parameter(std::make_shared<Parameter>("blend_additive", ParameterType::BOOL, false));
     params.add_parameter(std::make_shared<Parameter>("blend_5050", ParameterType::BOOL, false));
+    params.add_parameter(std::make_shared<Parameter>("default_render_blend", ParameterType::BOOL, false));
 }
 
 // Blend functions for different modes
@@ -121,42 +122,55 @@ const PluginInfo ClearEffect::effect_info {
     .ui_layout = {
         "Clear",
         {
+            // Enable Clear screen checkbox (corresponds to general 'enabled' parameter)
+            {
+                .id = "enabled",
+                .text = "Enable Clear screen",
+                .type = ControlType::CHECKBOX,
+                .x = 0, .y = 0, .w = 79, .h = 10
+            },
             // Color selection button
             {
                 .id = "color",
                 .text = "Color", 
                 .type = ControlType::COLOR_BUTTON,
-                .x = 4, .y = 18, .w = 40, .h = 16
-            },
-            
-            // Blend mode selection
-            {
-                .id = "blend_replace",
-                .text = "Replace",
-                .type = ControlType::RADIO_BUTTON,
-                .x = 3, .y = 40, .w = 40, .h = 10
-            },
-            
-            {
-                .id = "blend_additive",
-                .text = "Additive",
-                .type = ControlType::RADIO_BUTTON, 
-                .x = 3, .y = 51, .w = 38, .h = 10
-            },
-            
-            {
-                .id = "blend_5050", 
-                .text = "50/50",
-                .type = ControlType::RADIO_BUTTON,
-                .x = 3, .y = 62, .w = 31, .h = 10
+                .x = 0, .y = 15, .w = 137, .h = 13
             },
             
             // Only on first frame checkbox
             {
                 .id = "only_first",
-                .text = "Only on first frame", 
+                .text = "First frame only", 
                 .type = ControlType::CHECKBOX,
-                .x = 50, .y = 40, .w = 47, .h = 10
+                .x = 0, .y = 30, .w = 63, .h = 10
+            },
+            // Blend mode selection
+            {
+                .id = "blend_replace",
+                .text = "Replace blend mode",
+                .type = ControlType::RADIO_BUTTON,
+                .x = 0, .y = 41, .w = 43, .h = 10
+            },
+            
+            {
+                .id = "blend_additive",
+                .text = "Additive blend mode",
+                .type = ControlType::RADIO_BUTTON, 
+                .x = 0, .y = 51, .w = 61, .h = 10
+            },
+            
+            {
+                .id = "blend_5050", 
+                .text = "Blend 50/50 mode",
+                .type = ControlType::RADIO_BUTTON,
+                .x = 0, .y = 61, .w = 55, .h = 10
+            },
+            
+            {
+                .id = "default_render_blend", 
+                .text = "Default render blend mode",
+                .type = ControlType::RADIO_BUTTON,
+                .x = 0, .y = 71, .w = 99, .h = 10
             }
         }
     }

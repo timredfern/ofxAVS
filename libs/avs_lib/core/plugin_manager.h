@@ -63,18 +63,19 @@ private:
 };
 
 // Macro to make effect registration easier
-#define REGISTER_AVS_EFFECT(id, effect_class) \
+#define REGISTER_AVS_EFFECT(effect_id_str, effect_class, ui_layout_data) \
     static struct effect_class##_registrar { \
         effect_class##_registrar() { \
             avs::PluginInfo info; \
-            info.name = #effect_class; \
+            info.name = effect_id_str; /* Use the provided string ID */ \
             info.description = ""; \
             info.author = ""; \
             info.version = 1; \
             info.factory = []() -> std::unique_ptr<avs::EffectBase> { \
                 return std::make_unique<effect_class>(); \
             }; \
-            avs::PluginManager::instance().register_effect(id, info); \
+            info.ui_layout = ui_layout_data; \
+            avs::PluginManager::instance().register_effect(info); /* Pass the info struct */ \
         } \
     } effect_class##_reg;
 
