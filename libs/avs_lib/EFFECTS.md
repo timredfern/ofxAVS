@@ -2,6 +2,64 @@
 
 A comprehensive catalogue of all AVS effects with their inputs, outputs, blend modes, and controls.
 
+## Original Source File Mapping
+
+For reference when examining original AVS implementation:
+- **Clear**: `r_clear.cpp`
+- **Simple (Oscilloscope)**: `r_simple.cpp` 
+- **SuperScope**: `r_sscope.cpp`
+- **Dot Grid**: `r_dotgrid.cpp`
+- **Dot Plane**: `r_dotpln.cpp`
+- **Moving Particle**: `r_parts.cpp`
+- **OnBeat Clear**: `r_nfclr.cpp`
+- **Picture/Picture II**: `r_picture.cpp`
+- **Oscilliscope Star**: `r_oscstar.cpp`
+- **Ring**: `r_oscring.cpp`
+- **Rotating Stars**: `r_rotstar.cpp`
+- **Spectrum Analyzer**: (built into main rendering)
+- **SVP**: `r_svp.cpp`
+- **Text**: `r_text.cpp`
+- **Timescope**: `r_timescope.cpp`
+- **Movement**: `r_trans.cpp`
+- **Dynamic Movement**: `r_dmove.cpp`
+- **Dynamic Distance Modifier**: `r_ddm.cpp`
+- **Dynamic Shift**: (part of r_dmove.cpp)
+- **Roto Blitter**: `r_rotblit.cpp`
+- **Scatter**: `r_scat.cpp`
+- **Blur**: `r_blur.cpp`
+- **Brightness**: `r_bright.cpp`
+- **Fast Brightness**: `r_fastbright.cpp`
+- **Channel Shift**: `r_chanshift.cpp`
+- **Color Modifier**: `r_dcolormod.cpp`
+- **Color Reduction**: `r_colorreduction.cpp`
+- **Contrast**: `r_contrast.cpp`
+- **Convolution Filter**: `r_blit.cpp`
+- **Grain**: `r_grain.cpp`
+- **Interferences**: `r_interf.cpp`
+- **Interleave**: `r_interleave.cpp`
+- **Invert**: `r_invert.cpp`
+- **Mirror**: `r_mirror.cpp`
+- **Mosaic**: `r_mosaic.cpp`
+- **Multi Delay**: `r_multidelay.cpp`
+- **Multiplier**: `r_multiplier.cpp`
+- **Unique Tone**: `r_onetone.cpp`
+- **Video Delay**: `r_videodelay.cpp`
+- **Water**: `r_water.cpp`
+- **Water Bump**: `r_waterbump.cpp`
+- **Comment**: `r_comment.cpp`
+- **Effect List**: `r_list.cpp`
+- **Transition**: `r_transition.cpp`
+- **Bump**: `r_bump.cpp`
+- **Fadeout**: `r_fadeout.cpp`
+- **Color Fade**: `r_colorfade.cpp`
+- **Bass Spin**: `r_bspin.cpp`
+- **Shift**: `r_shift.cpp`
+- **Stack**: `r_stack.cpp`
+- **AVI Player**: `r_avi.cpp`
+- **Line Mode**: `r_linemode.cpp`
+- **Color Replace**: `r_colorreplace.cpp`
+- **Stars**: `r_stars.cpp`
+
 ## Render Effects
 Effects that generate new visual content from audio data or clear the screen.
 
