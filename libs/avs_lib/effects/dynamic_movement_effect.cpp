@@ -131,15 +131,7 @@ void DynamicMovementEffect::generate_grid(int w, int h, AudioData visdata, int i
     last_blend_ = parameters().get_bool("blend", false);
 }
 
-DynamicMovementEffect::DynamicMovementEffect()
-    : last_width_(0), last_height_(0), last_grid_width_(0), last_grid_height_(0),
-      last_rectangular_(false), last_interp_mode_(InterpolationMode::LINEAR),
-      last_wrap_(false), last_blend_(false), script_initialized_(false)
-{
-    // Initialize script variables  
-    memset(script_vars_, 0, sizeof(script_vars_));
-    setup_parameters();
-}
+
 
 int DynamicMovementEffect::render(AudioData visdata, int isBeat,
                                  uint32_t* framebuffer, uint32_t* fbout,
@@ -163,6 +155,21 @@ int DynamicMovementEffect::render(AudioData visdata, int isBeat,
     grid_table_.apply(framebuffer, fbout, w, h, blend);
     
     return 1; // Use fbout
+}
+
+void DynamicMovementEffect::execute_init_script(AudioData visdata, int w, int h) {
+    // TODO: Implement actual EEL script execution
+    // For now, this is a stub to resolve linker error
+}
+
+void DynamicMovementEffect::execute_frame_script(AudioData visdata, int w, int h) {
+    // TODO: Implement actual EEL script execution
+    // For now, this is a stub to resolve linker error
+}
+
+void DynamicMovementEffect::execute_beat_script(AudioData visdata, int w, int h) {
+    // TODO: Implement actual EEL script execution
+    // For now, this is a stub to resolve linker error
 }
 
 } // namespace avs

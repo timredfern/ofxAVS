@@ -64,6 +64,7 @@ private:
     InterpolationMode last_interp_mode_;
     bool last_wrap_;
     bool last_blend_;
+    int last_buffer_source_; 
     
     // Script variable storage (persistent across frames)
     double script_vars_[32]; // User variables
