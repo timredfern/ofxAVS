@@ -13,10 +13,10 @@ namespace avs {
 void EffectUILayout::renderImGui(EffectBase* effect) const {
     if (!effect) return;
     
-    // All AVS dialogs are 137x137
+    // All AVS dialogs are 233x214
     // Create unique child window ID using effect pointer
     std::string child_id = "EffectDialog##" + std::to_string(reinterpret_cast<uintptr_t>(effect));
-    ImGui::BeginChild(child_id.c_str(), ImVec2(137, 137), true);
+    ImGui::BeginChild(child_id.c_str(), ImVec2(233,214), true);
     
     auto& params = effect->parameters();
     
