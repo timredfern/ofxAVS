@@ -236,7 +236,7 @@ void ofxAVS::drawChainPanel() {
             
             // Effect button - use index for unique ID
             std::string label = item.display_name + "##" + std::to_string(i);
-            if (ImGui::Button(label.c_str(), ImVec2(180, 25))) {
+            if (ImGui::Button(label.c_str(), ImVec2(chain_panel_width-15, 25))) {
                 setSelectedEffect(i);
             }
             
@@ -278,7 +278,7 @@ void ofxAVS::drawAvailableEffectsPanel() {
     
     if (ImGui::Begin("Available Effects", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove)) {
         for (const auto& effect : available_effects) {
-            if (ImGui::Button((effect.display_name + " +").c_str(), ImVec2(280, 25))) {
+            if (ImGui::Button((effect.display_name + " +").c_str(), ImVec2(available_panel_width-15, 25))) {
                 addEffectToChain(effect.name);
             }
             
@@ -304,9 +304,6 @@ void ofxAVS::drawParametersPanel() {
     if (ImGui::Begin("Parameters", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove)) {
         if (selected_effect_index >= 0 && selected_effect_index < effect_chain.size()) {
             const auto& effect_item = effect_chain[selected_effect_index];
-            
-            ImGui::Text("Parameters: %s", effect_item.display_name.c_str());
-            ImGui::Separator();
             
             // Get UI layout for this effect
             const avs::EffectUILayout* layout = avs::PluginManager::instance().get_ui_layout(effect_item.name);

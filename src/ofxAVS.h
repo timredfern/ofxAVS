@@ -86,8 +86,8 @@ private:
     
     // UI panel dimensions
     int chain_panel_width = 200;
-    int available_panel_width = 300; 
-    int parameters_panel_width = 250;
+    int available_panel_width = 200; 
+    int parameters_panel_width = 400;
     
     // Internal methods
     void initializeAvailableEffects();

@@ -13,10 +13,10 @@ namespace avs {
 void EffectUILayout::renderImGui(EffectBase* effect) const {
     if (!effect) return;
     
-    // All AVS dialogs are 233x214
+    // All AVS dialogs are 233x214 but we are doubling the spacing. not using original windows UI sizes
     // Create unique child window ID using effect pointer
     std::string child_id = "EffectDialog##" + std::to_string(reinterpret_cast<uintptr_t>(effect));
-    ImGui::BeginChild(child_id.c_str(), ImVec2(233,214), true);
+    ImGui::BeginChild(child_id.c_str(), ImVec2(385,365), true);
     
     auto& params = effect->parameters();
     
@@ -28,7 +28,7 @@ void EffectUILayout::renderImGui(EffectBase* effect) const {
     ImGui::PushStyleColor(ImGuiCol_SliderGrabActive, ImVec4(0.8f, 0.8f, 0.8f, 1.0f));
     
     for (const auto& control : controls) {
-        ImGui::SetCursorPos(ImVec2(control.x, control.y));
+        ImGui::SetCursorPos(ImVec2(control.x*2, control.y*2));
         
         switch (control.type) {
             case ControlType::CHECKBOX: {
