@@ -8,9 +8,6 @@
 #include <vector>
 #include <string>
 
-// Forward declare to avoid including ImGui in header
-struct ImGuiContext;
-
 namespace avs {
 
 enum class ControlType {
@@ -76,9 +73,6 @@ public:
         }
         return false;
     }
-    
-    // ImGui rendering method - implemented in .cpp file
-    void renderImGui(class EffectBase* effect) const;
 };
 
 } // namespace avs

@@ -19,13 +19,32 @@ This is required because:
 2. Different developers use different openFrameworks locations  
 3. Prevents accidental commits of hardcoded paths
 
-## Building OpenFrameworks Examples
+## Building
 
+**The user handles OpenFrameworks builds.** Do not attempt to run make for OF projects.
+
+### Standalone avs_lib example (no OpenFrameworks)
 ```bash
-export OF_ROOT=/path/to/your/openFrameworks
-cd example
+cd libs/avs_lib/example
+mkdir build && cd build
+cmake ..
 make
+./avs_example
 ```
+
+### OpenFrameworks projects
+The user will build these manually via Xcode or make.
+
+## Library Architecture
+
+**avs_lib** (`libs/avs_lib/`) is a standalone, framework-agnostic C++ library with zero external dependencies. It must remain portable and not include any OpenFrameworks or ImGui code.
+
+**ofxAVS** (`src/`) is the OpenFrameworks addon layer that provides:
+- ImGui-based UI rendering (`src/ui.h`, `src/ui.cpp` using `avs_ui::renderImGui()`)
+- OpenFrameworks texture/pixel handling
+- Integration with ofxImGui
+
+Include paths: `addon_config.mk` adds `libs/avs_lib` to include paths, so use `#include "core/ui.h"` not `#include "../libs/avs_lib/core/ui.h"`.
 
 ## Project Context
 

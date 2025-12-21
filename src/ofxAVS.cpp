@@ -3,6 +3,7 @@
 // Licensed under MIT License
 
 #include "ofxAVS.h"
+#include "ui.h"
 #include "../libs/avs_lib/core/plugin_manager.h"
 #include "../libs/avs_lib/core/builtin_effects.h"
 
@@ -310,7 +311,7 @@ void ofxAVS::drawParametersPanel() {
             
             if (layout && effect_item.effect) {
                 // Use the stored effect instance for UI rendering
-                layout->renderImGui(effect_item.effect.get());
+                avs_ui::renderImGui(*layout, effect_item.effect.get());
             } else {
                 ImGui::Text("No parameters available");
             }

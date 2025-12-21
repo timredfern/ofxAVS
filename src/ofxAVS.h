@@ -6,9 +6,9 @@
 
 #include "ofMain.h"
 #include "ofxImGui.h"
-#include "../libs/avs_lib/core/renderer.h"
-#include "../libs/avs_lib/core/plugin_manager.h"
-#include "../libs/avs_lib/core/effect_base.h"
+#include "core/renderer.h"
+#include "core/plugin_manager.h"
+#include "core/effect_base.h"
 #include <vector>
 #include <map>
 
