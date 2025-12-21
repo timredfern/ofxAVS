@@ -8,9 +8,8 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # Find the avs_lib components (assuming they're in parent directory)
 set(AVS_LIB_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/..")
 
-# Core library
+# Core library (renderer.h is header-only template)
 add_library(avs_core STATIC
-    ${AVS_LIB_ROOT}/core/renderer.cpp
     ${AVS_LIB_ROOT}/core/parameter.cpp
     ${AVS_LIB_ROOT}/core/plugin_manager.cpp
 )

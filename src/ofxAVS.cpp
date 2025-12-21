@@ -3,9 +3,9 @@
 // Licensed under MIT License
 
 #include "ofxAVS.h"
-#include "ui.h"
-#include "../libs/avs_lib/core/plugin_manager.h"
-#include "../libs/avs_lib/core/builtin_effects.h"
+#include "AVSui.h"
+#include "core/plugin_manager.h"
+#include "core/builtin_effects.h"
 
 ofxAVS::ofxAVS() {
     
