@@ -17,95 +17,151 @@ BrightnessEffect::BrightnessEffect() {
 
 void BrightnessEffect::setup_parameters() {
     auto& params = parameters();
-    
+
     params.add_parameter(std::make_shared<Parameter>("enabled", ParameterType::BOOL, true));
-    
-    // Brightness adjustment: -255 to +255
-    // Negative values darken, positive values brighten
-    params.add_parameter(std::make_shared<Parameter>("brightness", ParameterType::INT, 0, -255, 255));
-    
-    // Separate color channel control
-    params.add_parameter(std::make_shared<Parameter>("red_adjust", ParameterType::INT, 0, -255, 255));
-    params.add_parameter(std::make_shared<Parameter>("green_adjust", ParameterType::INT, 0, -255, 255));
-    params.add_parameter(std::make_shared<Parameter>("blue_adjust", ParameterType::INT, 0, -255, 255));
-    
-    // Mode: 0 = all channels, 1 = separate channels
-    params.add_parameter(std::make_shared<Parameter>("mode", ParameterType::INT, 0, 0, 1));
-    
+
+    // Color channel adjustments - range 0 to 8192, 4096 = no change (center)
+    // Matches original AVS UI slider range
+    params.add_parameter(std::make_shared<Parameter>("red_adjust", ParameterType::INT, 4096, 0, 8192));
+    params.add_parameter(std::make_shared<Parameter>("green_adjust", ParameterType::INT, 4096, 0, 8192));
+    params.add_parameter(std::make_shared<Parameter>("blue_adjust", ParameterType::INT, 4096, 0, 8192));
+
     // UI button parameters
     params.add_parameter(std::make_shared<Parameter>("red_reset", ParameterType::BOOL, false));
-    params.add_parameter(std::make_shared<Parameter>("green_reset", ParameterType::BOOL, false)); 
+    params.add_parameter(std::make_shared<Parameter>("green_reset", ParameterType::BOOL, false));
     params.add_parameter(std::make_shared<Parameter>("blue_reset", ParameterType::BOOL, false));
-    
-    // Mode parameters  
+
+    // Dissociate RGB - when false, sliders move together; when true, independent
     params.add_parameter(std::make_shared<Parameter>("dissoc", ParameterType::BOOL, false));
+
+    // Blend mode radio buttons
     params.add_parameter(std::make_shared<Parameter>("replace", ParameterType::BOOL, true));
     params.add_parameter(std::make_shared<Parameter>("additive", ParameterType::BOOL, false));
     params.add_parameter(std::make_shared<Parameter>("5050", ParameterType::BOOL, false));
+
+    // Color exclusion
+    params.add_parameter(std::make_shared<Parameter>("exclude", ParameterType::BOOL, false));
+    params.add_parameter(std::make_shared<Parameter>("exclude_color", ParameterType::COLOR, uint32_t(0x000000)));
+    params.add_parameter(std::make_shared<Parameter>("distance", ParameterType::INT, 16, 0, 255));
+}
+
+// Helper: check if color is within distance of reference color
+static inline bool inRange(uint32_t color, uint32_t ref, int distance) {
+    int db = std::abs((int)(color & 0xFF) - (int)(ref & 0xFF));
+    if (db > distance) return false;
+    int dg = std::abs((int)((color >> 8) & 0xFF) - (int)((ref >> 8) & 0xFF));
+    if (dg > distance) return false;
+    int dr = std::abs((int)((color >> 16) & 0xFF) - (int)((ref >> 16) & 0xFF));
+    if (dr > distance) return false;
+    return true;
+}
+
+// Blend macros matching original AVS
+static inline uint32_t BLEND(uint32_t a, uint32_t b) {
+    // Additive blend with saturation
+    uint32_t r = std::min(255u, ((a >> 16) & 0xFF) + ((b >> 16) & 0xFF));
+    uint32_t g = std::min(255u, ((a >> 8) & 0xFF) + ((b >> 8) & 0xFF));
+    uint32_t bl = std::min(255u, (a & 0xFF) + (b & 0xFF));
+    return (r << 16) | (g << 8) | bl;
+}
+
+static inline uint32_t BLEND_AVG(uint32_t a, uint32_t b) {
+    // 50/50 average blend
+    uint32_t r = (((a >> 16) & 0xFF) + ((b >> 16) & 0xFF)) >> 1;
+    uint32_t g = (((a >> 8) & 0xFF) + ((b >> 8) & 0xFF)) >> 1;
+    uint32_t bl = ((a & 0xFF) + (b & 0xFF)) >> 1;
+    return (r << 16) | (g << 8) | bl;
 }
 
 int BrightnessEffect::render(AudioData visdata, int isBeat,
                             uint32_t* framebuffer, uint32_t* fbout,
                             int w, int h) {
     if (!is_enabled()) return 0;
-    
     if (isBeat & 0x80000000) return 0;
-    
-    int mode = parameters().get_int("mode");
+
+    // Get slider values (0-8192) and convert to internal values (-4096 to 4096)
+    int redp = parameters().get_int("red_adjust") - 4096;
+    int greenp = parameters().get_int("green_adjust") - 4096;
+    int bluep = parameters().get_int("blue_adjust") - 4096;
+
+    // Calculate multipliers exactly as original:
+    // rm = (1 + (redp < 0 ? 1 : 16) * (redp/4096)) * 65536
+    int rm = (int)((1 + (redp < 0 ? 1 : 16) * ((float)redp / 4096)) * 65536.0);
+    int gm = (int)((1 + (greenp < 0 ? 1 : 16) * ((float)greenp / 4096)) * 65536.0);
+    int bm = (int)((1 + (bluep < 0 ? 1 : 16) * ((float)bluep / 4096)) * 65536.0);
+
+    // Build lookup tables
+    int red_tab[256], green_tab[256], blue_tab[256];
+    for (int n = 0; n < 256; n++) {
+        red_tab[n] = (n * rm) & 0xffff0000;
+        if (red_tab[n] > 0xff0000) red_tab[n] = 0xff0000;
+        if (red_tab[n] < 0) red_tab[n] = 0;
+
+        green_tab[n] = ((n * gm) >> 8) & 0xffff00;
+        if (green_tab[n] > 0xff00) green_tab[n] = 0xff00;
+        if (green_tab[n] < 0) green_tab[n] = 0;
+
+        blue_tab[n] = ((n * bm) >> 16) & 0xffff;
+        if (blue_tab[n] > 0xff) blue_tab[n] = 0xff;
+        if (blue_tab[n] < 0) blue_tab[n] = 0;
+    }
+
+    bool blend = parameters().get_bool("additive");
+    bool blendavg = parameters().get_bool("5050");
+    bool exclude = parameters().get_bool("exclude");
+    uint32_t exc_color = parameters().get_color("exclude_color");
+    int distance = parameters().get_int("distance");
+
     int pixel_count = w * h;
-    
-    if (mode == 0) {
-        // All channels mode - single brightness value
-        int brightness = parameters().get_int("brightness");
-        
-        if (brightness == 0) return 0; // No change needed
-        
-        for (int i = 0; i < pixel_count; i++) {
-            uint32_t pixel = framebuffer[i];
-            
-            // Extract channels
-            int a = (pixel >> 24) & 0xFF;
-            int r = (pixel >> 16) & 0xFF;
-            int g = (pixel >> 8) & 0xFF;
-            int b = pixel & 0xFF;
-            
-            // Apply brightness
-            r = std::clamp(r + brightness, 0, 255);
-            g = std::clamp(g + brightness, 0, 255);
-            b = std::clamp(b + brightness, 0, 255);
-            
-            // Reassemble pixel
-            framebuffer[i] = (a << 24) | (r << 16) | (g << 8) | b;
+    uint32_t* p = framebuffer;
+
+    if (blend) {
+        // Additive blend mode
+        if (!exclude) {
+            for (int i = 0; i < pixel_count; i++) {
+                uint32_t pix = p[i];
+                p[i] = BLEND(pix, red_tab[(pix >> 16) & 0xff] | green_tab[(pix >> 8) & 0xff] | blue_tab[pix & 0xff]);
+            }
+        } else {
+            for (int i = 0; i < pixel_count; i++) {
+                uint32_t pix = p[i];
+                if (!inRange(pix, exc_color, distance)) {
+                    p[i] = BLEND(pix, red_tab[(pix >> 16) & 0xff] | green_tab[(pix >> 8) & 0xff] | blue_tab[pix & 0xff]);
+                }
+            }
+        }
+    } else if (blendavg) {
+        // 50/50 blend mode
+        if (!exclude) {
+            for (int i = 0; i < pixel_count; i++) {
+                uint32_t pix = p[i];
+                p[i] = BLEND_AVG(pix, red_tab[(pix >> 16) & 0xff] | green_tab[(pix >> 8) & 0xff] | blue_tab[pix & 0xff]);
+            }
+        } else {
+            for (int i = 0; i < pixel_count; i++) {
+                uint32_t pix = p[i];
+                if (!inRange(pix, exc_color, distance)) {
+                    p[i] = BLEND_AVG(pix, red_tab[(pix >> 16) & 0xff] | green_tab[(pix >> 8) & 0xff] | blue_tab[pix & 0xff]);
+                }
+            }
         }
     } else {
-        // Separate channels mode
-        int red_adjust = parameters().get_int("red_adjust");
-        int green_adjust = parameters().get_int("green_adjust");
-        int blue_adjust = parameters().get_int("blue_adjust");
-        
-        if (red_adjust == 0 && green_adjust == 0 && blue_adjust == 0) {
-            return 0; // No change needed
-        }
-        
-        for (int i = 0; i < pixel_count; i++) {
-            uint32_t pixel = framebuffer[i];
-            
-            // Extract channels
-            int a = (pixel >> 24) & 0xFF;
-            int r = (pixel >> 16) & 0xFF;
-            int g = (pixel >> 8) & 0xFF;
-            int b = pixel & 0xFF;
-            
-            // Apply per-channel brightness
-            r = std::clamp(r + red_adjust, 0, 255);
-            g = std::clamp(g + green_adjust, 0, 255);
-            b = std::clamp(b + blue_adjust, 0, 255);
-            
-            // Reassemble pixel
-            framebuffer[i] = (a << 24) | (r << 16) | (g << 8) | b;
+        // Replace mode (default)
+        if (!exclude) {
+            for (int i = 0; i < pixel_count; i++) {
+                uint32_t pix = p[i];
+                p[i] = red_tab[(pix >> 16) & 0xff] | green_tab[(pix >> 8) & 0xff] | blue_tab[pix & 0xff];
+            }
+        } else {
+            for (int i = 0; i < pixel_count; i++) {
+                uint32_t pix = p[i];
+                if (!inRange(pix, exc_color, distance)) {
+                    p[i] = red_tab[(pix >> 16) & 0xff] | green_tab[(pix >> 8) & 0xff] | blue_tab[pix & 0xff];
+                }
+            }
         }
     }
-    
+
     return 0; // Modified in place
 }
 
@@ -124,54 +180,54 @@ const PluginInfo BrightnessEffect::effect_info {
             // Enable checkbox
             {
                 .id = "enabled",
-                .text = "Enable Brightness filter", 
+                .text = "Enable Brightness filter",
                 .type = ControlType::CHECKBOX,
                 .x = 0, .y = 0, .w = 87, .h = 10
             },
-            
-            // Red slider  
+
+            // Red slider - range 0-8192, 4096 = center (no change)
             {
                 .id = "red_adjust",
                 .text = "Red",
                 .type = ControlType::SLIDER,
                 .x = 25, .y = 13, .w = 97, .h = 13,
-                .range = {-255, 255, 0, 25}
+                .range = {0, 8192, 4096, 256}
             },
-            
+
             // Red reset button (><)
             {
-                .id = "red_reset", 
+                .id = "red_reset",
                 .text = "><",
                 .type = ControlType::BUTTON,
                 .x = 125, .y = 12, .w = 12, .h = 14
             },
-            
+
             // Green slider
             {
                 .id = "green_adjust",
-                .text = "Green", 
+                .text = "Green",
                 .type = ControlType::SLIDER,
                 .x = 25, .y = 28, .w = 97, .h = 13,
-                .range = {-255, 255, 0, 25}
+                .range = {0, 8192, 4096, 256}
             },
-            
+
             // Green reset button
             {
                 .id = "green_reset",
-                .text = "><", 
+                .text = "><",
                 .type = ControlType::BUTTON,
                 .x = 125, .y = 28, .w = 12, .h = 14
             },
-            
+
             // Blue slider
             {
                 .id = "blue_adjust",
                 .text = "Blue",
-                .type = ControlType::SLIDER, 
+                .type = ControlType::SLIDER,
                 .x = 25, .y = 44, .w = 97, .h = 13,
-                .range = {-255, 255, 0, 25}
+                .range = {0, 8192, 4096, 256}
             },
-            
+
             // Blue reset button
             {
                 .id = "blue_reset",
@@ -179,7 +235,7 @@ const PluginInfo BrightnessEffect::effect_info {
                 .type = ControlType::BUTTON,
                 .x = 125, .y = 44, .w = 12, .h = 14
             },
-            
+
             // Dissociate RGB checkbox
             {
                 .id = "dissoc",
@@ -187,7 +243,7 @@ const PluginInfo BrightnessEffect::effect_info {
                 .type = ControlType::CHECKBOX,
                 .x = 0, .y = 60, .w = 89, .h = 10
             },
-            
+
             // Blend mode radio buttons
             {
                 .id = "replace",
@@ -195,19 +251,44 @@ const PluginInfo BrightnessEffect::effect_info {
                 .type = ControlType::RADIO_BUTTON,
                 .x = 0, .y = 71, .w = 43, .h = 10
             },
-            
+
             {
-                .id = "additive", 
+                .id = "additive",
                 .text = "Additive blend",
                 .type = ControlType::RADIO_BUTTON,
                 .x = 0, .y = 81, .w = 61, .h = 10
             },
-            
+
             {
                 .id = "5050",
-                .text = "50/50 blend", 
+                .text = "50/50 blend",
                 .type = ControlType::RADIO_BUTTON,
-                .x = 0, .y = 91, .w = 53, .h = 10
+                .x = 0, .y = 92, .w = 55, .h = 10
+            },
+
+            // Exclude color range checkbox
+            {
+                .id = "exclude",
+                .text = "Exclude color range",
+                .type = ControlType::CHECKBOX,
+                .x = 0, .y = 103, .w = 79, .h = 10
+            },
+
+            // Exclude color button
+            {
+                .id = "exclude_color",
+                .text = "Color",
+                .type = ControlType::COLOR_BUTTON,
+                .x = 0, .y = 114, .w = 29, .h = 13
+            },
+
+            // Exclude distance slider
+            {
+                .id = "distance",
+                .text = "Distance",
+                .type = ControlType::SLIDER,
+                .x = 31, .y = 114, .w = 106, .h = 13,
+                .range = {0, 255, 16, 16}
             }
         }
     }

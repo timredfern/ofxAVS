@@ -75,7 +75,9 @@ Key components:
 
 **CRITICAL RULE: ALWAYS stay true to the original AVS implementation. NEVER add your own enhancements or improvements.**
 
-- Research the original Windows AVS code in `../vis_avs/avs/vis_avs/` before implementing features
+- **ALWAYS consult `libs/avs_lib/EFFECTS.md` first** - it is a comprehensive catalogue of research into the original Windows AVS code, documenting all control types, positions, IDs, blend modes, and effect behaviors. This should be the primary reference and may avoid the need to dig into the original source files.
+- **SLIDERS MUST have Range and Default documented in EFFECTS.md** - When researching an effect, always document slider ranges as `Range(min, max), Default(value)`. If this information is missing from EFFECTS.md, research it from the original source and add it to EFFECTS.md BEFORE implementing.
+- If EFFECTS.md doesn't have the needed information, research the original Windows AVS code in `../vis_avs/avs/vis_avs/` and UPDATE EFFECTS.md with the findings
 - If a feature doesn't exist in the original, don't add it
 - If behavior differs from original, change it to match
 - Individual effects may have their own enable checkboxes, but there's no universal enable/disable for effects in the main chain
@@ -86,6 +88,8 @@ Key components:
 ## UI Parameter Pattern
 
 **CRITICAL: Parameter names MUST exactly match UI control IDs to prevent "unsupported control type" errors.**
+
+**Parameter constructor**: `Parameter(name, type, default_value, min_value, max_value)` - the 3rd and 4th parameters after default are the range.
 
 ### Pattern for Effect Implementation:
 

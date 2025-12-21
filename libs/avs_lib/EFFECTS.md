@@ -569,11 +569,11 @@ Effects that modify pixel colors or apply filters.
 - **Blend Modes**: None
 - **Controls**:
   - Enable Brightness filter: CHECKBOX, Position(0, 0), Size(87, 10), ID(IDC_CHECK1)
-  - Red adjustment: SLIDER, Position(25, 13), Size(97, 13), ID(IDC_RED)
+  - Red adjustment: SLIDER, Position(25, 13), Size(97, 13), ID(IDC_RED), Range(0, 8192), Default(4096), TickFreq(256)
   - Red reset: BUTTON, Position(125, 12), Size(12, 14), ID(IDC_BRED)
-  - Green adjustment: SLIDER, Position(25, 28), Size(97, 13), ID(IDC_GREEN)
+  - Green adjustment: SLIDER, Position(25, 28), Size(97, 13), ID(IDC_GREEN), Range(0, 8192), Default(4096), TickFreq(256)
   - Green reset: BUTTON, Position(125, 28), Size(12, 14), ID(IDC_BGREEN)
-  - Blue adjustment: SLIDER, Position(25, 44), Size(97, 13), ID(IDC_BLUE)
+  - Blue adjustment: SLIDER, Position(25, 44), Size(97, 13), ID(IDC_BLUE), Range(0, 8192), Default(4096), TickFreq(256)
   - Blue reset: BUTTON, Position(125, 44), Size(12, 14), ID(IDC_BBLUE)
   - Dissociate RGB values: CHECKBOX, Position(0, 60), Size(89, 10), ID(IDC_DISSOC)
   - Replace blend mode: RADIO_BUTTON, Position(0, 71), Size(43, 10), ID(IDC_REPLACE)
@@ -581,7 +581,7 @@ Effects that modify pixel colors or apply filters.
   - Blend 50/50 mode: RADIO_BUTTON, Position(0, 92), Size(55, 10), ID(IDC_5050)
   - Exclude color range: CHECKBOX, Position(0, 103), Size(79, 10), ID(IDC_EXCLUDE)
   - Exclude color: COLOR_BUTTON, Position(0, 114), Size(29, 13), ID(IDC_DEFCOL)
-  - Exclude distance: SLIDER, Position(31, 114), Size(106, 13), ID(IDC_DISTANCE)
+  - Exclude distance: SLIDER, Position(31, 114), Size(106, 13), ID(IDC_DISTANCE), Range(0, 255), Default(16)
 
 28. ### Channel Shift
 - **Purpose**: Shift color channels independently
