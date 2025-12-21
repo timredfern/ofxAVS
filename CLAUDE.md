@@ -62,6 +62,8 @@ Key components:
 
 **CRITICAL RULE: ALWAYS re-read the user's message before responding to ensure you're answering what they ACTUALLY asked, not what you think they asked. Questions are not commands.**
 
+**CRITICAL RULE: When asked to "investigate", "look at", "see how", or "can you see" - ONLY investigate and explain. Do NOT implement changes. Wait for explicit approval before writing code.**
+
 **NEVER be overly positive or self-congratulatory.** Always:
 - Highlight potential issues, risks, and limitations
 - Point out what could go wrong

@@ -15,7 +15,6 @@ ofxAVS::~ofxAVS() {
     // Clear effect chain to ensure proper cleanup
     renderer.reset();
     effect_chain.clear();
-    control_states.clear();
 }
 
 void ofxAVS::setup() {
@@ -76,54 +75,51 @@ void ofxAVS::addEffectToChain(const std::string& effectName) {
             break;
         }
     }
-    
-    effect_chain.emplace_back();
-    auto& item = effect_chain.back();
-    item.name = effectName;
-    item.display_name = displayName;
-    item.effect = avs::PluginManager::instance().create_effect(effectName);
-    
-    rebuildEffectChain();
-    
-    // Select the newly added effect
-    selected_effect_index = static_cast<int>(effect_chain.size()) - 1;
-    initializeParameterDefaults();
+
+    // Create effect and add directly to renderer
+    auto new_effect = avs::PluginManager::instance().create_effect(effectName);
+    if (new_effect) {
+        renderer->add_effect(std::move(new_effect));
+
+        // Add metadata to effect_chain
+        effect_chain.push_back({effectName, displayName});
+
+        // Select the newly added effect
+        selected_effect_index = static_cast<int>(effect_chain.size()) - 1;
+    }
 }
 
 void ofxAVS::removeEffectFromChain(int index) {
-    if (index >= 0 && index < effect_chain.size()) {
+    if (index >= 0 && index < static_cast<int>(effect_chain.size())) {
+        renderer->remove_effect(static_cast<size_t>(index));
         effect_chain.erase(effect_chain.begin() + index);
-        rebuildEffectChain();
-        
+
         // Adjust selected index
-        if (selected_effect_index >= effect_chain.size()) {
+        if (selected_effect_index >= static_cast<int>(effect_chain.size())) {
             selected_effect_index = static_cast<int>(effect_chain.size()) - 1;
         }
     }
 }
 
 void ofxAVS::moveEffectUp(int index) {
-    if (index > 0 && index < effect_chain.size()) {
+    if (index > 0 && index < static_cast<int>(effect_chain.size())) {
+        renderer->swap_effects(static_cast<size_t>(index), static_cast<size_t>(index - 1));
         std::swap(effect_chain[index], effect_chain[index - 1]);
-        rebuildEffectChain();
         selected_effect_index = index - 1;
     }
 }
 
 void ofxAVS::moveEffectDown(int index) {
-    if (index >= 0 && index < effect_chain.size() - 1) {
+    if (index >= 0 && index < static_cast<int>(effect_chain.size()) - 1) {
+        renderer->swap_effects(static_cast<size_t>(index), static_cast<size_t>(index + 1));
         std::swap(effect_chain[index], effect_chain[index + 1]);
-        rebuildEffectChain();
         selected_effect_index = index + 1;
     }
 }
 
 void ofxAVS::setSelectedEffect(int index) {
-    if (index >= -1 && index < effect_chain.size()) {
+    if (index >= -1 && index < static_cast<int>(effect_chain.size())) {
         selected_effect_index = index;
-        if (index >= 0) {
-            initializeParameterDefaults();
-        }
     }
 }
 
@@ -153,67 +149,6 @@ void ofxAVS::initializeAvailableEffects() {
         }
         
         available_effects.push_back(info);
-    }
-}
-
-void ofxAVS::rebuildEffectChain() {
-    renderer->clear_effects();
-    
-    for (auto& effect_item : effect_chain) {
-        if (effect_item.effect) {
-            // Clone the effect for the renderer since renderer takes ownership
-            auto cloned_effect = avs::PluginManager::instance().create_effect(effect_item.name);
-            if (cloned_effect) {
-                // Copy parameters from UI effect to renderer effect
-                // TODO: Implement parameter synchronization
-                renderer->add_effect(std::move(cloned_effect));
-            }
-        }
-    }
-    
-    updateEffectParameters();
-}
-
-void ofxAVS::updateEffectParameters() {
-    // TODO: Implement parameter updates through renderer interface
-    // For now, parameters will be set during effect creation
-}
-
-void ofxAVS::initializeParameterDefaults() {
-    if (selected_effect_index >= 0 && selected_effect_index < effect_chain.size()) {
-        const auto& effect_item = effect_chain[selected_effect_index];
-        
-        // Generic initialization based on UI layout
-        const avs::EffectUILayout* layout = avs::PluginManager::instance().get_ui_layout(effect_item.name);
-        if (layout) {
-            auto controls = layout->getControls();
-            for (const auto& control : controls) {
-                std::string key = effect_item.name + "_" + control.id;
-                if (control_states.find(key) == control_states.end()) {
-                    control_states[key] = ParameterControlState(control.id);
-                    
-                    // Set defaults based on control type and range
-                    switch (control.type) {
-                        case avs::ControlType::SLIDER:
-                            control_states[key].int_value = control.range.default_val;
-                            control_states[key].float_value = (float)control.range.default_val;
-                            break;
-                        case avs::ControlType::CHECKBOX:
-                        case avs::ControlType::RADIO_BUTTON:
-                            control_states[key].bool_value = false;
-                            break;
-                        case avs::ControlType::COLOR_BUTTON:
-                            control_states[key].color_value = ofColor(255, 255, 255);
-                            break;
-                        default:
-                            break;
-                    }
-                }
-            }
-        }
-        
-        // Apply defaults to the effect
-        updateEffectParameters();
     }
 }
 
@@ -303,15 +238,16 @@ void ofxAVS::drawParametersPanel() {
     ImGui::PushStyleColor(ImGuiCol_TitleBgCollapsed, ImVec4(0.2f, 0.2f, 0.2f, 1.0f));
     
     if (ImGui::Begin("Parameters", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove)) {
-        if (selected_effect_index >= 0 && selected_effect_index < effect_chain.size()) {
+        if (selected_effect_index >= 0 && selected_effect_index < static_cast<int>(effect_chain.size())) {
             const auto& effect_item = effect_chain[selected_effect_index];
-            
-            // Get UI layout for this effect
+
+            // Get the actual effect from renderer and UI layout
+            avs::EffectBase* effect = renderer->get_effect(static_cast<size_t>(selected_effect_index));
             const avs::EffectUILayout* layout = avs::PluginManager::instance().get_ui_layout(effect_item.name);
-            
-            if (layout && effect_item.effect) {
-                // Use the stored effect instance for UI rendering
-                avs_ui::renderImGui(*layout, effect_item.effect.get());
+
+            if (layout && effect) {
+                // Render UI directly modifying the renderer's effect
+                avs_ui::renderImGui(*layout, effect);
             } else {
                 ImGui::Text("No parameters available");
             }

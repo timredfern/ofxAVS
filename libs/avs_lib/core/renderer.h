@@ -58,6 +58,21 @@ public:
     void remove_effect(size_t index);
     void clear_effects();
     size_t effect_count() const { return effects_.size(); }
+
+    // Access effects for UI/parameter modification
+    EffectBase* get_effect(size_t index) {
+        return index < effects_.size() ? effects_[index].get() : nullptr;
+    }
+    const EffectBase* get_effect(size_t index) const {
+        return index < effects_.size() ? effects_[index].get() : nullptr;
+    }
+
+    // Swap two effects in the chain
+    void swap_effects(size_t index_a, size_t index_b) {
+        if (index_a < effects_.size() && index_b < effects_.size()) {
+            std::swap(effects_[index_a], effects_[index_b]);
+        }
+    }
     
     // Main render call - now templated for pixel type
     void render(AudioData visdata, bool is_beat, PixelType* output_buffer);

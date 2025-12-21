@@ -10,13 +10,11 @@
 #include "core/plugin_manager.h"
 #include "core/effect_base.h"
 #include <vector>
-#include <map>
 
-// Effect chain item for the UI
+// Effect chain item for the UI (metadata only - effects owned by renderer)
 struct EffectChainItem {
     std::string name;
     std::string display_name;
-    std::unique_ptr<avs::EffectBase> effect; // Store the actual effect instance
 };
 
 // Available effect info
@@ -24,18 +22,6 @@ struct AvailableEffectInfo {
     std::string name;
     std::string display_name; 
     std::string description;
-};
-
-// Parameter control state for UI
-struct ParameterControlState {
-    std::string control_id;
-    int int_value = 0;
-    float float_value = 0.0f;
-    bool bool_value = false;
-    ofColor color_value = ofColor(255, 255, 255);
-    
-    ParameterControlState() = default;
-    ParameterControlState(const std::string& id) : control_id(id) {}
 };
 
 class ofxAVS {
@@ -80,10 +66,7 @@ private:
     std::vector<EffectChainItem> effect_chain;
     std::vector<AvailableEffectInfo> available_effects;
     int selected_effect_index = -1;
-    
-    // UI control states
-    std::map<std::string, ParameterControlState> control_states;
-    
+
     // UI panel dimensions
     int chain_panel_width = 200;
     int available_panel_width = 200; 
@@ -91,10 +74,7 @@ private:
     
     // Internal methods
     void initializeAvailableEffects();
-    void rebuildEffectChain();
-    void updateEffectParameters();
-    void initializeParameterDefaults();
-    
+
     // UI rendering methods
     void drawChainPanel();
     void drawAvailableEffectsPanel();
