@@ -12,20 +12,7 @@
 namespace avs {
 
 ClearEffect::ClearEffect() {
-    setup_parameters();
-}
-
-void ClearEffect::setup_parameters() {
-    // Set up parameters matching original clear effect
-    auto& params = parameters();
-    
-    params.add_parameter(std::make_shared<Parameter>("enabled", ParameterType::BOOL, true));
-    params.add_parameter(std::make_shared<Parameter>("color", ParameterType::COLOR, uint32_t(0xFF000000))); // Black with full alpha
-    params.add_parameter(std::make_shared<Parameter>("only_first", ParameterType::BOOL, false));
-    params.add_parameter(std::make_shared<Parameter>("blend_replace", ParameterType::BOOL, true));
-    params.add_parameter(std::make_shared<Parameter>("blend_additive", ParameterType::BOOL, false));
-    params.add_parameter(std::make_shared<Parameter>("blend_5050", ParameterType::BOOL, false));
-    params.add_parameter(std::make_shared<Parameter>("default_render_blend", ParameterType::BOOL, false));
+    init_parameters_from_layout(effect_info.ui_layout);
 }
 
 // Blend functions for different modes
@@ -120,57 +107,55 @@ const PluginInfo ClearEffect::effect_info {
         return std::make_unique<ClearEffect>();
     },
     .ui_layout = {
-        "Clear",
         {
-            // Enable Clear screen checkbox (corresponds to general 'enabled' parameter)
             {
                 .id = "enabled",
                 .text = "Enable Clear screen",
                 .type = ControlType::CHECKBOX,
-                .x = 0, .y = 0, .w = 79, .h = 10
+                .x = 0, .y = 0, .w = 79, .h = 10,
+                .default_val = 1
             },
-            // Color selection button
             {
                 .id = "color",
-                .text = "Color", 
+                .text = "Color",
                 .type = ControlType::COLOR_BUTTON,
-                .x = 0, .y = 15, .w = 137, .h = 13
+                .x = 0, .y = 15, .w = 137, .h = 13,
+                .default_val = static_cast<int>(0xFF000000)
             },
-            
-            // Only on first frame checkbox
             {
                 .id = "only_first",
-                .text = "First frame only", 
+                .text = "First frame only",
                 .type = ControlType::CHECKBOX,
-                .x = 0, .y = 30, .w = 63, .h = 10
+                .x = 0, .y = 30, .w = 63, .h = 10,
+                .default_val = 0
             },
-            // Blend mode selection
             {
                 .id = "blend_replace",
                 .text = "Replace blend mode",
                 .type = ControlType::RADIO_BUTTON,
-                .x = 0, .y = 41, .w = 43, .h = 10
+                .x = 0, .y = 41, .w = 43, .h = 10,
+                .default_val = 1
             },
-            
             {
                 .id = "blend_additive",
                 .text = "Additive blend mode",
-                .type = ControlType::RADIO_BUTTON, 
-                .x = 0, .y = 51, .w = 61, .h = 10
+                .type = ControlType::RADIO_BUTTON,
+                .x = 0, .y = 51, .w = 61, .h = 10,
+                .default_val = 0
             },
-            
             {
-                .id = "blend_5050", 
+                .id = "blend_5050",
                 .text = "Blend 50/50 mode",
                 .type = ControlType::RADIO_BUTTON,
-                .x = 0, .y = 61, .w = 55, .h = 10
+                .x = 0, .y = 61, .w = 55, .h = 10,
+                .default_val = 0
             },
-            
             {
-                .id = "default_render_blend", 
+                .id = "default_render_blend",
                 .text = "Default render blend mode",
                 .type = ControlType::RADIO_BUTTON,
-                .x = 0, .y = 71, .w = 99, .h = 10
+                .x = 0, .y = 71, .w = 99, .h = 10,
+                .default_val = 0
             }
         }
     }

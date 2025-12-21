@@ -6,6 +6,7 @@
 
 #include "dynamic_movement_effect.h"
 #include "../core/parameter.h"
+#include "../core/plugin_manager.h"
 #include <cmath>
 #include <cstring>
 
@@ -171,5 +172,16 @@ void DynamicMovementEffect::execute_beat_script(AudioData visdata, int w, int h)
     // TODO: Implement actual EEL script execution
     // For now, this is a stub to resolve linker error
 }
+
+// Static member definition
+const PluginInfo DynamicMovementEffect::effect_info {
+    .name = "Dynamic Movement",
+    .description = "Trans / Dynamic Movement - grid-based transformations with scripting",
+    .author = "",
+    .version = 1,
+    .factory = []() -> std::unique_ptr<avs::EffectBase> {
+        return std::make_unique<DynamicMovementEffect>();
+    }
+};
 
 } // namespace avs

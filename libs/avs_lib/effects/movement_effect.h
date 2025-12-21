@@ -35,9 +35,10 @@ public:
                uint32_t* framebuffer, uint32_t* fbout,
                int w, int h) override;
     
-    std::string get_name() const override { return "Movement"; }
-    std::string get_description() const override { return "Trans / Movement - coordinate transformations with presets"; }
-    
+    const PluginInfo& get_plugin_info() const override { return effect_info; }
+
+    static const PluginInfo effect_info;
+
     // Public for testing
     std::string get_preset_script(int preset_index) const;
 

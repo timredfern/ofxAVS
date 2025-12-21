@@ -1,6 +1,7 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_approx.hpp>
 #include "effects/movement_effect.h"
+#include "core/plugin_manager.h"
 #include <vector>
 #include <cmath>
 
@@ -11,8 +12,8 @@ TEST_CASE("Movement Effect", "[movement]") {
     AudioData dummy_audio = {};
     
     SECTION("Basic effect properties") {
-        REQUIRE(effect.get_name() == "Movement");
-        REQUIRE(effect.get_description() == "Trans / Movement - coordinate transformations with presets");
+        REQUIRE(effect.get_plugin_info().name == "Movement");
+        REQUIRE(effect.get_plugin_info().description == "Trans / Movement - coordinate transformations with presets");
         REQUIRE(effect.is_enabled() == true);
     }
     

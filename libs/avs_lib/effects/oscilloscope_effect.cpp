@@ -13,18 +13,7 @@
 namespace avs {
 
 OscilloscopeEffect::OscilloscopeEffect() {
-    setup_parameters();
-}
-
-void OscilloscopeEffect::setup_parameters() {
-    auto& params = parameters();
-    
-    params.add_parameter(std::make_shared<Parameter>("enabled", ParameterType::BOOL, true));
-    params.add_parameter(std::make_shared<Parameter>("color", ParameterType::COLOR, uint32_t(0xFFFFFFFF))); // White with full alpha
-    params.add_parameter(std::make_shared<Parameter>("channel_left", ParameterType::BOOL, true));
-    params.add_parameter(std::make_shared<Parameter>("channel_right", ParameterType::BOOL, false)); 
-    params.add_parameter(std::make_shared<Parameter>("channel_both", ParameterType::BOOL, false));
-    params.add_parameter(std::make_shared<Parameter>("solid", ParameterType::BOOL, false)); // false=dots, true=lines
+    init_parameters_from_layout(effect_info.ui_layout);
 }
 
 void OscilloscopeEffect::draw_line(uint32_t* buffer, int w, int h, int x1, int y1, int x2, int y2, uint32_t color) {
@@ -153,42 +142,41 @@ const PluginInfo OscilloscopeEffect::effect_info {
         return std::make_unique<OscilloscopeEffect>();
     },
     .ui_layout = {
-        "Oscilloscope",
         {
-            // Effect color button
             {
                 .id = "color",
                 .text = "Color",
                 .type = ControlType::COLOR_BUTTON,
-                .x = 4, .y = 22, .w = 40, .h = 16
+                .x = 4, .y = 22, .w = 40, .h = 16,
+                .default_val = static_cast<int>(0xFFFFFFFF)
             },
-            
-            // Channel selection - radio buttons
             {
                 .id = "channel_left",
                 .text = "Left",
                 .type = ControlType::RADIO_BUTTON,
-                .x = 3, .y = 42, .w = 30, .h = 10
+                .x = 3, .y = 42, .w = 30, .h = 10,
+                .default_val = 1
             },
             {
-                .id = "channel_right", 
+                .id = "channel_right",
                 .text = "Right",
                 .type = ControlType::RADIO_BUTTON,
-                .x = 35, .y = 42, .w = 30, .h = 10
+                .x = 35, .y = 42, .w = 30, .h = 10,
+                .default_val = 0
             },
             {
                 .id = "channel_both",
-                .text = "Both", 
+                .text = "Both",
                 .type = ControlType::RADIO_BUTTON,
-                .x = 67, .y = 42, .w = 30, .h = 10
+                .x = 67, .y = 42, .w = 30, .h = 10,
+                .default_val = 0
             },
-            
-            // Drawing mode
             {
                 .id = "solid",
                 .text = "Solid",
                 .type = ControlType::CHECKBOX,
-                .x = 3, .y = 60, .w = 30, .h = 10
+                .x = 3, .y = 60, .w = 30, .h = 10,
+                .default_val = 0
             }
         }
     }

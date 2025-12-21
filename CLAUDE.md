@@ -19,6 +19,10 @@ This is required because:
 2. Different developers use different openFrameworks locations  
 3. Prevents accidental commits of hardcoded paths
 
+## Git Repository
+
+The git repository root is `/Users/tim/workspace/avs/ofxAVS`. Do NOT run `git init` - the repo already exists.
+
 ## Building
 
 **The user handles OpenFrameworks builds.** Do not attempt to run make for OF projects.

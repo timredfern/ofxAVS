@@ -12,37 +12,7 @@
 namespace avs {
 
 BrightnessEffect::BrightnessEffect() {
-    setup_parameters();
-}
-
-void BrightnessEffect::setup_parameters() {
-    auto& params = parameters();
-
-    params.add_parameter(std::make_shared<Parameter>("enabled", ParameterType::BOOL, true));
-
-    // Color channel adjustments - range 0 to 8192, 4096 = no change (center)
-    // Matches original AVS UI slider range
-    params.add_parameter(std::make_shared<Parameter>("red_adjust", ParameterType::INT, 4096, 0, 8192));
-    params.add_parameter(std::make_shared<Parameter>("green_adjust", ParameterType::INT, 4096, 0, 8192));
-    params.add_parameter(std::make_shared<Parameter>("blue_adjust", ParameterType::INT, 4096, 0, 8192));
-
-    // UI button parameters
-    params.add_parameter(std::make_shared<Parameter>("red_reset", ParameterType::BOOL, false));
-    params.add_parameter(std::make_shared<Parameter>("green_reset", ParameterType::BOOL, false));
-    params.add_parameter(std::make_shared<Parameter>("blue_reset", ParameterType::BOOL, false));
-
-    // Dissociate RGB - when false, sliders move together; when true, independent
-    params.add_parameter(std::make_shared<Parameter>("dissoc", ParameterType::BOOL, false));
-
-    // Blend mode radio buttons
-    params.add_parameter(std::make_shared<Parameter>("replace", ParameterType::BOOL, true));
-    params.add_parameter(std::make_shared<Parameter>("additive", ParameterType::BOOL, false));
-    params.add_parameter(std::make_shared<Parameter>("5050", ParameterType::BOOL, false));
-
-    // Color exclusion
-    params.add_parameter(std::make_shared<Parameter>("exclude", ParameterType::BOOL, false));
-    params.add_parameter(std::make_shared<Parameter>("exclude_color", ParameterType::COLOR, uint32_t(0x000000)));
-    params.add_parameter(std::make_shared<Parameter>("distance", ParameterType::INT, 16, 0, 255));
+    init_parameters_from_layout(effect_info.ui_layout);
 }
 
 // Helper: check if color is within distance of reference color
@@ -175,120 +145,105 @@ const PluginInfo BrightnessEffect::effect_info {
         return std::make_unique<BrightnessEffect>();
     },
     .ui_layout = {
-        "Brightness",
         {
-            // Enable checkbox
             {
                 .id = "enabled",
                 .text = "Enable Brightness filter",
                 .type = ControlType::CHECKBOX,
-                .x = 0, .y = 0, .w = 87, .h = 10
+                .x = 0, .y = 0, .w = 87, .h = 10,
+                .default_val = 1
             },
-
-            // Red slider - range 0-8192, 4096 = center (no change)
             {
                 .id = "red_adjust",
                 .text = "Red",
                 .type = ControlType::SLIDER,
                 .x = 25, .y = 13, .w = 97, .h = 13,
-                .range = {0, 8192, 4096, 256}
+                .range = {0, 8192, 256},
+                .default_val = 4096
             },
-
-            // Red reset button (><)
             {
                 .id = "red_reset",
                 .text = "><",
                 .type = ControlType::BUTTON,
                 .x = 125, .y = 12, .w = 12, .h = 14
             },
-
-            // Green slider
             {
                 .id = "green_adjust",
                 .text = "Green",
                 .type = ControlType::SLIDER,
                 .x = 25, .y = 28, .w = 97, .h = 13,
-                .range = {0, 8192, 4096, 256}
+                .range = {0, 8192, 256},
+                .default_val = 4096
             },
-
-            // Green reset button
             {
                 .id = "green_reset",
                 .text = "><",
                 .type = ControlType::BUTTON,
                 .x = 125, .y = 28, .w = 12, .h = 14
             },
-
-            // Blue slider
             {
                 .id = "blue_adjust",
                 .text = "Blue",
                 .type = ControlType::SLIDER,
                 .x = 25, .y = 44, .w = 97, .h = 13,
-                .range = {0, 8192, 4096, 256}
+                .range = {0, 8192, 256},
+                .default_val = 4096
             },
-
-            // Blue reset button
             {
                 .id = "blue_reset",
                 .text = "><",
                 .type = ControlType::BUTTON,
                 .x = 125, .y = 44, .w = 12, .h = 14
             },
-
-            // Dissociate RGB checkbox
             {
                 .id = "dissoc",
                 .text = "Dissociate RGB values",
                 .type = ControlType::CHECKBOX,
-                .x = 0, .y = 60, .w = 89, .h = 10
+                .x = 0, .y = 60, .w = 89, .h = 10,
+                .default_val = 0
             },
-
-            // Blend mode radio buttons
             {
                 .id = "replace",
                 .text = "Replace",
                 .type = ControlType::RADIO_BUTTON,
-                .x = 0, .y = 71, .w = 43, .h = 10
+                .x = 0, .y = 71, .w = 43, .h = 10,
+                .default_val = 1
             },
-
             {
                 .id = "additive",
                 .text = "Additive blend",
                 .type = ControlType::RADIO_BUTTON,
-                .x = 0, .y = 81, .w = 61, .h = 10
+                .x = 0, .y = 81, .w = 61, .h = 10,
+                .default_val = 0
             },
-
             {
                 .id = "5050",
                 .text = "50/50 blend",
                 .type = ControlType::RADIO_BUTTON,
-                .x = 0, .y = 92, .w = 55, .h = 10
+                .x = 0, .y = 92, .w = 55, .h = 10,
+                .default_val = 0
             },
-
-            // Exclude color range checkbox
             {
                 .id = "exclude",
                 .text = "Exclude color range",
                 .type = ControlType::CHECKBOX,
-                .x = 0, .y = 103, .w = 79, .h = 10
+                .x = 0, .y = 103, .w = 79, .h = 10,
+                .default_val = 0
             },
-
-            // Exclude color button
             {
                 .id = "exclude_color",
                 .text = "Color",
                 .type = ControlType::COLOR_BUTTON,
-                .x = 0, .y = 114, .w = 29, .h = 13
+                .x = 0, .y = 114, .w = 29, .h = 13,
+                .default_val = 0x000000
             },
-
-            // Exclude distance slider
             {
                 .id = "distance",
                 .text = "Distance",
                 .type = ControlType::SLIDER,
                 .x = 31, .y = 114, .w = 106, .h = 13,
-                .range = {0, 255, 16, 16}
+                .range = {0, 255, 16},
+                .default_val = 16
             }
         }
     }

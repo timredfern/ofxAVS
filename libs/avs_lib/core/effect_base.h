@@ -7,6 +7,7 @@
 #pragma once
 
 #include "parameter.h"
+#include "ui.h"
 #include <string>
 #include <vector>
 #include <cstdint>
@@ -30,13 +31,10 @@ public:
                       uint32_t* framebuffer, uint32_t* fbout,
                       int w, int h) = 0;
     
-    // Effect identification
-    virtual std::string get_name() const = 0;
-    virtual std::string get_description() const = 0;
-    
-    // Plugin information
+    // Plugin information - effects must implement this
+    // Use get_plugin_info().name and get_plugin_info().description for effect identification
     virtual const PluginInfo& get_plugin_info() const = 0;
-    
+
     // Parameter system
     virtual ParameterGroup& parameters() { return parameters_; }
     virtual const ParameterGroup& parameters() const { return parameters_; }
@@ -50,6 +48,43 @@ public:
     virtual void set_enabled(bool enabled) { parameters_.set_bool("enabled", enabled); }
 
 protected:
+    // Initialize parameters automatically from UI layout
+    // Call this in effect constructor instead of manually creating parameters
+    void init_parameters_from_layout(const EffectUILayout& layout) {
+        for (const auto& control : layout.getControls()) {
+            switch (control.type) {
+                case ControlType::CHECKBOX:
+                    parameters_.add_parameter(std::make_shared<Parameter>(
+                        control.id, ParameterType::BOOL, control.default_val != 0));
+                    break;
+                case ControlType::RADIO_BUTTON:
+                    parameters_.add_parameter(std::make_shared<Parameter>(
+                        control.id, ParameterType::BOOL, control.default_val != 0));
+                    break;
+                case ControlType::SLIDER:
+                    parameters_.add_parameter(std::make_shared<Parameter>(
+                        control.id, ParameterType::INT, control.default_val,
+                        control.range.min, control.range.max));
+                    break;
+                case ControlType::COLOR_BUTTON:
+                    parameters_.add_parameter(std::make_shared<Parameter>(
+                        control.id, ParameterType::COLOR, static_cast<uint32_t>(control.default_val)));
+                    break;
+                case ControlType::BUTTON:
+                    parameters_.add_parameter(std::make_shared<Parameter>(
+                        control.id, ParameterType::BOOL, false));
+                    break;
+                case ControlType::DROPDOWN:
+                    parameters_.add_parameter(std::make_shared<Parameter>(
+                        control.id, ParameterType::INT, control.default_val,
+                        control.range.min, control.range.max));
+                    break;
+                default:
+                    break;
+            }
+        }
+    }
+
     // Helper functions for common operations
     static void clear_buffer(uint32_t* buffer, int w, int h, uint32_t color = 0) {
         for (int i = 0; i < w * h; i++) {

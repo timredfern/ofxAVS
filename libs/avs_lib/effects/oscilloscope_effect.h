@@ -24,16 +24,13 @@ public:
               uint32_t* framebuffer, uint32_t* fbout,
               int w, int h) override;
     
-    std::string get_name() const override { return "Oscilloscope"; }
-    std::string get_description() const override { return "Audio waveform display"; }
     const PluginInfo& get_plugin_info() const override { return effect_info; }
-    
+
     static const PluginInfo effect_info;
 
 private:
     int color_pos_ = 0;
-    
-    void setup_parameters();
+
     void draw_line(uint32_t* buffer, int w, int h, int x1, int y1, int x2, int y2, uint32_t color);
 };
 

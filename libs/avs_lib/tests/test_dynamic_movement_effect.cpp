@@ -1,6 +1,7 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_approx.hpp>
 #include "effects/dynamic_movement_effect.h"
+#include "core/plugin_manager.h"
 #include <cstring>
 
 using namespace avs;
@@ -17,8 +18,8 @@ TEST_CASE("Dynamic Movement Effect", "[dynamic][movement][effect]") {
     std::vector<uint32_t> output(width * height, 0x00000000); // Clear output
     
     SECTION("Effect initialization") {
-        REQUIRE(effect.get_name() == "Dynamic Movement");
-        REQUIRE(effect.get_description().find("Dynamic Movement") != std::string::npos);
+        REQUIRE(effect.get_plugin_info().name == "Dynamic Movement");
+        REQUIRE(effect.get_plugin_info().description.find("Dynamic Movement") != std::string::npos);
         REQUIRE(effect.is_enabled() == true);
     }
     

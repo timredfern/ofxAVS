@@ -21,9 +21,8 @@ enum class ControlType {
 };
 
 struct ControlRange {
-    int min;
-    int max;
-    int default_val;
+    int min = 0;
+    int max = 100;
     int tick_freq = 0;  // For slider tick marks
 };
 
@@ -32,7 +31,8 @@ struct ControlLayout {
     std::string text;            // Display text / label
     ControlType type;
     int x, y, w, h;              // Position and size from original dialog
-    ControlRange range = {0, 100, 50}; // For sliders/numeric controls
+    ControlRange range = {0, 100};  // For sliders: min, max, tick_freq
+    int default_val = 0;            // Default value for all control types
     std::vector<std::string> options; // For dropdowns/radio groups
     bool enabled = true;
 };
@@ -40,25 +40,22 @@ struct ControlLayout {
 /**
  * Data-driven effect UI layout
  * Contains original AVS dialog layout information for any UI system to use
- * 
+ *
  * NOTE: All original AVS effect dialogs are 137x137 pixels
  */
 class EffectUILayout {
 public:
-    std::string effect_name;
     std::vector<ControlLayout> controls;
-    
+
     // Constructor for easy initialization
-    EffectUILayout(const std::string& name, const std::vector<ControlLayout>& ctrls) 
-        : effect_name(name), controls(ctrls) {}
-    
+    EffectUILayout(const std::vector<ControlLayout>& ctrls) : controls(ctrls) {}
+
     // Default constructor
     EffectUILayout() = default;
-    
+
     // Accessor methods
     const std::vector<ControlLayout>& getControls() const { return controls; }
-    const std::string& getEffectName() const { return effect_name; }
-    
+
     // Helper methods for common operations
     ControlLayout getControl(const std::string& id) const {
         for (const auto& control : controls) {
@@ -66,7 +63,7 @@ public:
         }
         return {}; // Return empty if not found
     }
-    
+
     bool hasControl(const std::string& id) const {
         for (const auto& control : controls) {
             if (control.id == id) return true;

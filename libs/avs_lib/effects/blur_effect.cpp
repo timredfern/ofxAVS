@@ -13,15 +13,7 @@
 namespace avs {
 
 BlurEffect::BlurEffect() {
-    setup_parameters();
-}
-
-void BlurEffect::setup_parameters() {
-    auto& params = parameters();
-    
-    params.add_parameter(std::make_shared<Parameter>("enabled", ParameterType::BOOL, true));
-    params.add_parameter(std::make_shared<Parameter>("strength", ParameterType::FLOAT, 0.5, 0.0, 1.0));
-    params.add_parameter(std::make_shared<Parameter>("radius", ParameterType::INT, 2, 1, 10));
+    init_parameters_from_layout(effect_info.ui_layout);
 }
 
 void BlurEffect::apply_box_blur(uint32_t* input, uint32_t* output, int w, int h, int radius) {
@@ -69,9 +61,9 @@ int BlurEffect::render(AudioData visdata, int isBeat,
     if (!is_enabled()) return 0;
     if (isBeat & 0x80000000) return 0;
     
-    double strength = parameters().get_float("strength");
+    double strength = parameters().get_int("strength") / 100.0;  // Convert 0-100 to 0.0-1.0
     int radius = parameters().get_int("radius");
-    
+
     if (strength <= 0.0 || radius <= 0) {
         // No blur - just copy input to output
         std::memcpy(fbout, framebuffer, w * h * sizeof(uint32_t));
@@ -117,24 +109,29 @@ const PluginInfo BlurEffect::effect_info {
         return std::make_unique<BlurEffect>();
     },
     .ui_layout = {
-        "Blur",
         {
-            // Blur strength slider
+            {
+                .id = "enabled",
+                .text = "Enable Blur",
+                .type = ControlType::CHECKBOX,
+                .x = 10, .y = 5, .w = 80, .h = 10,
+                .default_val = 1
+            },
             {
                 .id = "strength",
                 .text = "Strength",
                 .type = ControlType::SLIDER,
                 .x = 10, .y = 20, .w = 100, .h = 15,
-                .range = {0, 100, 50}
+                .range = {0, 100},
+                .default_val = 50
             },
-            
-            // Blur radius slider
             {
                 .id = "radius",
                 .text = "Radius",
                 .type = ControlType::SLIDER,
                 .x = 10, .y = 40, .w = 100, .h = 15,
-                .range = {1, 10, 2}
+                .range = {1, 10},
+                .default_val = 2
             }
         }
     }
