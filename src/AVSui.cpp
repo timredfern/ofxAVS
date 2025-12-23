@@ -4,8 +4,27 @@
 
 #include "AVSui.h"
 #include "ofxImGui.h"
+#include <cmath>
 
 namespace avs_ui {
+
+// Non-linear slider mapping for brightness RGB controls
+// Gives more sensitivity around 1.0x (center position)
+
+// sqrt curve: expands center region (param → slider display)
+static int sqrtCurve(int val) {
+    float normalized = (val - 4096) / 4096.0f;  // -1 to 1
+    float curved = std::copysign(std::sqrt(std::fabs(normalized)), normalized);
+    return 4096 + static_cast<int>(curved * 4096);
+}
+
+// square curve: compresses center region (slider → param storage)
+// Near center: small slider movement → tiny param change (fine control)
+static int squareCurve(int val) {
+    float normalized = (val - 4096) / 4096.0f;  // -1 to 1
+    float curved = std::copysign(normalized * normalized, normalized);
+    return 4096 + static_cast<int>(curved * 4096);
+}
 
 void renderImGui(const avs::EffectUILayout& layout, avs::EffectBase* effect) {
     if (!effect) return;
@@ -51,22 +70,27 @@ void renderImGui(const avs::EffectUILayout& layout, avs::EffectBase* effect) {
                                           control.id == "blue_adjust");
 
                 if (is_brightness_rgb) {
+                    // Convert parameter to slider position (non-linear for fine control near 1.0x)
+                    int slider_pos = sqrtCurve(value);
+
                     // Hide raw value, show multiplier instead
-                    if (ImGui::SliderInt(unique_label.c_str(), &value, min_val, max_val, "")) {
-                        params.set_int(control.id, value);
+                    if (ImGui::SliderInt(unique_label.c_str(), &slider_pos, min_val, max_val, "")) {
+                        // Convert slider position back to parameter
+                        int new_param = squareCurve(slider_pos);
+                        params.set_int(control.id, new_param);
 
                         // Link sliders when dissoc is unchecked
                         if (!params.get_bool("dissoc")) {
-                            params.set_int("red_adjust", value);
-                            params.set_int("green_adjust", value);
-                            params.set_int("blue_adjust", value);
+                            params.set_int("red_adjust", new_param);
+                            params.set_int("green_adjust", new_param);
+                            params.set_int("blue_adjust", new_param);
                         }
                     }
-                    // Display multiplier value
+                    // Display multiplier value (calculated from actual parameter, not slider)
                     ImGui::SameLine();
                     int p = value - 4096;
                     float mult = 1.0f + (p < 0 ? 1 : 16) * (p / 4096.0f);
-                    ImGui::Text("%.2fx", mult);
+                    ImGui::Text("%.3fx", mult);
                 } else {
                     // Normal slider
                     if (ImGui::SliderInt(unique_label.c_str(), &value, min_val, max_val)) {
