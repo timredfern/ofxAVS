@@ -25,7 +25,7 @@ void ofApp::setup(){
     settings.sampleRate = 44100;
     settings.numInputChannels = 1;  // Start with mono
     settings.numOutputChannels = 0;
-    settings.bufferSize = 256;
+    settings.bufferSize = 576;  // Match AVS audio buffer size
     settings.setInListener(this);
     
     // Try to find a working input device
@@ -75,30 +75,26 @@ void ofApp::audioIn(ofSoundBuffer& buffer) {
 
 //--------------------------------------------------------------
 void ofApp::processAudioData(ofSoundBuffer& buffer) {
-    // Convert OF audio buffer to AVS format
+    // Convert OF audio buffer to AVS format - raw samples, no downsampling
     avs::AudioData audioData;
     memset(&audioData, 0, sizeof(avs::AudioData));
-    
-    int buffer_samples = static_cast<int>(buffer.size()) / buffer.getNumChannels();
-    int samples = std::min(buffer_samples, 576);
-    
-    for (int i = 0; i < samples; i++) {
-        if (buffer.getNumChannels() >= 1) {
-            audioData[0][0][i] = static_cast<char>(buffer[i * buffer.getNumChannels()] * 127.0f);
-        }
-        if (buffer.getNumChannels() >= 2) {
-            audioData[0][1][i] = static_cast<char>(buffer[i * buffer.getNumChannels() + 1] * 127.0f);
+
+    int numChannels = buffer.getNumChannels();
+    int numSamples = std::min(static_cast<int>(buffer.getNumFrames()), 576);
+
+    // Copy raw samples directly starting at sample 0
+    for (int i = 0; i < numSamples; i++) {
+        // Convert float [-1, 1] to signed char [-128, 127]
+        char left = static_cast<char>(buffer[i * numChannels] * 127.0f);
+        audioData[0][0][i] = left;
+
+        if (numChannels >= 2) {
+            audioData[0][1][i] = static_cast<char>(buffer[i * numChannels + 1] * 127.0f);
         } else {
-            audioData[0][1][i] = audioData[0][0][i]; // Mono to stereo
+            audioData[0][1][i] = left;  // Mono to stereo
         }
     }
-    
-    // Simple spectrum placeholder (copy waveform data)
-    for (int i = 0; i < 576; i++) {
-        audioData[1][0][i] = audioData[0][0][i];
-        audioData[1][1][i] = audioData[0][1][i];
-    }
-    
+
     avs.setAudioData(audioData);
 }
 

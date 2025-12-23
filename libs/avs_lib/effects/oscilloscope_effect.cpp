@@ -60,9 +60,9 @@ int OscilloscopeEffect::render(AudioData visdata, int isBeat,
     bool channel_both = parameters().get_bool("channel_both");
     bool solid = parameters().get_bool("solid");
     
-    // Scale factors
-    float x_scale = 576.0f / w;  // Map 576 samples to screen width
-    float y_scale = h / 512.0f;  // Map audio range to screen height
+    // Scale factors - use raw samples directly (1:1 mapping up to screen width)
+    int num_samples = std::min(w, 576);  // Use up to screen width samples
+    float y_scale = h / 256.0f;  // Map signed char range to screen height
     int y_center = h / 2;
     
     // Choose which channel to display
@@ -84,43 +84,24 @@ int OscilloscopeEffect::render(AudioData visdata, int isBeat,
     }
     
     if (solid) {
-        // Draw connected line segments
-        int prev_x = 0;
-        int prev_y = y_center + (int)((audio_data[0] ^ 128) * y_scale) - (int)(128 * y_scale);
-        
-        for (int x = 1; x < w; x++) {
-            // Sample audio data with interpolation
-            float sample_pos = x * x_scale;
-            int sample_idx = (int)sample_pos;
-            float frac = sample_pos - sample_idx;
-            
-            if (sample_idx >= 575) sample_idx = 575;
-            
-            // Linear interpolation between samples
-            float sample_val = (audio_data[sample_idx] ^ 128) * (1.0f - frac) + 
-                              (audio_data[sample_idx + 1] ^ 128) * frac;
-            
-            int y = y_center + (int)(sample_val * y_scale) - (int)(128 * y_scale);
-            
+        // Draw connected line segments - raw samples, no interpolation
+        int prev_y = y_center + static_cast<int>((static_cast<signed char>(audio_data[0])) * y_scale);
+
+        for (int x = 1; x < num_samples; x++) {
+            // Use raw sample directly at index x
+            int y = y_center + static_cast<int>((static_cast<signed char>(audio_data[x])) * y_scale);
+
             // Draw line from previous point to current point
-            draw_line(framebuffer, w, h, prev_x, prev_y, x, y, color);
-            
-            prev_x = x;
+            draw_line(framebuffer, w, h, x - 1, prev_y, x, y, color);
+
             prev_y = y;
         }
     } else {
-        // Draw dots
-        for (int x = 0; x < w; x++) {
-            // Sample audio data
-            float sample_pos = x * x_scale;
-            int sample_idx = (int)sample_pos;
-            
-            if (sample_idx >= 576) sample_idx = 575;
-            
-            // Convert audio sample to screen Y coordinate
-            int audio_val = audio_data[sample_idx] ^ 128; // Convert from unsigned to signed
-            int y = y_center + (int)((audio_val - 128) * y_scale);
-            
+        // Draw dots - raw samples, no interpolation
+        for (int x = 0; x < num_samples; x++) {
+            // Use raw sample directly at index x
+            int y = y_center + static_cast<int>((static_cast<signed char>(audio_data[x])) * y_scale);
+
             // Draw pixel
             if (y >= 0 && y < h) {
                 framebuffer[y * w + x] = color;

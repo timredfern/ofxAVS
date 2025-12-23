@@ -35,7 +35,7 @@ void ofxAVS::setup() {
     initializeAvailableEffects();
     
     // Add default effects to see something
-    addEffectToChain("Clear");
+    addEffectToChain("Brightness");
     addEffectToChain("Oscilloscope");
 }
 
