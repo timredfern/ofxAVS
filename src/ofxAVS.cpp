@@ -52,6 +52,10 @@ void ofxAVS::setAudioData(const avs::AudioData& data) {
 
 void ofxAVS::draw(int x, int y, int w, int h) {
     texture.draw(x, y, w, h);
+
+    // Draw FPS below output
+    ofSetColor(255);
+    ofDrawBitmapString("FPS: " + ofToString(ofGetFrameRate(), 1), x, y + h + 15);
 }
 
 void ofxAVS::drawUI() {
