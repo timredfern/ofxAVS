@@ -120,13 +120,13 @@ int BrightnessEffect::render(AudioData visdata, int isBeat,
         if (!exclude) {
             for (int i = 0; i < pixel_count; i++) {
                 uint32_t pix = p[i];
-                p[i] = red_tab[(pix >> 16) & 0xff] | green_tab[(pix >> 8) & 0xff] | blue_tab[pix & 0xff];
+                p[i] = (pix & 0xFF000000) | red_tab[(pix >> 16) & 0xff] | green_tab[(pix >> 8) & 0xff] | blue_tab[pix & 0xff];
             }
         } else {
             for (int i = 0; i < pixel_count; i++) {
                 uint32_t pix = p[i];
                 if (!inRange(pix, exc_color, distance)) {
-                    p[i] = red_tab[(pix >> 16) & 0xff] | green_tab[(pix >> 8) & 0xff] | blue_tab[pix & 0xff];
+                    p[i] = (pix & 0xFF000000) | red_tab[(pix >> 16) & 0xff] | green_tab[(pix >> 8) & 0xff] | blue_tab[pix & 0xff];
                 }
             }
         }

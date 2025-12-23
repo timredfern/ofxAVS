@@ -44,8 +44,34 @@ void renderImGui(const avs::EffectUILayout& layout, avs::EffectBase* effect) {
                 int min_val = std::get<int>(param->min_value());
                 int max_val = std::get<int>(param->max_value());
                 std::string unique_label = control.text + "##" + control.id + "_" + std::to_string(reinterpret_cast<uintptr_t>(effect));
-                if (ImGui::SliderInt(unique_label.c_str(), &value, min_val, max_val)) {
-                    params.set_int(control.id, value);
+
+                // Check if this is a brightness RGB slider
+                bool is_brightness_rgb = (control.id == "red_adjust" ||
+                                          control.id == "green_adjust" ||
+                                          control.id == "blue_adjust");
+
+                if (is_brightness_rgb) {
+                    // Hide raw value, show multiplier instead
+                    if (ImGui::SliderInt(unique_label.c_str(), &value, min_val, max_val, "")) {
+                        params.set_int(control.id, value);
+
+                        // Link sliders when dissoc is unchecked
+                        if (!params.get_bool("dissoc")) {
+                            params.set_int("red_adjust", value);
+                            params.set_int("green_adjust", value);
+                            params.set_int("blue_adjust", value);
+                        }
+                    }
+                    // Display multiplier value
+                    ImGui::SameLine();
+                    int p = value - 4096;
+                    float mult = 1.0f + (p < 0 ? 1 : 16) * (p / 4096.0f);
+                    ImGui::Text("%.2fx", mult);
+                } else {
+                    // Normal slider
+                    if (ImGui::SliderInt(unique_label.c_str(), &value, min_val, max_val)) {
+                        params.set_int(control.id, value);
+                    }
                 }
                 break;
             }
@@ -53,9 +79,20 @@ void renderImGui(const avs::EffectUILayout& layout, avs::EffectBase* effect) {
             case avs::ControlType::BUTTON: {
                 std::string unique_label = control.text + "##" + control.id + "_" + std::to_string(reinterpret_cast<uintptr_t>(effect));
                 if (ImGui::Button(unique_label.c_str(), ImVec2(control.w, control.h))) {
-                    // Reset button behavior - set to default value
-                    if (control.type == avs::ControlType::SLIDER) {
-                        params.set_int(control.id, control.default_val);
+                    // Handle brightness reset buttons
+                    if (control.id == "red_reset" || control.id == "green_reset" || control.id == "blue_reset") {
+                        int default_val = 4096;  // Center position = 1.0x multiplier
+                        if (!params.get_bool("dissoc")) {
+                            // Reset all three when linked
+                            params.set_int("red_adjust", default_val);
+                            params.set_int("green_adjust", default_val);
+                            params.set_int("blue_adjust", default_val);
+                        } else {
+                            // Reset just the corresponding slider
+                            if (control.id == "red_reset") params.set_int("red_adjust", default_val);
+                            if (control.id == "green_reset") params.set_int("green_adjust", default_val);
+                            if (control.id == "blue_reset") params.set_int("blue_adjust", default_val);
+                        }
                     }
                 }
                 break;
