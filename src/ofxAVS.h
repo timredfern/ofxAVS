@@ -57,8 +57,6 @@ private:
     std::unique_ptr<avs::DefaultRenderer> renderer;
     ofTexture texture;
     ofPixels pixels;
-    std::vector<uint32_t> framebuffer;
-    std::vector<uint32_t> output_buffer;
     int width, height;
     avs::AudioData current_audio_data;
     

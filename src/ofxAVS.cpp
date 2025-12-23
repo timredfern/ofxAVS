@@ -23,13 +23,9 @@ void ofxAVS::setup() {
     
     // Initialize renderer
     renderer = std::make_unique<avs::DefaultRenderer>(width, height);
-    
-    // Initialize framebuffers
-    framebuffer.resize(width * height, 0);
-    output_buffer.resize(width * height, 0);
-    
-    // Initialize texture
-    pixels.allocate(width, height, OF_PIXELS_RGBA);
+
+    // Initialize texture - use BGRA to match our uint32_t ARGB format
+    pixels.allocate(width, height, OF_PIXELS_BGRA);
     texture.allocate(pixels);
     
     // Register built-in effects
@@ -44,11 +40,9 @@ void ofxAVS::setup() {
 }
 
 void ofxAVS::update() {
-    // Always render effects (even with silent audio data)
-    renderer->render(current_audio_data, false, output_buffer.data());
-    
-    // Update texture
-    std::memcpy(pixels.getData(), output_buffer.data(), width * height * sizeof(uint32_t));
+    // Render directly into pixels buffer (no intermediate copy)
+    renderer->render(current_audio_data, false,
+                     reinterpret_cast<uint32_t*>(pixels.getData()));
     texture.loadData(pixels);
 }
 
