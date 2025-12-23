@@ -27,6 +27,7 @@ add_library(avs_core_test STATIC
     ${AVS_LIB_ROOT}/core/coordinate_lookup_table.cpp
     ${AVS_LIB_ROOT}/effects/movement_effect.cpp
     ${AVS_LIB_ROOT}/effects/dynamic_movement_effect.cpp
+    ${AVS_LIB_ROOT}/effects/brightness_effect.cpp
 )
 
 target_include_directories(avs_core_test PUBLIC 
@@ -74,6 +75,8 @@ add_executable(avs_tests
     test_bilinear_bug.cpp
     test_interpolate_pixels_precision.cpp
     test_subpixel_bug.cpp
+    test_brightness_effect.cpp
+    test_transform_effect.cpp
 )
 
 target_link_libraries(avs_tests PRIVATE 
