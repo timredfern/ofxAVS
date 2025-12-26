@@ -15,7 +15,7 @@ namespace avs {
 
 DynamicMovementEffect::DynamicMovementEffect()
     : last_width_(0), last_height_(0), last_grid_width_(0), last_grid_height_(0),
-      last_rectangular_(false), last_interp_mode_(InterpolationMode::LINEAR),
+      last_rectangular_(false), last_bilinear_(true),
       last_wrap_(false), last_blend_(false), last_buffer_source_(0), script_initialized_(false)
 {
     // Initialize script variables
@@ -41,12 +41,11 @@ bool DynamicMovementEffect::needs_grid_regeneration(int w, int h, AudioData visd
     std::string beat_script = parameters().get_string("beat_script");
     std::string pixel_script = parameters().get_string("pixel_script");
     bool rectangular = parameters().get_bool("rectangular", false);
-    int interp_int = parameters().get_int("interpolation", 0);
-    InterpolationMode interp_mode = static_cast<InterpolationMode>(interp_int);
+    bool bilinear = parameters().get_bool("bilinear", true);
     bool wrap = parameters().get_bool("wrap", false);
     bool blend = parameters().get_bool("blend", false);
-    
-    return w != last_width_ || 
+
+    return w != last_width_ ||
            h != last_height_ ||
            grid_width != last_grid_width_ ||
            grid_height != last_grid_height_ ||
@@ -55,7 +54,7 @@ bool DynamicMovementEffect::needs_grid_regeneration(int w, int h, AudioData visd
            beat_script != last_beat_script_ ||
            pixel_script != last_pixel_script_ ||
            rectangular != last_rectangular_ ||
-           interp_mode != last_interp_mode_ ||
+           bilinear != last_bilinear_ ||
            wrap != last_wrap_ ||
            blend != last_blend_;
 }
@@ -64,22 +63,21 @@ void DynamicMovementEffect::generate_grid(int w, int h, AudioData visdata, int i
     int grid_width = parameters().get_int("grid_width", 16);
     int grid_height = parameters().get_int("grid_height", 16);
     bool rectangular = parameters().get_bool("rectangular", false);
-    int interp_int = parameters().get_int("interpolation", 0);
-    InterpolationMode interp_mode = static_cast<InterpolationMode>(interp_int);
+    bool bilinear = parameters().get_bool("bilinear", true);
     bool wrap = parameters().get_bool("wrap", false);
     std::string pixel_script = parameters().get_string("pixel_script");
-    
+
     // Execute script phases in order
     execute_init_script(visdata, w, h);
     execute_frame_script(visdata, w, h);
     if (isBeat) {
         execute_beat_script(visdata, w, h);
     }
-    
+
     // For rectangular mode, just pass the script directly to the grid generator
     // The CoordinateLookupTable will execute it properly using the script engine
     std::string x_expr, y_expr;
-    
+
     if (rectangular) {
         // In rectangular mode, the pixel script should contain assignments like "x=x; y=y-0.01"
         // Pass the script to be executed by the script engine in CoordinateLookupTable
@@ -90,12 +88,13 @@ void DynamicMovementEffect::generate_grid(int w, int h, AudioData visdata, int i
         x_expr = pixel_script;
         y_expr = pixel_script;
     }
-    
-    grid_table_.generate(w, h, grid_width, grid_height, 
+
+    // Original AVS always uses LINEAR grid interpolation, bilinear controls per-pixel sampling
+    grid_table_.generate(w, h, grid_width, grid_height,
                         x_expr, y_expr,
-                        rectangular, false, // subpixel disabled for grid mode
-                        visdata, wrap, interp_mode);
-    
+                        rectangular, bilinear,
+                        visdata, wrap, InterpolationMode::LINEAR);
+
     // Update state
     last_width_ = w;
     last_height_ = h;
@@ -106,7 +105,7 @@ void DynamicMovementEffect::generate_grid(int w, int h, AudioData visdata, int i
     last_beat_script_ = parameters().get_string("beat_script");
     last_pixel_script_ = pixel_script;
     last_rectangular_ = rectangular;
-    last_interp_mode_ = interp_mode;
+    last_bilinear_ = bilinear;
     last_wrap_ = wrap;
     last_blend_ = parameters().get_bool("blend", false);
 }

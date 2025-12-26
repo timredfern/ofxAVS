@@ -61,7 +61,7 @@ private:
     std::string last_beat_script_;
     std::string last_pixel_script_;
     bool last_rectangular_;
-    InterpolationMode last_interp_mode_;
+    bool last_bilinear_;
     bool last_wrap_;
     bool last_blend_;
     int last_buffer_source_; 

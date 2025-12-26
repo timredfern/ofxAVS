@@ -2,9 +2,9 @@
 
 ## Critical Development Rules
 
-**NEVER claim something is "fixed" until it has been tested and verified working.**
+**NEVER claim something is "fixed" until the user has tested and verified it working.**
 
-Test first, then claim success. Build and run the application to confirm fixes before marking tasks as completed.
+The user handles all building and testing. After making code changes, wait for the user to confirm whether the fix works before claiming success.
 
 ## Critical Build Requirements
 
@@ -25,7 +25,7 @@ The git repository root is `/Users/tim/workspace/avs/ofxAVS`. Do NOT run `git in
 
 ## Building
 
-**The user handles OpenFrameworks builds.** Do not attempt to run make for OF projects.
+**The user handles ALL builds and testing.** Do not attempt to run make, cmake, or any build commands. Do not add "Build and test" as a todo item - the user will do this.
 
 ### Standalone avs_lib example (no OpenFrameworks)
 ```bash
