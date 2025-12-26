@@ -100,50 +100,65 @@ void CoordinateLookupTable::generate_rectangular(const std::string& x_expr, cons
 void CoordinateLookupTable::generate_polar(const std::string& x_expr, const std::string& y_expr,
                                          AudioData audio_data)
 {
-    ScriptEngine x_engine, y_engine; // x_expr affects 'd', y_expr affects 'r'
-    
+    ScriptEngine engine;  // Single engine like rectangular mode
+
     // Set audio context
-    x_engine.set_audio_context(audio_data, false);
-    y_engine.set_audio_context(audio_data, false);
-    
+    engine.set_audio_context(audio_data, false);
+
+    // Calculate max distance for normalization (diagonal/2, matching original AVS)
+    double max_d = std::sqrt((double)(output_width_ * output_width_ +
+                                       output_height_ * output_height_)) * 0.5;
+    double inv_max_d = 1.0 / max_d;
+
     // Generate coordinate transformations for each grid point
     for (int gy = 0; gy < grid_height_; gy++) {
         for (int gx = 0; gx < grid_width_; gx++) {
-            // Convert grid coordinates to normalized coordinates
-            auto norm_coords = normalize_coordinates(gx, gy);
-            double norm_x = norm_coords.first;
-            double norm_y = norm_coords.second;
-            
-            // Convert to polar coordinates centered at (0.5, 0.5)
-            double centered_x = norm_x - 0.5;
-            double centered_y = norm_y - 0.5;
-            double d = std::sqrt(centered_x * centered_x + centered_y * centered_y); // distance from center
-            double r = std::atan2(centered_y, centered_x); // angle [-π, π]
-            
+            // Convert grid coordinates to pixel coordinates
+            double pixel_x = (gx * (output_width_ - 1.0)) / (grid_width_ - 1);
+            double pixel_y = (gy * (output_height_ - 1.0)) / (grid_height_ - 1);
+
+            // Convert to centered coordinates (center of screen = 0,0)
+            double centered_x = pixel_x - output_width_ * 0.5;
+            double centered_y = pixel_y - output_height_ * 0.5;
+
+            // Calculate polar coordinates matching original AVS:
+            // x, y in range [-1, 1]
+            // d normalized so corners ≈ 1
+            // r with PI/2 offset so 0 = "up"
+            double x = centered_x * 2.0 / output_width_;
+            double y = centered_y * 2.0 / output_height_;
+            double d = std::sqrt(centered_x * centered_x + centered_y * centered_y) * inv_max_d;
+            double r = std::atan2(centered_y, centered_x) + M_PI * 0.5;  // Offset like original
+
             // Set pixel context
-            int pixel_x = (gx * output_width_) / grid_width_;
-            int pixel_y = (gy * output_height_) / grid_height_;
-            x_engine.set_pixel_context(pixel_x, pixel_y, output_width_, output_height_);
-            y_engine.set_pixel_context(pixel_x, pixel_y, output_width_, output_height_);
-            
-            // Set polar variables
-            x_engine.set_variable("d", d);
-            x_engine.set_variable("r", r);
-            y_engine.set_variable("d", d);
-            y_engine.set_variable("r", r);
-            
-            // Evaluate expressions (x_expr modifies d, y_expr modifies r)
-            double new_d = x_engine.evaluate(x_expr);
-            double new_r = y_engine.evaluate(y_expr);
-            
+            engine.set_pixel_context((int)pixel_x, (int)pixel_y, output_width_, output_height_);
+
+            // Set ALL variables (x, y, d, r) like original AVS does
+            engine.set_variable("x", x);
+            engine.set_variable("y", y);
+            engine.set_variable("d", d);
+            engine.set_variable("r", r);
+
+            // Execute the script ONCE (same pattern as rectangular mode)
+            engine.evaluate(x_expr);
+
+            // Read back the modified d and r values
+            double new_d = engine.get_variable("d");
+            double new_r = engine.get_variable("r");
+
             // Handle invalid results
             if (!std::isfinite(new_d)) new_d = d;
             if (!std::isfinite(new_r)) new_r = r;
-            
-            // Convert back to cartesian normalized coordinates
-            double dest_norm_x = 0.5 + std::cos(new_r) * new_d;
-            double dest_norm_y = 0.5 + std::sin(new_r) * new_d;
-            
+
+            // Convert back to cartesian: remove PI/2 offset, scale d back up
+            new_r -= M_PI * 0.5;
+            double dest_pixel_x = output_width_ * 0.5 + std::cos(new_r) * new_d * max_d;
+            double dest_pixel_y = output_height_ * 0.5 + std::sin(new_r) * new_d * max_d;
+
+            // Convert to normalized [0, 1] for storage
+            double dest_norm_x = dest_pixel_x / (output_width_ - 1);
+            double dest_norm_y = dest_pixel_y / (output_height_ - 1);
+
             // Store the transformed coordinates
             coordinate_grid_[gy * grid_width_ + gx] = {dest_norm_x, dest_norm_y};
         }

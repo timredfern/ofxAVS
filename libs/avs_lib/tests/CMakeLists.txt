@@ -77,6 +77,7 @@ add_executable(avs_tests
     test_subpixel_bug.cpp
     test_brightness_effect.cpp
     test_transform_effect.cpp
+    test_coordinate_transforms.cpp
 )
 
 target_link_libraries(avs_tests PRIVATE 
@@ -108,8 +109,14 @@ add_custom_target(test_lexer
     COMMENT "Running lexer tests"
 )
 
-add_custom_target(test_evaluator  
+add_custom_target(test_evaluator
     COMMAND avs_tests [evaluator]
     DEPENDS avs_tests
     COMMENT "Running evaluator tests"
+)
+
+add_custom_target(test_transform
+    COMMAND avs_tests [transform]
+    DEPENDS avs_tests
+    COMMENT "Running coordinate transform tests"
 )
