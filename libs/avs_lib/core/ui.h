@@ -15,7 +15,8 @@ enum class ControlType {
     SLIDER,
     BUTTON,
     RADIO_BUTTON,
-    TEXT_INPUT,
+    TEXT_INPUT,      // Single-line text input
+    EDITTEXT,        // Multi-line text edit (for scripts)
     COLOR_BUTTON,
     DROPDOWN
 };

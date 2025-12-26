@@ -40,7 +40,6 @@ public:
     static const PluginInfo effect_info;
 
 private:
-    void setup_parameters();
     bool needs_grid_regeneration(int w, int h, AudioData visdata) const;
     void generate_grid(int w, int h, AudioData visdata, int isBeat);
     

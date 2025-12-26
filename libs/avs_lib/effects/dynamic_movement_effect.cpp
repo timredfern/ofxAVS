@@ -7,6 +7,7 @@
 #include "dynamic_movement_effect.h"
 #include "../core/parameter.h"
 #include "../core/plugin_manager.h"
+#include "../core/ui.h"
 #include <cmath>
 #include <cstring>
 
@@ -17,41 +18,19 @@ DynamicMovementEffect::DynamicMovementEffect()
       last_rectangular_(false), last_interp_mode_(InterpolationMode::LINEAR),
       last_wrap_(false), last_blend_(false), last_buffer_source_(0), script_initialized_(false)
 {
-    // Initialize script variables  
+    // Initialize script variables
     memset(script_vars_, 0, sizeof(script_vars_));
-    setup_parameters();
-}
+    init_parameters_from_layout(effect_info.ui_layout);
 
-void DynamicMovementEffect::setup_parameters() {
-    auto& params = parameters();
-    
-    params.add_parameter(std::make_shared<Parameter>("enabled", ParameterType::BOOL, true));
-    
-    // Multi-phase scripts (matching original r_dmove.cpp)
-    params.add_parameter(std::make_shared<Parameter>("init_script", ParameterType::STRING,
-        std::string("// Init phase - run once")));
-    params.add_parameter(std::make_shared<Parameter>("frame_script", ParameterType::STRING,
-        std::string("// Frame phase - run per frame")));
-    params.add_parameter(std::make_shared<Parameter>("beat_script", ParameterType::STRING,
-        std::string("// Beat phase - run on beat")));
-    params.add_parameter(std::make_shared<Parameter>("pixel_script", ParameterType::STRING,
-        std::string("x=x; y=y-0.01")));
-    
-    // Grid configuration
-    params.add_parameter(std::make_shared<Parameter>("grid_width", ParameterType::INT, 16, 2, 256));
-    params.add_parameter(std::make_shared<Parameter>("grid_height", ParameterType::INT, 16, 2, 256));
-    
-    // Coordinate system
-    params.add_parameter(std::make_shared<Parameter>("rectangular", ParameterType::BOOL, true)); // Default: rectangular for x,y
-    
-    // Interpolation mode
-    std::vector<std::string> interp_options = {"None (Stepped)", "Linear", "Nearest"};
-    params.add_parameter(std::make_shared<Parameter>("interpolation", ParameterType::ENUM, 1, interp_options));
-    
-    // Rendering options
-    params.add_parameter(std::make_shared<Parameter>("wrap", ParameterType::BOOL, false));
-    params.add_parameter(std::make_shared<Parameter>("blend", ParameterType::BOOL, false));
-    params.add_parameter(std::make_shared<Parameter>("no_movement", ParameterType::BOOL, false));
+    // Set default script values (STRING parameters need manual init)
+    parameters().add_parameter(std::make_shared<Parameter>("init_script", ParameterType::STRING,
+        std::string("")));
+    parameters().add_parameter(std::make_shared<Parameter>("frame_script", ParameterType::STRING,
+        std::string("")));
+    parameters().add_parameter(std::make_shared<Parameter>("beat_script", ParameterType::STRING,
+        std::string("")));
+    parameters().add_parameter(std::make_shared<Parameter>("pixel_script", ParameterType::STRING,
+        std::string("d=d*0.9")));
 }
 
 bool DynamicMovementEffect::needs_grid_regeneration(int w, int h, AudioData visdata) const {
@@ -181,7 +160,95 @@ const PluginInfo DynamicMovementEffect::effect_info {
     .version = 1,
     .factory = []() -> std::unique_ptr<avs::EffectBase> {
         return std::make_unique<DynamicMovementEffect>();
+    },
+    .ui_layout = {
+        {
+            // Script editors - original positions from r_dmove.cpp dialog
+            {
+                .id = "init_script",
+                .text = "Init",
+                .type = ControlType::EDITTEXT,
+                .x = 25, .y = 0, .w = 208, .h = 14
+            },
+            {
+                .id = "frame_script",
+                .text = "Frame",
+                .type = ControlType::EDITTEXT,
+                .x = 25, .y = 14, .w = 208, .h = 53
+            },
+            {
+                .id = "beat_script",
+                .text = "Beat",
+                .type = ControlType::EDITTEXT,
+                .x = 25, .y = 67, .w = 208, .h = 53
+            },
+            {
+                .id = "pixel_script",
+                .text = "Pixel",
+                .type = ControlType::EDITTEXT,
+                .x = 25, .y = 120, .w = 208, .h = 53
+            },
+            // Grid size
+            {
+                .id = "grid_width",
+                .text = "Grid W",
+                .type = ControlType::TEXT_INPUT,
+                .x = 108, .y = 190, .w = 24, .h = 12,
+                .range = {2, 256},
+                .default_val = 16
+            },
+            {
+                .id = "grid_height",
+                .text = "Grid H",
+                .type = ControlType::TEXT_INPUT,
+                .x = 160, .y = 190, .w = 24, .h = 12,
+                .range = {2, 256},
+                .default_val = 16
+            },
+            // Checkboxes
+            {
+                .id = "blend",
+                .text = "Blend",
+                .type = ControlType::CHECKBOX,
+                .x = 0, .y = 190, .w = 34, .h = 10,
+                .default_val = 0
+            },
+            {
+                .id = "wrap",
+                .text = "Wrap",
+                .type = ControlType::CHECKBOX,
+                .x = 35, .y = 190, .w = 33, .h = 10,
+                .default_val = 0
+            },
+            {
+                .id = "no_movement",
+                .text = "No movement",
+                .type = ControlType::CHECKBOX,
+                .x = 113, .y = 176, .w = 100, .h = 10,
+                .default_val = 0
+            },
+            {
+                .id = "rectangular",
+                .text = "Rectangular coords",
+                .type = ControlType::CHECKBOX,
+                .x = 0, .y = 204, .w = 90, .h = 10,
+                .default_val = 0
+            },
+            {
+                .id = "bilinear",
+                .text = "Bilinear",
+                .type = ControlType::CHECKBOX,
+                .x = 94, .y = 204, .w = 63, .h = 10,
+                .default_val = 1
+            }
+        }
     }
 };
+
+// Register effect at startup
+static bool register_dynamic_movement = []() {
+    PluginManager::instance().register_effect(DynamicMovementEffect::effect_info);
+    return true;
+}();
 
 } // namespace avs

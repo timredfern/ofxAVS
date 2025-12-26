@@ -7,7 +7,7 @@
 //--------------------------------------------------------------
 void ofApp::setup(){
     ofSetWindowTitle("AVS Chain Example");
-    ofSetWindowShape(1470, 640);
+    ofSetWindowShape(1500, 640);
     
     // Initialize audio flag
     audioInitialized = false;
@@ -60,7 +60,7 @@ void ofApp::draw(){
     ofBackground(20);
     
     // Draw visualization directly
-    avs.draw(850, 20, 600, 600);
+    avs.draw(900, 20, 600, 600);
     
     // Draw UI panels only
     gui.begin();

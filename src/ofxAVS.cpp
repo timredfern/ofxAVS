@@ -229,7 +229,7 @@ void ofxAVS::drawAvailableEffectsPanel() {
 void ofxAVS::drawParametersPanel() {
     int panel_x = chain_panel_width + available_panel_width + 30;
     ImGui::SetNextWindowPos(ImVec2(panel_x, 10));
-    ImGui::SetNextWindowSize(ImVec2(parameters_panel_width, 400));
+    ImGui::SetNextWindowSize(ImVec2(parameters_panel_width, parameters_panel_height));
     
     ImGui::PushStyleColor(ImGuiCol_TitleBg, ImVec4(0.2f, 0.2f, 0.2f, 1.0f));
     ImGui::PushStyleColor(ImGuiCol_TitleBgActive, ImVec4(0.2f, 0.2f, 0.2f, 1.0f));

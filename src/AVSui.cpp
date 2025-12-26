@@ -5,6 +5,9 @@
 #include "AVSui.h"
 #include "ofxImGui.h"
 #include <cmath>
+#include <array>
+#include <unordered_map>
+#include <cstring>
 
 namespace avs_ui {
 
@@ -29,10 +32,10 @@ static int squareCurve(int val) {
 void renderImGui(const avs::EffectUILayout& layout, avs::EffectBase* effect) {
     if (!effect) return;
 
-    // All AVS dialogs are 233x214 but we are doubling the spacing. not using original windows UI sizes
-    // Create unique child window ID using effect pointer
+    
     std::string child_id = "EffectDialog##" + std::to_string(reinterpret_cast<uintptr_t>(effect));
-    ImGui::BeginChild(child_id.c_str(), ImVec2(385,365), true);
+    //ImGui::BeginChild(child_id.c_str(), ImVec2(385, 365), true);
+    ImGui::BeginChild(child_id.c_str(), ImVec2(420, 440), true);
 
     auto& params = effect->parameters();
 
@@ -44,7 +47,15 @@ void renderImGui(const avs::EffectUILayout& layout, avs::EffectBase* effect) {
     ImGui::PushStyleColor(ImGuiCol_SliderGrabActive, ImVec4(0.8f, 0.8f, 0.8f, 1.0f));
 
     for (const auto& control : layout.getControls()) {
-        ImGui::SetCursorPos(ImVec2(control.x*2, control.y*2)); //double the spacing
+
+        // Positions and input boxes scaled from original AVS dialogs
+
+        float scale=2.0f;
+
+        ImGui::SetCursorPos(ImVec2(control.x * scale, control.y * scale));
+
+        int controlwidth=control.w*scale;
+        int controlheight=(control.h*scale)-12; //only used for edit boxes
 
         switch (control.type) {
             case avs::ControlType::CHECKBOX: {
@@ -173,6 +184,66 @@ void renderImGui(const avs::EffectUILayout& layout, avs::EffectBase* effect) {
                         params.set_color(control.id, new_color);
                     }
                     ImGui::EndPopup();
+                }
+                break;
+            }
+
+            case avs::ControlType::TEXT_INPUT: {
+                // Single-line text or integer input
+                std::string unique_label = control.text + "##" + control.id + "_" + std::to_string(reinterpret_cast<uintptr_t>(effect));
+
+                if (control.range.max > 0) {
+                    // Integer input with range
+                    int value = params.get_int(control.id);
+                    ImGui::SetNextItemWidth(controlwidth); // * 2.0f);
+                    if (ImGui::InputInt(unique_label.c_str(), &value, 0, 0)) {
+                        // Clamp to range
+                        if (value < control.range.min) value = control.range.min;
+                        if (value > control.range.max) value = control.range.max;
+                        params.set_int(control.id, value);
+                    }
+                } else {
+                    // String input
+                    std::string value = params.get_string(control.id);
+                    char buffer[256];
+                    strncpy(buffer, value.c_str(), sizeof(buffer) - 1);
+                    buffer[sizeof(buffer) - 1] = '\0';
+                    ImGui::SetNextItemWidth(control.w); // * 2.0f);
+                    if (ImGui::InputText(unique_label.c_str(), buffer, sizeof(buffer))) {
+                        params.set_string(control.id, std::string(buffer));
+                    }
+                }
+                break;
+            }
+
+            case avs::ControlType::EDITTEXT: {
+                // Multi-line text edit for scripts
+                std::string value = params.get_string(control.id);
+
+                // Use a static map to store edit buffers per control (char arrays for ImGui)
+                static std::unordered_map<std::string, std::array<char, 4096>> edit_buffers;
+                std::string buffer_key = control.id + "_" + std::to_string(reinterpret_cast<uintptr_t>(effect));
+
+                // Initialize buffer if needed
+                if (edit_buffers.find(buffer_key) == edit_buffers.end()) {
+                    strncpy(edit_buffers[buffer_key].data(), value.c_str(), 4095);
+                    edit_buffers[buffer_key][4095] = '\0';
+                }
+
+                // Label above the edit box
+                ImGui::Text("%s:", control.text.c_str());
+                ImGui::SetCursorPos(ImVec2(control.x , ImGui::GetCursorPosY())); //* 2.0f
+
+                std::string unique_label = "##" + control.id + "_" + std::to_string(reinterpret_cast<uintptr_t>(effect));
+
+                // Multiline input (sizes scaled 2x)
+                if (ImGui::InputTextMultiline(unique_label.c_str(),
+                    edit_buffers[buffer_key].data(),
+                    edit_buffers[buffer_key].size(),
+                    ImVec2(controlwidth , controlheight ),  //2.0f
+                    ImGuiInputTextFlags_AllowTabInput)) {
+                    // Update parameter when text changes
+                    params.set_string(control.id, std::string(edit_buffers[buffer_key].data()));
                 }
                 break;
             }

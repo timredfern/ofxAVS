@@ -74,6 +74,22 @@ protected:
                     parameters_.add_parameter(std::make_shared<Parameter>(
                         control.id, ParameterType::BOOL, false));
                     break;
+                case ControlType::TEXT_INPUT:
+                    // Single-line text or integer input
+                    if (control.range.max > 0) {
+                        // Has range, treat as integer
+                        parameters_.add_parameter(std::make_shared<Parameter>(
+                            control.id, ParameterType::INT, control.default_val,
+                            control.range.min, control.range.max));
+                    } else {
+                        parameters_.add_parameter(std::make_shared<Parameter>(
+                            control.id, ParameterType::STRING, std::string("")));
+                    }
+                    break;
+                case ControlType::EDITTEXT:
+                    // Multi-line text edit - handled separately with STRING params
+                    // Don't auto-create here, let the effect add them manually
+                    break;
                 case ControlType::DROPDOWN:
                     parameters_.add_parameter(std::make_shared<Parameter>(
                         control.id, ParameterType::INT, control.default_val,
