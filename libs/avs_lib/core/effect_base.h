@@ -57,9 +57,10 @@ protected:
                     parameters_.add_parameter(std::make_shared<Parameter>(
                         control.id, ParameterType::BOOL, control.default_val != 0));
                     break;
-                case ControlType::RADIO_BUTTON:
+                case ControlType::RADIO_GROUP:
                     parameters_.add_parameter(std::make_shared<Parameter>(
-                        control.id, ParameterType::BOOL, control.default_val != 0));
+                        control.id, ParameterType::INT, control.default_val,
+                        0, static_cast<int>(control.radio_options.size()) - 1));
                     break;
                 case ControlType::SLIDER:
                     parameters_.add_parameter(std::make_shared<Parameter>(

@@ -133,30 +133,17 @@ void renderImGui(const avs::EffectUILayout& layout, avs::EffectBase* effect) {
                 break;
             }
 
-            case avs::ControlType::RADIO_BUTTON: {
-                bool value = params.get_bool(control.id);
-                std::string unique_label = control.text + "##" + control.id + "_" + std::to_string(reinterpret_cast<uintptr_t>(effect));
-                if (ImGui::RadioButton(unique_label.c_str(), value)) {
-                    // Set this radio button to true and others in the group to false
-                    params.set_bool(control.id, true);
-
-                    // Handle radio button groups - find similar controls and disable them
-                    if (control.id.find("blend_") == 0) {
-                        // Clear effect blend mode group
-                        if (control.id != "blend_replace") params.set_bool("blend_replace", false);
-                        if (control.id != "blend_additive") params.set_bool("blend_additive", false);
-                        if (control.id != "blend_5050") params.set_bool("blend_5050", false);
-                    } else if (control.id.find("channel_") == 0) {
-                        // Oscilloscope channel group
-                        if (control.id != "channel_left") params.set_bool("channel_left", false);
-                        if (control.id != "channel_right") params.set_bool("channel_right", false);
-                        if (control.id != "channel_both") params.set_bool("channel_both", false);
-                    } else if (control.id == "replace" || control.id == "additive" || control.id == "5050") {
-                        // Brightness blend mode group
-                        if (control.id != "replace") params.set_bool("replace", false);
-                        if (control.id != "additive") params.set_bool("additive", false);
-                        if (control.id != "5050") params.set_bool("5050", false);
+            case avs::ControlType::RADIO_GROUP: {
+                // Radio group with explicit positions for each option
+                int current_value = params.get_int(control.id);
+                int option_index = 0;
+                for (const auto& option : control.radio_options) {
+                    ImGui::SetCursorPos(ImVec2(option.x * scale, option.y * scale));
+                    std::string unique_label = option.label + "##" + control.id + "_" + std::to_string(option_index) + "_" + std::to_string(reinterpret_cast<uintptr_t>(effect));
+                    if (ImGui::RadioButton(unique_label.c_str(), current_value == option_index)) {
+                        params.set_int(control.id, option_index);
                     }
+                    option_index++;
                 }
                 break;
             }

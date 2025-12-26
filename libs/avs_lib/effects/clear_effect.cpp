@@ -72,23 +72,21 @@ int ClearEffect::render(AudioData visdata, int isBeat,
     frame_counter_++;
     
     uint32_t color = parameters().get_color("color");
-    bool blend_replace = parameters().get_bool("blend_replace");
-    bool blend_additive = parameters().get_bool("blend_additive");
-    bool blend_5050 = parameters().get_bool("blend_5050");
-    
+    auto blend_mode = static_cast<BlendMode>(parameters().get_int("blend_mode"));
+
     int pixel_count = w * h;
     uint32_t* p = framebuffer;
-    
+
     // Apply clearing operation based on blend mode
-    if (blend_additive) {
+    if (blend_mode == BlendMode::ADDITIVE) {
         for (int i = 0; i < pixel_count; i++) {
             p[i] = blend_add(p[i], color);
         }
-    } else if (blend_5050) {
+    } else if (blend_mode == BlendMode::BLEND_5050) {
         for (int i = 0; i < pixel_count; i++) {
             p[i] = blend_avg(p[i], color);
         }
-    } else { // Default to replace
+    } else {  // REPLACE or DEFAULT
         for (int i = 0; i < pixel_count; i++) {
             p[i] = color;
         }
@@ -130,32 +128,15 @@ const PluginInfo ClearEffect::effect_info {
                 .default_val = 0
             },
             {
-                .id = "blend_replace",
-                .text = "Replace blend mode",
-                .type = ControlType::RADIO_BUTTON,
-                .x = 0, .y = 41, .w = 43, .h = 10,
-                .default_val = 1
-            },
-            {
-                .id = "blend_additive",
-                .text = "Additive blend mode",
-                .type = ControlType::RADIO_BUTTON,
-                .x = 0, .y = 51, .w = 61, .h = 10,
-                .default_val = 0
-            },
-            {
-                .id = "blend_5050",
-                .text = "Blend 50/50 mode",
-                .type = ControlType::RADIO_BUTTON,
-                .x = 0, .y = 61, .w = 55, .h = 10,
-                .default_val = 0
-            },
-            {
-                .id = "default_render_blend",
-                .text = "Default render blend mode",
-                .type = ControlType::RADIO_BUTTON,
-                .x = 0, .y = 71, .w = 99, .h = 10,
-                .default_val = 0
+                .id = "blend_mode",
+                .type = ControlType::RADIO_GROUP,
+                .radio_options = {
+                    {"Replace blend mode", 0, 41, 43, 10},
+                    {"Additive blend mode", 0, 51, 61, 10},
+                    {"Blend 50/50 mode", 0, 61, 55, 10},
+                    {"Default render blend mode", 0, 71, 99, 10}
+                },
+                .default_val = 0  // Replace
             }
         }
     }

@@ -76,8 +76,9 @@ int BrightnessEffect::render(AudioData visdata, int isBeat,
         if (blue_tab[n] < 0) blue_tab[n] = 0;
     }
 
-    bool blend = parameters().get_bool("additive");
-    bool blendavg = parameters().get_bool("5050");
+    auto blend_mode = static_cast<BlendMode>(parameters().get_int("blend_mode"));
+    bool blend = (blend_mode == BlendMode::ADDITIVE);
+    bool blendavg = (blend_mode == BlendMode::BLEND_5050);
     bool exclude = parameters().get_bool("exclude");
     uint32_t exc_color = parameters().get_color("exclude_color");
     int distance = parameters().get_int("distance");
@@ -203,25 +204,14 @@ const PluginInfo BrightnessEffect::effect_info {
                 .default_val = 0
             },
             {
-                .id = "replace",
-                .text = "Replace",
-                .type = ControlType::RADIO_BUTTON,
-                .x = 0, .y = 71, .w = 43, .h = 10,
-                .default_val = 1
-            },
-            {
-                .id = "additive",
-                .text = "Additive blend",
-                .type = ControlType::RADIO_BUTTON,
-                .x = 0, .y = 81, .w = 61, .h = 10,
-                .default_val = 0
-            },
-            {
-                .id = "5050",
-                .text = "50/50 blend",
-                .type = ControlType::RADIO_BUTTON,
-                .x = 0, .y = 92, .w = 55, .h = 10,
-                .default_val = 0
+                .id = "blend_mode",
+                .type = ControlType::RADIO_GROUP,
+                .radio_options = {
+                    {"Replace", 0, 71, 43, 10},
+                    {"Additive blend", 0, 81, 61, 10},
+                    {"50/50 blend", 0, 92, 55, 10}
+                },
+                .default_val = 0  // Replace
             },
             {
                 .id = "exclude",

@@ -14,11 +14,23 @@ enum class ControlType {
     CHECKBOX,
     SLIDER,
     BUTTON,
-    RADIO_BUTTON,
+    RADIO_GROUP,     // Group of mutually exclusive radio buttons
     TEXT_INPUT,      // Single-line text input
     EDITTEXT,        // Multi-line text edit (for scripts)
     COLOR_BUTTON,
     DROPDOWN
+};
+
+// Common enums for radio group values
+enum class BlendMode { REPLACE = 0, ADDITIVE = 1, BLEND_5050 = 2, DEFAULT = 3 };
+enum class DrawStyle { LINES = 0, SOLID = 1, DOTS = 2 };
+enum class AudioChannel { LEFT = 0, RIGHT = 1, CENTER = 2 };
+enum class VerticalPosition { TOP = 0, BOTTOM = 1, CENTER = 2 };
+enum class RenderMode { SPECTRUM = 0, OSCILLOSCOPE = 1 };
+
+struct RadioOption {
+    std::string label;
+    int x, y, w, h;
 };
 
 struct ControlRange {
@@ -34,7 +46,8 @@ struct ControlLayout {
     int x, y, w, h;              // Position and size from original dialog
     ControlRange range = {0, 100};  // For sliders: min, max, tick_freq
     int default_val = 0;            // Default value for all control types
-    std::vector<std::string> options; // For dropdowns/radio groups
+    std::vector<std::string> options; // For dropdowns
+    std::vector<RadioOption> radio_options; // For RADIO_GROUP: each option with position
     bool enabled = true;
 };
 
