@@ -60,7 +60,7 @@ void ofApp::draw(){
     ofBackground(20);
     
     // Draw visualization directly
-    avs.draw(900, 20, 600, 600);
+    avs.draw(880, 20, 600, 600);
     
     // Draw UI panels only
     gui.begin();

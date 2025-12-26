@@ -60,49 +60,61 @@ int OscilloscopeEffect::render(AudioData visdata, int isBeat,
     bool channel_both = parameters().get_bool("channel_both");
     bool solid = parameters().get_bool("solid");
     
-    // Scale factors - use raw samples directly (1:1 mapping up to screen width)
-    int num_samples = std::min(w, 576);  // Use up to screen width samples
-    float y_scale = h / 256.0f;  // Map signed char range to screen height
+    // Scale factors matching original AVS (uses 288 samples, scales to screen width)
+    const int sample_count = 288;  // Original AVS uses 288 samples
+    float x_scale = (float)sample_count / w;  // Maps screen x to sample index
+    float y_scale = h / 2.0f / 256.0f;  // Map signed char range to half screen height
     int y_center = h / 2;
     
-    // Choose which channel to display
-    unsigned char* audio_data;
+    // Choose which channel to display - audio data is char (-128 to 127, 0 = silence)
+    char* audio_data;
+    static char mixed_data[576];
+
     if (channel_left) {
-        audio_data = (unsigned char*)&visdata[0][0][0]; // Left channel waveform
+        audio_data = &visdata[0][0][0]; // Left channel waveform
     } else if (channel_right) {
-        audio_data = (unsigned char*)&visdata[0][1][0]; // Right channel waveform
+        audio_data = &visdata[0][1][0]; // Right channel waveform
     } else if (channel_both) {
-        // Mix both channels - simplified
-        static char mixed_data[576];
+        // Mix both channels
         for (int i = 0; i < 576; i++) {
             mixed_data[i] = (visdata[0][0][i] + visdata[0][1][i]) / 2;
         }
-        audio_data = (unsigned char*)mixed_data;
+        audio_data = mixed_data;
     } else {
         // Default to left if no channel selected
-        audio_data = (unsigned char*)&visdata[0][0][0];
+        audio_data = &visdata[0][0][0];
     }
-    
+
     if (solid) {
-        // Draw connected line segments - raw samples, no interpolation
-        int prev_y = y_center + static_cast<int>((static_cast<signed char>(audio_data[0])) * y_scale);
+        // Draw connected line segments scaled to full width (like original AVS line scope)
+        float xs = 1.0f / x_scale;  // w / 288.0 - scale factor for x coordinates
+        int lx = 0;
+        int ly = y_center + static_cast<int>(audio_data[0] * y_scale);
 
-        for (int x = 1; x < num_samples; x++) {
-            // Use raw sample directly at index x
-            int y = y_center + static_cast<int>((static_cast<signed char>(audio_data[x])) * y_scale);
+        for (int i = 1; i < sample_count; i++) {
+            int ox = static_cast<int>(i * xs);
+            int oy = y_center + static_cast<int>(audio_data[i] * y_scale);
 
-            // Draw line from previous point to current point
-            draw_line(framebuffer, w, h, x - 1, prev_y, x, y, color);
+            draw_line(framebuffer, w, h, lx, ly, ox, oy, color);
 
-            prev_y = y;
+            lx = ox;
+            ly = oy;
         }
     } else {
-        // Draw dots - raw samples, no interpolation
-        for (int x = 0; x < num_samples; x++) {
-            // Use raw sample directly at index x
-            int y = y_center + static_cast<int>((static_cast<signed char>(audio_data[x])) * y_scale);
+        // Draw dots across full width with sample interpolation (like original AVS dot scope)
+        for (int x = 0; x < w; x++) {
+            float r = x * x_scale;  // Map screen x to sample index
+            int idx = static_cast<int>(r);
+            float frac = r - idx;
 
-            // Draw pixel
+            // Ensure we don't read past the buffer
+            if (idx >= sample_count - 1) idx = sample_count - 2;
+
+            // Linear interpolation between samples
+            float yr = audio_data[idx] * (1.0f - frac) + audio_data[idx + 1] * frac;
+
+            int y = y_center + static_cast<int>(yr * y_scale);
+
             if (y >= 0 && y < h) {
                 framebuffer[y * w + x] = color;
             }
