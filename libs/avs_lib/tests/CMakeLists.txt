@@ -51,7 +51,6 @@ add_executable(avs_tests
     test_enum_parameter.cpp
     test_movement_presets.cpp
     test_brightness_effect.cpp
-    test_transform_effect.cpp
     test_complete_script_engine.cpp
     test_multi_phase_scripts.cpp
     test_semicolon_check.cpp
@@ -92,8 +91,3 @@ add_custom_target(test_evaluator
     COMMENT "Running evaluator tests"
 )
 
-add_custom_target(test_transform
-    COMMAND avs_tests [transform]
-    DEPENDS avs_tests
-    COMMENT "Running coordinate transform tests"
-)

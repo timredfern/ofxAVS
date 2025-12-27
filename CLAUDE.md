@@ -23,9 +23,16 @@ This is required because:
 
 The git repository root is `/Users/tim/workspace/avs/ofxAVS`. Do NOT run `git init` - the repo already exists.
 
-## Building
+## Building and Testing
 
-**The user handles ALL builds and testing.** Do not attempt to run make, cmake, or any build commands. Do not add "Build and test" as a todo item - the user will do this.
+**The user handles ALL application builds and manual testing.** Do not attempt to run make, cmake, or any build commands for the main application. Do not add "Build and test" as a todo item - the user will do this.
+
+**ALWAYS run automated tests before committing.** The test suite in `libs/avs_lib/tests/` can and should be run before any commit:
+```bash
+cd libs/avs_lib/tests/build
+make && ./avs_tests
+```
+All tests must pass before committing. If tests fail, fix them or discuss with the user before proceeding.
 
 ### Standalone avs_lib example (no OpenFrameworks)
 ```bash

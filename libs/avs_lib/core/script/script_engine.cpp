@@ -156,7 +156,12 @@ double ScriptEngine::evaluate(const std::string& expression) {
         }
         
         return result;
+    } catch (const std::runtime_error& e) {
+        // Script errors (unknown functions, syntax errors) should propagate
+        pImpl->last_error = e.what();
+        throw;
     } catch (const std::exception& e) {
+        // Math errors handled gracefully
         pImpl->last_error = e.what();
         return 0.0;
     }

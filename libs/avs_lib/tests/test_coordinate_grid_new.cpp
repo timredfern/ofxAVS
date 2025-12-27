@@ -182,30 +182,24 @@ TEST_CASE("CoordinateGrid apply with different grid sizes", "[coordinate]") {
         REQUIRE(diff_count > W * H / 10);  // At least 10% different
     }
 
-    SECTION("identity transform produces similar output regardless of grid size") {
+    SECTION("identity transform preserves input") {
         const int W = 32, H = 32;
 
-        CoordinateGrid grid2, grid8;
-        grid2.resize(2, 2);
-        grid8.resize(8, 8);
+        CoordinateGrid grid;
+        grid.resize(8, 8);
 
-        // Fill both with identity transform (each grid point maps to corresponding output position)
-        auto fillIdentity = [W, H](CoordinateGrid& g) {
-            for (int gy = 0; gy < g.grid_height(); gy++) {
-                for (int gx = 0; gx < g.grid_width(); gx++) {
-                    double nx = (double)gx / (g.grid_width() - 1);
-                    double ny = (double)gy / (g.grid_height() - 1);
-                    g.set(gx, gy, nx * (W - 1), ny * (H - 1));
-                }
+        // Fill with identity transform
+        // Grid points map from normalized [0,1] to source [0, W] so pixel i samples from source i
+        for (int gy = 0; gy < grid.grid_height(); gy++) {
+            for (int gx = 0; gx < grid.grid_width(); gx++) {
+                double nx = (double)gx / (grid.grid_width() - 1);
+                double ny = (double)gy / (grid.grid_height() - 1);
+                grid.set(gx, gy, nx * W, ny * H);
             }
-        };
-
-        fillIdentity(grid2);
-        fillIdentity(grid8);
+        }
 
         std::vector<uint32_t> input(W * H);
-        std::vector<uint32_t> output2(W * H, 0);
-        std::vector<uint32_t> output8(W * H, 0);
+        std::vector<uint32_t> output(W * H, 0);
 
         // Fill input with gradient
         for (int y = 0; y < H; y++) {
@@ -214,24 +208,24 @@ TEST_CASE("CoordinateGrid apply with different grid sizes", "[coordinate]") {
             }
         }
 
-        grid2.apply(input.data(), output2.data(), W, H, true, false, false);
-        grid8.apply(input.data(), output8.data(), W, H, true, false, false);
+        // Use nearest neighbor for exact comparison
+        grid.apply(input.data(), output.data(), W, H, false, false, false);
 
-        // For identity, both should produce output very similar to input
-        // (small differences due to interpolation precision are OK)
+        // For identity with nearest neighbor, output should closely match input
         int match_count = 0;
         for (int i = 0; i < W * H; i++) {
-            // Check if colors are very close (within 2 per channel due to interpolation)
-            int r1 = (output2[i] >> 16) & 0xFF;
-            int r2 = (output8[i] >> 16) & 0xFF;
-            int g1 = (output2[i] >> 8) & 0xFF;
-            int g2 = (output8[i] >> 8) & 0xFF;
-            if (std::abs(r1 - r2) <= 2 && std::abs(g1 - g2) <= 2) {
+            int r_in = (input[i] >> 16) & 0xFF;
+            int r_out = (output[i] >> 16) & 0xFF;
+            int g_in = (input[i] >> 8) & 0xFF;
+            int g_out = (output[i] >> 8) & 0xFF;
+            // Allow small differences due to grid interpolation
+            if (std::abs(r_in - r_out) <= 8 && std::abs(g_in - g_out) <= 8) {
                 match_count++;
             }
         }
 
         // Most pixels should match closely for identity
+        INFO("Identity match count: " << match_count << " / " << (W * H));
         REQUIRE(match_count > W * H * 0.9);  // At least 90% similar
     }
 }

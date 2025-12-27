@@ -25,12 +25,17 @@ std::unique_ptr<ASTNode> Parser::parse_statement_sequence() {
     // Parse additional statements separated by semicolons
     while (lexer.peek_token().type == TokenType::SEMICOLON) {
         lexer.next_token(); // consume ';'
-        
+
+        // Skip empty statements (consecutive semicolons)
+        while (lexer.peek_token().type == TokenType::SEMICOLON) {
+            lexer.next_token();
+        }
+
         // Allow optional trailing semicolon
         if (lexer.peek_token().type == TokenType::END_OF_INPUT) {
             break;
         }
-        
+
         sequence->statements.push_back(parse_statement());
     }
     
@@ -158,8 +163,8 @@ std::unique_ptr<ASTNode> Parser::parse_factor() {
         }
         
         default:
-            // Error: unexpected token
-            return std::make_unique<NumberNode>(0.0);
+            // Error: unexpected token - throw for syntax errors
+            throw std::runtime_error("Unexpected token in expression");
     }
 }
 

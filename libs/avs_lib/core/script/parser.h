@@ -139,8 +139,9 @@ struct FunctionCallNode : public ASTNode {
         } else if (function_name == "exp") {
             return arg_values.size() > 0 ? std::exp(arg_values[0]) : 0.0;
         }
-        
-        return 0.0; // Unknown function
+
+        // Unknown function is a script error
+        throw std::runtime_error("Unknown function: " + function_name);
     }
 };
 

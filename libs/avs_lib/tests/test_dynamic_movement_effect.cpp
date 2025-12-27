@@ -25,11 +25,13 @@ TEST_CASE("Dynamic Movement Effect", "[dynamic][movement][effect]") {
     
     SECTION("Default parameters") {
         auto& params = effect.parameters();
-        REQUIRE(params.get_bool("enabled", false) == true);
+        // "enabled" uses default true from EffectBase::is_enabled()
+        REQUIRE(effect.is_enabled() == true);
         REQUIRE(params.get_int("grid_width", 0) == 16);
         REQUIRE(params.get_int("grid_height", 0) == 16);
         REQUIRE(params.get_bool("rectangular", true) == false); // Default to polar
-        REQUIRE(params.get_int("interpolation", -1) == 0); // None/stepped
+        // Note: "interpolation" parameter removed in CoordinateGrid refactor
+        // Bilinear grid interpolation is always used (matching original AVS)
         REQUIRE(params.get_bool("wrap", true) == false);
         REQUIRE(params.get_bool("blend", true) == false);
         REQUIRE(params.get_bool("no_movement", true) == false);

@@ -217,9 +217,11 @@ void CoordinateGrid::apply(const uint32_t* input, uint32_t* output,
 
     for (int gy = 0; gy < grid_height_ - 1; gy++) {
         yc_pos += yc_dpos;
-        int y_seek = (yc_pos >> 16) - ly_pos;
+        // For the last segment, extend all the way to the edge
+        int end_y = (gy == grid_height_ - 2) ? height : (yc_pos >> 16);
+        int y_seek = end_y - ly_pos;
         if (y_seek <= 0) continue;
-        ly_pos = yc_pos >> 16;
+        ly_pos = end_y;
 
         // Build interpolation table for this grid row
         // Each entry: [x_src, y_src, dx_per_row, dy_per_row]
@@ -254,9 +256,11 @@ void CoordinateGrid::apply(const uint32_t* input, uint32_t* output,
 
             for (int gx = 0; gx < grid_width_ - 1; gx++) {
                 xc_pos += xc_dpos;
-                int x_seek = (xc_pos >> 16) - lx_pos;
+                // For the last segment, extend all the way to the edge
+                int end_x = (gx == grid_width_ - 2) ? width : (xc_pos >> 16);
+                int x_seek = end_x - lx_pos;
                 if (x_seek <= 0) continue;
-                lx_pos = xc_pos >> 16;
+                lx_pos = end_x;
 
                 // Get source coords at left edge of this segment
                 int32_t xp = interp_x[gx];
