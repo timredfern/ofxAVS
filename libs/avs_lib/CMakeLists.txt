@@ -16,8 +16,8 @@ add_library(avs_core STATIC
     core/parameter.cpp
     core/plugin_manager.h
     core/plugin_manager.cpp
-    core/coordinate_lookup_table.h
-    core/coordinate_lookup_table.cpp
+    core/coordinate_grid.h
+    core/coordinate_grid.cpp
 )
 
 target_include_directories(avs_core PUBLIC .)

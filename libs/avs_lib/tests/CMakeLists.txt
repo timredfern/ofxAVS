@@ -24,7 +24,7 @@ add_library(avs_core_test STATIC
     ${AVS_LIB_ROOT}/core/script/script_engine.cpp
     ${AVS_LIB_ROOT}/core/script/lexer.cpp
     ${AVS_LIB_ROOT}/core/script/parser.cpp
-    ${AVS_LIB_ROOT}/core/coordinate_lookup_table.cpp
+    ${AVS_LIB_ROOT}/core/coordinate_grid.cpp
     ${AVS_LIB_ROOT}/effects/movement_effect.cpp
     ${AVS_LIB_ROOT}/effects/dynamic_movement_effect.cpp
     ${AVS_LIB_ROOT}/effects/brightness_effect.cpp
@@ -46,38 +46,15 @@ add_executable(avs_tests
     test_avs_variables.cpp
     test_audio_variables.cpp
     test_assignment_expressions.cpp
-    test_coordinate_lookup_table.cpp
-    test_coordinate_interpolation.cpp
-    test_coordinate_grid.cpp
-    test_coordinate_debug.cpp
-    test_coordinate_fix.cpp
-    test_identity_only.cpp
-    test_interpolation_bug.cpp
-    test_grid_calculation.cpp
-    test_interpolation_fix.cpp
-    test_coordinate_precision.cpp
-    test_grid_debug.cpp
-    test_debug_detailed.cpp
-    test_grid_population.cpp
-    test_script_trace.cpp
-    test_pixel_sampling.cpp
-    test_subpixel_artifacts.cpp
-    test_movement_artifacts.cpp
-    test_dynamic_movement_realistic.cpp
-    test_color_corruption.cpp
-    test_oscilloscope_corruption.cpp
-    test_exact_ofxavs_scenario.cpp
+    test_coordinate_grid_new.cpp
     test_dynamic_movement_effect.cpp
     test_enum_parameter.cpp
     test_movement_presets.cpp
-    test_sample_pixel_bug.cpp
-    test_pipeline_trace.cpp
-    test_bilinear_bug.cpp
-    test_interpolate_pixels_precision.cpp
-    test_subpixel_bug.cpp
     test_brightness_effect.cpp
     test_transform_effect.cpp
-    test_coordinate_transforms.cpp
+    test_complete_script_engine.cpp
+    test_multi_phase_scripts.cpp
+    test_semicolon_check.cpp
 )
 
 target_link_libraries(avs_tests PRIVATE 

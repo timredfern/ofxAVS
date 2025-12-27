@@ -7,7 +7,7 @@
 #pragma once
 
 #include "../core/effect_base.h"
-#include "../core/coordinate_lookup_table.h"
+#include "../core/coordinate_grid.h"
 #include <string>
 
 namespace avs {
@@ -51,8 +51,8 @@ private:
                              AudioData visdata, int w, int h);
     
     // Grid-based coordinate lookup with interpolation
-    CoordinateLookupTable grid_table_;
-    
+    CoordinateGrid grid_;
+
     // State tracking for regeneration
     int last_width_, last_height_;
     int last_grid_width_, last_grid_height_;
@@ -61,7 +61,7 @@ private:
     std::string last_beat_script_;
     std::string last_pixel_script_;
     bool last_rectangular_;
-    bool last_bilinear_;
+    bool last_subpixel_;  // renamed from bilinear - controls source image sampling
     bool last_wrap_;
     bool last_blend_;
     int last_buffer_source_; 

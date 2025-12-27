@@ -15,7 +15,7 @@ namespace avs {
 
 DynamicMovementEffect::DynamicMovementEffect()
     : last_width_(0), last_height_(0), last_grid_width_(0), last_grid_height_(0),
-      last_rectangular_(false), last_bilinear_(true),
+      last_rectangular_(false), last_subpixel_(true),
       last_wrap_(false), last_blend_(false), last_buffer_source_(0), script_initialized_(false)
 {
     // Initialize script variables
@@ -41,7 +41,8 @@ bool DynamicMovementEffect::needs_grid_regeneration(int w, int h, AudioData visd
     std::string beat_script = parameters().get_string("beat_script");
     std::string pixel_script = parameters().get_string("pixel_script");
     bool rectangular = parameters().get_bool("rectangular", false);
-    bool bilinear = parameters().get_bool("bilinear", true);
+    // "bilinear" parameter controls subpixel sampling from source image
+    bool subpixel = parameters().get_bool("bilinear", true);
     bool wrap = parameters().get_bool("wrap", false);
     bool blend = parameters().get_bool("blend", false);
 
@@ -54,7 +55,7 @@ bool DynamicMovementEffect::needs_grid_regeneration(int w, int h, AudioData visd
            beat_script != last_beat_script_ ||
            pixel_script != last_pixel_script_ ||
            rectangular != last_rectangular_ ||
-           bilinear != last_bilinear_ ||
+           subpixel != last_subpixel_ ||
            wrap != last_wrap_ ||
            blend != last_blend_;
 }
@@ -63,7 +64,8 @@ void DynamicMovementEffect::generate_grid(int w, int h, AudioData visdata, int i
     int grid_width = parameters().get_int("grid_width", 16);
     int grid_height = parameters().get_int("grid_height", 16);
     bool rectangular = parameters().get_bool("rectangular", false);
-    bool bilinear = parameters().get_bool("bilinear", true);
+    // "bilinear" parameter controls subpixel sampling from source image
+    bool subpixel = parameters().get_bool("bilinear", true);
     bool wrap = parameters().get_bool("wrap", false);
     std::string pixel_script = parameters().get_string("pixel_script");
 
@@ -74,26 +76,10 @@ void DynamicMovementEffect::generate_grid(int w, int h, AudioData visdata, int i
         execute_beat_script(visdata, w, h);
     }
 
-    // For rectangular mode, just pass the script directly to the grid generator
-    // The CoordinateLookupTable will execute it properly using the script engine
-    std::string x_expr, y_expr;
-
-    if (rectangular) {
-        // In rectangular mode, the pixel script should contain assignments like "x=x; y=y-0.01"
-        // Pass the script to be executed by the script engine in CoordinateLookupTable
-        x_expr = pixel_script;
-        y_expr = pixel_script;
-    } else {
-        // In polar mode, similar approach but for d,r coordinates
-        x_expr = pixel_script;
-        y_expr = pixel_script;
-    }
-
-    // Original AVS always uses LINEAR grid interpolation, bilinear controls per-pixel sampling
-    grid_table_.generate(w, h, grid_width, grid_height,
-                        x_expr, y_expr,
-                        rectangular, bilinear,
-                        visdata, wrap, InterpolationMode::LINEAR);
+    // Generate grid using CoordinateGrid
+    // The grid handles script evaluation internally
+    CoordMode mode = rectangular ? CoordMode::RECTANGULAR : CoordMode::POLAR;
+    grid_.generate(grid_width, grid_height, w, h, pixel_script, mode, visdata);
 
     // Update state
     last_width_ = w;
@@ -105,7 +91,7 @@ void DynamicMovementEffect::generate_grid(int w, int h, AudioData visdata, int i
     last_beat_script_ = parameters().get_string("beat_script");
     last_pixel_script_ = pixel_script;
     last_rectangular_ = rectangular;
-    last_bilinear_ = bilinear;
+    last_subpixel_ = subpixel;
     last_wrap_ = wrap;
     last_blend_ = parameters().get_bool("blend", false);
 }
@@ -116,23 +102,27 @@ int DynamicMovementEffect::render(AudioData visdata, int isBeat,
                                  uint32_t* framebuffer, uint32_t* fbout,
                                  int w, int h) {
     if (!is_enabled()) return 0;
-    
+
     bool no_movement = parameters().get_bool("no_movement", false);
     if (no_movement) {
         // Just copy input to output
         memcpy(fbout, framebuffer, w * h * sizeof(uint32_t));
         return 1;
     }
-    
+
     // Check if we need to regenerate the grid
     if (needs_grid_regeneration(w, h, visdata)) {
         generate_grid(w, h, visdata, isBeat);
     }
-    
-    // Apply grid transformation with interpolation
+
+    // Apply grid transformation
+    // subpixel controls bilinear sampling from source image
+    // Grid interpolation is always bilinear (matching original AVS)
+    bool subpixel = parameters().get_bool("bilinear", true);
+    bool wrap = parameters().get_bool("wrap", false);
     bool blend = parameters().get_bool("blend", false);
-    grid_table_.apply(framebuffer, fbout, w, h, blend);
-    
+    grid_.apply(framebuffer, fbout, w, h, subpixel, wrap, blend);
+
     return 1; // Use fbout
 }
 
