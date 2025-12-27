@@ -7,103 +7,284 @@
 #include "blur_effect.h"
 #include "../core/plugin_manager.h"
 #include "../core/ui.h"
-#include <algorithm>
-#include <cstring>
 
 namespace avs {
+
+// Bit masks for fast division without overflow between color channels
+// These masks clear the bits that would overflow into adjacent channels when shifting
+#define MASK_SH1 (~(((1<<7)|(1<<15)|(1<<23))<<1))   // For /2
+#define MASK_SH2 (~(((3<<6)|(3<<14)|(3<<22))<<2))   // For /4
+#define MASK_SH3 (~(((7<<5)|(7<<13)|(7<<21))<<3))   // For /8
+#define MASK_SH4 (~(((15<<4)|(15<<12)|(15<<20))<<4)) // For /16
+
+// Fast division macros using bit shifts (no actual division)
+#define DIV_2(x)  (((x) & MASK_SH1) >> 1)
+#define DIV_4(x)  (((x) & MASK_SH2) >> 2)
+#define DIV_8(x)  (((x) & MASK_SH3) >> 3)
+#define DIV_16(x) (((x) & MASK_SH4) >> 4)
 
 BlurEffect::BlurEffect() {
     init_parameters_from_layout(effect_info.ui_layout);
 }
 
-void BlurEffect::apply_box_blur(uint32_t* input, uint32_t* output, int w, int h, int radius) {
-    // Simple box blur implementation
-    for (int y = 0; y < h; y++) {
-        for (int x = 0; x < w; x++) {
-            int r_sum = 0, g_sum = 0, b_sum = 0, count = 0;
-            
-            // Sample in radius around current pixel
-            for (int dy = -radius; dy <= radius; dy++) {
-                for (int dx = -radius; dx <= radius; dx++) {
-                    int sx = x + dx;
-                    int sy = y + dy;
-                    
-                    // Clamp to image bounds
-                    sx = std::max(0, std::min(w - 1, sx));
-                    sy = std::max(0, std::min(h - 1, sy));
-                    
-                    uint32_t pixel = input[sy * w + sx];
-                    
-                    r_sum += (pixel >> 16) & 0xFF;
-                    g_sum += (pixel >> 8) & 0xFF;
-                    b_sum += pixel & 0xFF;
-                    count++;
-                }
-            }
-            
-            // Average the colors
-            if (count > 0) {
-                int r = r_sum / count;
-                int g = g_sum / count;
-                int b = b_sum / count;
-                
-                output[y * w + x] = (r << 16) | (g << 8) | b;
-            } else {
-                output[y * w + x] = input[y * w + x];
-            }
-        }
-    }
-}
-
 int BlurEffect::render(AudioData visdata, int isBeat,
                       uint32_t* framebuffer, uint32_t* fbout,
                       int w, int h) {
-    if (!is_enabled()) return 0;
     if (isBeat & 0x80000000) return 0;
-    
-    double strength = parameters().get_int("strength") / 100.0;  // Convert 0-100 to 0.0-1.0
-    int radius = parameters().get_int("radius");
 
-    if (strength <= 0.0 || radius <= 0) {
-        // No blur - just copy input to output
-        std::memcpy(fbout, framebuffer, w * h * sizeof(uint32_t));
-        return 1;
-    }
-    
-    // Apply blur
-    apply_box_blur(framebuffer, fbout, w, h, radius);
-    
-    // Blend with original based on strength
-    if (strength < 1.0) {
-        for (int i = 0; i < w * h; i++) {
-            uint32_t orig = framebuffer[i];
-            uint32_t blur = fbout[i];
-            
-            // Linear interpolation between original and blurred
-            int orig_r = (orig >> 16) & 0xFF;
-            int orig_g = (orig >> 8) & 0xFF;
-            int orig_b = orig & 0xFF;
-            
-            int blur_r = (blur >> 16) & 0xFF;
-            int blur_g = (blur >> 8) & 0xFF;
-            int blur_b = blur & 0xFF;
-            
-            int final_r = (int)(orig_r * (1.0 - strength) + blur_r * strength);
-            int final_g = (int)(orig_g * (1.0 - strength) + blur_g * strength);
-            int final_b = (int)(orig_b * (1.0 - strength) + blur_b * strength);
-            
-            fbout[i] = (final_r << 16) | (final_g << 8) | final_b;
+    auto blur_level = static_cast<BlurLevel>(parameters().get_int("blur_level"));
+    if (blur_level == BlurLevel::NONE) return 0;
+
+    auto round_mode = static_cast<RoundMode>(parameters().get_int("round_mode"));
+    bool round_up = (round_mode == RoundMode::UP);
+
+    unsigned int* f = (unsigned int*)framebuffer;
+    unsigned int* of = (unsigned int*)fbout;
+
+    if (blur_level == BlurLevel::LIGHT) {
+        // Light blur: 3/4 center + 1/16 each neighbor
+        // Top line
+        {
+            unsigned int* f2 = f + w;
+            unsigned int adj_tl = round_up ? 0x03030303 : 0;
+            unsigned int adj_tl2 = round_up ? 0x04040404 : 0;
+
+            // Top left corner
+            *of++ = DIV_2(f[0]) + DIV_4(f[0]) + DIV_8(f[1]) + DIV_8(f2[0]) + adj_tl;
+            f++; f2++;
+
+            // Top center
+            for (int x = 0; x < w - 2; x++) {
+                *of++ = DIV_2(f[0]) + DIV_8(f[0]) + DIV_8(f[1]) + DIV_8(f[-1]) + DIV_8(f2[0]) + adj_tl2;
+                f++; f2++;
+            }
+
+            // Top right corner
+            *of++ = DIV_2(f[0]) + DIV_4(f[0]) + DIV_8(f[-1]) + DIV_8(f2[0]) + adj_tl;
+            f++; f2++;
+        }
+
+        // Middle rows
+        {
+            unsigned int adj_tl1 = round_up ? 0x04040404 : 0;
+            unsigned int adj_tl2 = round_up ? 0x05050505 : 0;
+
+            for (int y = 1; y < h - 1; y++) {
+                unsigned int* f2 = f + w;
+                unsigned int* f3 = f - w;
+
+                // Left edge
+                *of++ = DIV_2(f[0]) + DIV_8(f[0]) + DIV_8(f[1]) + DIV_8(f2[0]) + DIV_8(f3[0]) + adj_tl1;
+                f++; f2++; f3++;
+
+                // Middle of line - process 4 pixels at a time for speed
+                int x = (w - 2) / 4;
+                while (x--) {
+                    of[0] = DIV_2(f[0]) + DIV_4(f[0]) + DIV_16(f[1]) + DIV_16(f[-1]) + DIV_16(f2[0]) + DIV_16(f3[0]) + adj_tl2;
+                    of[1] = DIV_2(f[1]) + DIV_4(f[1]) + DIV_16(f[2]) + DIV_16(f[0]) + DIV_16(f2[1]) + DIV_16(f3[1]) + adj_tl2;
+                    of[2] = DIV_2(f[2]) + DIV_4(f[2]) + DIV_16(f[3]) + DIV_16(f[1]) + DIV_16(f2[2]) + DIV_16(f3[2]) + adj_tl2;
+                    of[3] = DIV_2(f[3]) + DIV_4(f[3]) + DIV_16(f[4]) + DIV_16(f[2]) + DIV_16(f2[3]) + DIV_16(f3[3]) + adj_tl2;
+                    f += 4; f2 += 4; f3 += 4; of += 4;
+                }
+
+                // Remaining pixels
+                x = (w - 2) & 3;
+                while (x--) {
+                    *of++ = DIV_2(f[0]) + DIV_4(f[0]) + DIV_16(f[1]) + DIV_16(f[-1]) + DIV_16(f2[0]) + DIV_16(f3[0]) + adj_tl2;
+                    f++; f2++; f3++;
+                }
+
+                // Right edge
+                *of++ = DIV_2(f[0]) + DIV_8(f[0]) + DIV_8(f[-1]) + DIV_8(f2[0]) + DIV_8(f3[0]) + adj_tl1;
+                f++;
+            }
+        }
+
+        // Bottom line
+        {
+            unsigned int* f2 = f - w;
+            unsigned int adj_tl = round_up ? 0x03030303 : 0;
+            unsigned int adj_tl2 = round_up ? 0x04040404 : 0;
+
+            // Bottom left
+            *of++ = DIV_2(f[0]) + DIV_4(f[0]) + DIV_8(f[1]) + DIV_8(f2[0]) + adj_tl;
+            f++; f2++;
+
+            // Bottom center
+            for (int x = 0; x < w - 2; x++) {
+                *of++ = DIV_2(f[0]) + DIV_8(f[0]) + DIV_8(f[1]) + DIV_8(f[-1]) + DIV_8(f2[0]) + adj_tl2;
+                f++; f2++;
+            }
+
+            // Bottom right
+            *of++ = DIV_2(f[0]) + DIV_4(f[0]) + DIV_8(f[-1]) + DIV_8(f2[0]) + adj_tl;
         }
     }
-    
-    return 1; // Use output buffer
+    else if (blur_level == BlurLevel::HEAVY) {
+        // Heavy blur: 0 center + 1/4 each neighbor (excludes center pixel)
+        // Top line
+        {
+            unsigned int* f2 = f + w;
+            unsigned int adj_tl = round_up ? 0x02020202 : 0;
+            unsigned int adj_tl2 = round_up ? 0x01010101 : 0;
+
+            // Top left
+            *of++ = DIV_2(f[1]) + DIV_2(f2[0]) + adj_tl2;
+            f++; f2++;
+
+            // Top center
+            for (int x = 0; x < w - 2; x++) {
+                *of++ = DIV_4(f[1]) + DIV_4(f[-1]) + DIV_2(f2[0]) + adj_tl;
+                f++; f2++;
+            }
+
+            // Top right
+            *of++ = DIV_2(f[-1]) + DIV_2(f2[0]) + adj_tl2;
+            f++; f2++;
+        }
+
+        // Middle rows
+        {
+            unsigned int adj_tl1 = round_up ? 0x02020202 : 0;
+            unsigned int adj_tl2 = round_up ? 0x03030303 : 0;
+
+            for (int y = 1; y < h - 1; y++) {
+                unsigned int* f2 = f + w;
+                unsigned int* f3 = f - w;
+
+                // Left edge
+                *of++ = DIV_2(f[1]) + DIV_4(f2[0]) + DIV_4(f3[0]) + adj_tl1;
+                f++; f2++; f3++;
+
+                // Middle - 4 pixels at a time
+                int x = (w - 2) / 4;
+                while (x--) {
+                    of[0] = DIV_4(f[1]) + DIV_4(f[-1]) + DIV_4(f2[0]) + DIV_4(f3[0]) + adj_tl2;
+                    of[1] = DIV_4(f[2]) + DIV_4(f[0]) + DIV_4(f2[1]) + DIV_4(f3[1]) + adj_tl2;
+                    of[2] = DIV_4(f[3]) + DIV_4(f[1]) + DIV_4(f2[2]) + DIV_4(f3[2]) + adj_tl2;
+                    of[3] = DIV_4(f[4]) + DIV_4(f[2]) + DIV_4(f2[3]) + DIV_4(f3[3]) + adj_tl2;
+                    f += 4; f2 += 4; f3 += 4; of += 4;
+                }
+
+                x = (w - 2) & 3;
+                while (x--) {
+                    *of++ = DIV_4(f[1]) + DIV_4(f[-1]) + DIV_4(f2[0]) + DIV_4(f3[0]) + adj_tl2;
+                    f++; f2++; f3++;
+                }
+
+                // Right edge
+                *of++ = DIV_2(f[-1]) + DIV_4(f2[0]) + DIV_4(f3[0]) + adj_tl1;
+                f++;
+            }
+        }
+
+        // Bottom line
+        {
+            unsigned int* f2 = f - w;
+            unsigned int adj_tl = round_up ? 0x02020202 : 0;
+            unsigned int adj_tl2 = round_up ? 0x01010101 : 0;
+
+            // Bottom left
+            *of++ = DIV_2(f[1]) + DIV_2(f2[0]) + adj_tl2;
+            f++; f2++;
+
+            // Bottom center
+            for (int x = 0; x < w - 2; x++) {
+                *of++ = DIV_4(f[1]) + DIV_4(f[-1]) + DIV_2(f2[0]) + adj_tl;
+                f++; f2++;
+            }
+
+            // Bottom right
+            *of++ = DIV_2(f[-1]) + DIV_2(f2[0]) + adj_tl2;
+        }
+    }
+    else {
+        // Medium blur (default): 1/2 center + 1/8 each neighbor
+        // Top line
+        {
+            unsigned int* f2 = f + w;
+            unsigned int adj_tl = round_up ? 0x02020202 : 0;
+            unsigned int adj_tl2 = round_up ? 0x03030303 : 0;
+
+            // Top left
+            *of++ = DIV_2(f[0]) + DIV_4(f[1]) + DIV_4(f2[0]) + adj_tl;
+            f++; f2++;
+
+            // Top center
+            for (int x = 0; x < w - 2; x++) {
+                *of++ = DIV_4(f[0]) + DIV_4(f[1]) + DIV_4(f[-1]) + DIV_4(f2[0]) + adj_tl2;
+                f++; f2++;
+            }
+
+            // Top right
+            *of++ = DIV_2(f[0]) + DIV_4(f[-1]) + DIV_4(f2[0]) + adj_tl;
+            f++; f2++;
+        }
+
+        // Middle rows
+        {
+            unsigned int adj_tl1 = round_up ? 0x03030303 : 0;
+            unsigned int adj_tl2 = round_up ? 0x04040404 : 0;
+
+            for (int y = 1; y < h - 1; y++) {
+                unsigned int* f2 = f + w;
+                unsigned int* f3 = f - w;
+
+                // Left edge
+                *of++ = DIV_4(f[0]) + DIV_4(f[1]) + DIV_4(f2[0]) + DIV_4(f3[0]) + adj_tl1;
+                f++; f2++; f3++;
+
+                // Middle - 4 pixels at a time
+                int x = (w - 2) / 4;
+                while (x--) {
+                    of[0] = DIV_2(f[0]) + DIV_8(f[1]) + DIV_8(f[-1]) + DIV_8(f2[0]) + DIV_8(f3[0]) + adj_tl2;
+                    of[1] = DIV_2(f[1]) + DIV_8(f[2]) + DIV_8(f[0]) + DIV_8(f2[1]) + DIV_8(f3[1]) + adj_tl2;
+                    of[2] = DIV_2(f[2]) + DIV_8(f[3]) + DIV_8(f[1]) + DIV_8(f2[2]) + DIV_8(f3[2]) + adj_tl2;
+                    of[3] = DIV_2(f[3]) + DIV_8(f[4]) + DIV_8(f[2]) + DIV_8(f2[3]) + DIV_8(f3[3]) + adj_tl2;
+                    f += 4; f2 += 4; f3 += 4; of += 4;
+                }
+
+                x = (w - 2) & 3;
+                while (x--) {
+                    *of++ = DIV_2(f[0]) + DIV_8(f[1]) + DIV_8(f[-1]) + DIV_8(f2[0]) + DIV_8(f3[0]) + adj_tl2;
+                    f++; f2++; f3++;
+                }
+
+                // Right edge
+                *of++ = DIV_4(f[0]) + DIV_4(f[-1]) + DIV_4(f2[0]) + DIV_4(f3[0]) + adj_tl1;
+                f++;
+            }
+        }
+
+        // Bottom line
+        {
+            unsigned int* f2 = f - w;
+            unsigned int adj_tl = round_up ? 0x02020202 : 0;
+            unsigned int adj_tl2 = round_up ? 0x03030303 : 0;
+
+            // Bottom left
+            *of++ = DIV_2(f[0]) + DIV_4(f[1]) + DIV_4(f2[0]) + adj_tl;
+            f++; f2++;
+
+            // Bottom center
+            for (int x = 0; x < w - 2; x++) {
+                *of++ = DIV_4(f[0]) + DIV_4(f[1]) + DIV_4(f[-1]) + DIV_4(f2[0]) + adj_tl2;
+                f++; f2++;
+            }
+
+            // Bottom right
+            *of++ = DIV_2(f[0]) + DIV_4(f[-1]) + DIV_4(f2[0]) + adj_tl;
+        }
+    }
+
+    return 1;  // Use output buffer
 }
 
 // Static member definition
 const PluginInfo BlurEffect::effect_info {
     .name = "Blur",
-    .description = "Blur effect",
-    .author = "AVS Port",
+    .description = "",
+    .author = "",
     .version = 1,
     .factory = []() -> std::unique_ptr<avs::EffectBase> {
         return std::make_unique<BlurEffect>();
@@ -111,27 +292,24 @@ const PluginInfo BlurEffect::effect_info {
     .ui_layout = {
         {
             {
-                .id = "enabled",
-                .text = "Enable Blur",
-                .type = ControlType::CHECKBOX,
-                .x = 10, .y = 5, .w = 80, .h = 10,
-                .default_val = 1
+                .id = "blur_level",
+                .type = ControlType::RADIO_GROUP,
+                .radio_options = {
+                    {"No blur", 2, 1, 39, 10},
+                    {"Light blur", 2, 12, 45, 10},
+                    {"Medium blur", 2, 23, 54, 10},
+                    {"Heavy blur", 2, 34, 50, 10}
+                },
+                .default_val = static_cast<int>(BlurLevel::MEDIUM)
             },
             {
-                .id = "strength",
-                .text = "Strength",
-                .type = ControlType::SLIDER,
-                .x = 10, .y = 20, .w = 100, .h = 15,
-                .range = {0, 100},
-                .default_val = 50
-            },
-            {
-                .id = "radius",
-                .text = "Radius",
-                .type = ControlType::SLIDER,
-                .x = 10, .y = 40, .w = 100, .h = 15,
-                .range = {1, 10},
-                .default_val = 2
+                .id = "round_mode",
+                .type = ControlType::RADIO_GROUP,
+                .radio_options = {
+                    {"Round down", 3, 58, 57, 10},
+                    {"Round up", 3, 69, 47, 10}
+                },
+                .default_val = static_cast<int>(RoundMode::DOWN)
             }
         }
     }
