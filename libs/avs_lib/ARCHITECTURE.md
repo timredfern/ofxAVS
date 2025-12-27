@@ -13,113 +13,188 @@ This library recreates the Advanced Visualization Studio (AVS) effect system wit
 ### 1. Effect-Specific Implementation
 Each AVS effect is implemented as a separate class that exactly matches the original behavior:
 - `MovementEffect` → `r_trans.cpp` (Trans/Movement)
-- `DynamicMovementEffect` → `r_dmove.cpp` (Trans/Dynamic Movement) 
-- `SuperScopeEffect` → `r_sscope.cpp` (Render/SuperScope)
+- `DynamicMovementEffect` → `r_dmove.cpp` (Trans/Dynamic Movement)
+- `OscilloscopeEffect` → `r_oscstar.cpp` (Render/Oscilloscope)
+- `BlurEffect` → `r_blur.cpp` (Trans/Blur)
+- `BrightnessEffect` → `r_bright.cpp` (Trans/Brightness)
+- `ClearEffect` → `r_clear.cpp` (Render/Clear Screen)
 
-### 2. Shared Script Infrastructure
-Common scripting components are abstracted for reuse while maintaining compatibility:
+### 2. Script Infrastructure
+
+**Original Plan:** Shared scripting components using NS-EEL:
 - `EELExecutor` - NS-EEL compilation and execution
 - `ScriptContext` - Variable management and execution state
 - `ScriptVariables` - Standard variable registration (w, h, x, y, r, d, etc.)
 
+**Current Implementation:** Custom expression parser with lexer/parser architecture:
+- `ScriptEngine` - Expression evaluation with variable support
+- `lexer.cpp` / `parser.cpp` - Custom expression parsing
+
+**Rationale for change:** A custom parser was implemented instead of NS-EEL integration to:
+1. Avoid external dependencies (NS-EEL requires NASM assembler)
+2. Maintain portability across platforms (ARM, x86, WebAssembly)
+3. Allow easier debugging and modification of expression handling
+
+The custom parser supports the subset of EEL syntax used by AVS effects (arithmetic, trigonometry, conditionals, variable assignment).
+
 ### 3. Coordinate System Separation
-Different transformation approaches use appropriate data structures:
-- **MovementEffect**: `FullResolutionTable` (int* lookup, one entry per pixel)
-- **DynamicMovementEffect**: `CoordinateLookupTable` (sparse grid with interpolation)
-- **Render Effects**: Direct point generation (no coordinate transformation)
+
+**Original Plan:**
+- `FullResolutionTable` class (int* lookup, one entry per pixel) for MovementEffect
+- `CoordinateLookupTable` class (sparse grid with interpolation) for DynamicMovementEffect
+
+**Current Implementation:**
+- `MovementEffect`: Internal `std::vector<int> lookup_table_` (full resolution)
+- `DynamicMovementEffect`: Uses `CoordinateLookupTable` class (sparse grid)
+
+**Rationale for change:** The full-resolution table was inlined into `MovementEffect` rather than extracted to a separate class. This keeps the simpler effect self-contained while the more complex grid-based interpolation in `DynamicMovementEffect` benefits from the separate `CoordinateLookupTable` utility class.
 
 ## Directory Structure
 
+**Original Plan:**
+```
+libs/avs_lib/
+├── core/
+│   ├── script/
+│   │   ├── eel_executor.cpp
+│   │   ├── script_context.cpp
+│   │   └── script_variables.cpp
+│   └── transforms/
+│       ├── full_resolution_table.cpp
+│       └── coordinate_lookup_table.cpp
+```
+
+**Current Structure:**
 ```
 libs/avs_lib/
 ├── ARCHITECTURE.md              # This file
+├── EFFECTS.md                   # Effect catalog with UI layouts from original AVS
+├── OPTIMISATION.md              # Performance notes (bit-shift blur, auto-vectorization)
 ├── core/
-│   ├── script/                  # Shared script execution
-│   │   ├── eel_executor.cpp     # NS-EEL compilation/execution
-│   │   ├── script_context.cpp   # Variable management & state
-│   │   └── script_variables.cpp # Standard variable registration
-│   ├── transforms/              # Coordinate transformation utilities
-│   │   ├── full_resolution_table.cpp    # For MovementEffect
-│   │   └── coordinate_lookup_table.cpp  # For DynamicMovementEffect
-│   ├── parameter.cpp            # Parameter system (existing)
-│   └── effect_base.h           # Base effect interface (existing)
+│   ├── script/                  # Expression evaluation
+│   │   ├── lexer.cpp           # Token scanning
+│   │   ├── parser.cpp          # Expression parsing
+│   │   └── script_engine.cpp   # Variable context and evaluation
+│   ├── coordinate_lookup_table.cpp  # Grid-based transforms with interpolation
+│   ├── builtin_effects.cpp     # Built-in effect presets
+│   ├── parameter.cpp           # Parameter system
+│   ├── plugin_manager.cpp      # Effect registration and factory
+│   ├── effect_base.h           # Base effect interface
+│   └── ui.h                    # UI layout definitions
 ├── effects/
-│   ├── movement_effect.cpp          # Trans/Movement (r_trans.cpp)
-│   ├── dynamic_movement_effect.cpp  # Trans/Dynamic Movement (r_dmove.cpp)
-│   ├── superscope_effect.cpp       # Render/SuperScope (r_sscope.cpp)
-│   └── blur_effect.cpp             # Filter/Blur (existing)
-└── tests/
-    └── [effect-specific tests]
+│   ├── movement_effect.cpp         # Trans/Movement (r_trans.cpp)
+│   ├── dynamic_movement_effect.cpp # Trans/Dynamic Movement (r_dmove.cpp)
+│   ├── oscilloscope_effect.cpp     # Render/Oscilloscope (r_oscstar.cpp)
+│   ├── blur_effect.cpp             # Trans/Blur (r_blur.cpp)
+│   ├── brightness_effect.cpp       # Trans/Brightness (r_bright.cpp)
+│   └── clear_effect.cpp            # Render/Clear Screen (r_clear.cpp)
+├── example/                     # Standalone example (no OpenFrameworks)
+└── tests/                       # Catch2 unit tests
 ```
+
+**Rationale for changes:**
+- `transforms/` subdirectory was not created; `coordinate_lookup_table.cpp` lives directly in `core/`
+- `full_resolution_table` was not extracted as separate class
+- Added `EFFECTS.md` for documenting original AVS UI layouts
+- Added `OPTIMISATION.md` for performance findings
+
+## UI Architecture
+
+### Separation of Concerns
+
+The library is designed with a clear separation between core logic and UI:
+
+- **avs_lib** (`libs/avs_lib/`) - Pure C++ library with zero external dependencies. Contains all effect logic, parameter systems, and UI layout *definitions* (not rendering).
+
+- **ofxAVS** (`src/`) - OpenFrameworks addon that provides the proof-of-concept UI implementation using ImGui. Renders the UI layouts defined in avs_lib.
+
+This separation allows avs_lib to be embedded in any host application (DAW plugins, standalone apps, web via WebAssembly) while ofxAVS demonstrates one possible integration.
+
+### Data-Driven UI Layouts
+
+Each effect defines its UI through `PluginInfo::ui_layout`, containing:
+- Control positions and sizes from original AVS dialogs (all 137x137 pixels)
+- Control types: CHECKBOX, SLIDER, BUTTON, RADIO_GROUP, TEXT_INPUT, EDITTEXT, COLOR_BUTTON, DROPDOWN
+- Parameter binding via matching control ID to parameter name
+
+### RADIO_GROUP Control
+Radio button groups use explicit coordinates per option rather than computed layouts:
+```cpp
+{
+    .id = "blur_level",
+    .type = ControlType::RADIO_GROUP,
+    .radio_options = {
+        {"No blur", 2, 1, 39, 10},
+        {"Light blur", 2, 12, 45, 10},
+        {"Medium blur", 2, 23, 54, 10},
+        {"Heavy blur", 2, 34, 50, 10}
+    },
+    .default_val = static_cast<int>(BlurLevel::MEDIUM)
+}
+```
+
+### Typed Enums
+Common radio group values use typed enums for clarity:
+- `BlendMode` - REPLACE, ADDITIVE, BLEND_5050, DEFAULT
+- `DrawStyle` - LINES, SOLID, DOTS
+- `AudioChannel` - LEFT, RIGHT, CENTER
+- `BlurLevel` - NONE, LIGHT, MEDIUM, HEAVY
+- `RoundMode` - DOWN, UP
 
 ## Script Execution System
 
 ### Script Phases
-Effects use different combinations of script execution phases:
 
+**Original Plan:**
 ```cpp
 enum class ScriptPhase {
     INIT,    // Run once on effect creation/parameter change
-    FRAME,   // Run once per frame  
+    FRAME,   // Run once per frame
     BEAT,    // Run on beat detection
     PIXEL,   // Run per coordinate (screen pixel or grid point)
     POINT    // Run per data sample (audio/particles)
 };
 ```
 
+**Current Implementation:**
+DynamicMovementEffect implements multi-phase execution internally:
+- `execute_init_script()` - Run once when effect created/parameters change
+- `execute_frame_script()` - Run once per frame
+- `execute_beat_script()` - Run on beat detection
+- `execute_pixel_script()` - Run per grid point
+
+The `ScriptPhase` enum was not extracted as a shared abstraction. Each effect manages its own script phases as needed.
+
 ### Phase Usage by Effect Type
-- **MovementEffect**: PIXEL only (evaluates expression per pixel)
+- **MovementEffect**: Single expression evaluation per pixel (no multi-phase)
 - **DynamicMovementEffect**: INIT + FRAME + BEAT + PIXEL (full multi-phase)
-- **SuperScopeEffect**: INIT + FRAME + BEAT + POINT (audio sample processing)
+- **OscilloscopeEffect**: No scripting (hardcoded rendering)
 
-### Variable Context
-Each effect manages variables through `ScriptContext`:
-
-```cpp
-class ScriptContext {
-    // Core variables (all effects)
-    double w, h;              // Screen dimensions
-    double t;                 // Time
-    double b;                 // Beat detection
-    
-    // Audio variables  
-    double *waveform;         // 576 audio samples
-    double *spectrum;         // 576 spectrum samples
-    
-    // Coordinate variables (transform effects)
-    double x, y;              // Rectangular coordinates
-    double r, d;              // Polar coordinates
-    
-    // Index variables (render effects)
-    double i;                 // Sample/particle index
-    double v;                 // Audio value
-    
-    // User-defined persistent variables
-    std::map<std::string, double> user_vars;
-};
-```
+**Note:** SuperScopeEffect (with POINT phase for audio sample processing) is not yet implemented. OscilloscopeEffect is a simpler non-scriptable version.
 
 ## Effect Implementation Patterns
 
 ### Transform Effects (MovementEffect)
 ```cpp
 class MovementEffect : public EffectBase {
-    EELExecutor script_executor;
-    ScriptContext script_context;
-    FullResolutionTable lookup_table;  // int* table, one per pixel
-    
-    void render(FrameBuffer& in, FrameBuffer& out) {
+    std::vector<int> lookup_table_;  // Full resolution lookup
+
+    void render(AudioData visdata, int isBeat,
+                uint32_t* framebuffer, uint32_t* fbout, int w, int h) {
         // Generate full-resolution lookup table
-        for (int y = 0; y < height; y++) {
-            for (int x = 0; x < width; x++) {
-                script_context.setCoordinates(x, y);
-                script_executor.executePixel();
-                lookup_table.store(x, y, script_context.x, script_context.y);
+        for (int y = 0; y < h; y++) {
+            for (int x = 0; x < w; x++) {
+                // Evaluate expression for this pixel
+                double px = ..., py = ...;
+                evaluate_movement_script(script, px, py, r, d, visdata, w, h);
+                lookup_table_[y * w + x] = source_index;
             }
         }
-        
-        // Apply transformation using lookup
-        lookup_table.apply(in, out);
+
+        // Apply transformation
+        for (int i = 0; i < w * h; i++) {
+            fbout[i] = framebuffer[lookup_table_[i]];
+        }
     }
 };
 ```
@@ -127,84 +202,46 @@ class MovementEffect : public EffectBase {
 ### Dynamic Transform Effects (DynamicMovementEffect)
 ```cpp
 class DynamicMovementEffect : public EffectBase {
-    EELExecutor script_executor;
-    ScriptContext script_context;
-    CoordinateLookupTable grid_table;  // Sparse grid with interpolation
-    
-    void render(FrameBuffer& in, FrameBuffer& out) {
+    CoordinateLookupTable grid_table_;  // Sparse grid with interpolation
+
+    void render(...) {
         // Execute frame-level scripts
-        script_executor.executeInit();
-        script_executor.executeFrame();
-        if (isBeat) script_executor.executeBeat();
-        
+        execute_init_script(visdata, w, h);
+        execute_frame_script(visdata, w, h);
+        if (isBeat) execute_beat_script(visdata, w, h);
+
         // Generate sparse grid (e.g., 16x16)
-        for (int gy = 0; gy < gridHeight; gy++) {
-            for (int gx = 0; gx < gridWidth; gx++) {
-                script_context.setGridCoordinates(gx, gy, gridWidth, gridHeight);
-                script_executor.executePixel();
-                grid_table.setGridPoint(gx, gy, script_context.x, script_context.y);
-            }
-        }
-        
+        grid_table_.generate(w, h, grid_w, grid_h,
+                            x_expr, y_expr, rectangular, subpixel,
+                            visdata, wrap, interp_mode);
+
         // Apply with interpolation
-        grid_table.applyWithInterpolation(in, out);
+        grid_table_.apply(framebuffer, fbout, w, h, blend);
     }
 };
 ```
 
-### Render Effects (SuperScopeEffect)  
+### Render Effects (OscilloscopeEffect)
 ```cpp
-class SuperScopeEffect : public EffectBase {
-    EELExecutor script_executor;
-    ScriptContext script_context;
-    std::vector<Point> render_points;
-    
-    void render(AudioData& audio, FrameBuffer& out) {
-        // Execute frame-level scripts
-        script_executor.executeInit();
-        script_executor.executeFrame();
-        if (isBeat) script_executor.executeBeat();
-        
-        // Process audio samples
-        render_points.clear();
+class OscilloscopeEffect : public EffectBase {
+    void render(AudioData visdata, int isBeat,
+                uint32_t* framebuffer, uint32_t* fbout, int w, int h) {
+        // Process audio samples directly (no scripting)
         for (int i = 0; i < 576; i++) {
-            script_context.i = i;
-            script_context.v = audio.waveform[i];
-            script_executor.executePoint();
-            render_points.push_back({script_context.x, script_context.y});
+            int x = i * w / 576;
+            int y = h/2 + (visdata[0][0][i] * h / 256);
+            // Draw line/dot at (x, y)
         }
-        
-        // Draw points/lines
-        drawPoints(render_points, out);
     }
 };
 ```
+
+**Note:** The planned `SuperScopeEffect` with full POINT-phase scripting is not yet implemented.
 
 ## Compatibility Strategy
 
 ### Preset Loading
-Each effect maintains the exact parameter format of its original AVS counterpart:
-
-```cpp
-// MovementEffect preset format (matches r_trans.cpp)
-struct MovementPreset {
-    int effect_index;        // 0-23 for built-ins, 32767 for custom
-    std::string custom_code; // Custom expression if effect_index == 32767
-    bool rectangular;        // Coordinate system flag
-    bool source_mapped;      // Rendering option
-    // ... other r_trans.cpp options
-};
-
-// DynamicMovementPreset format (matches r_dmove.cpp)  
-struct DynamicMovementPreset {
-    std::string init_code;   // Init phase script
-    std::string frame_code;  // Frame phase script  
-    std::string beat_code;   // Beat phase script
-    std::string pixel_code;  // Pixel phase script
-    int grid_width, grid_height;  // Grid resolution
-    // ... other r_dmove.cpp options
-};
-```
+Each effect maintains the exact parameter format of its original AVS counterpart.
 
 ### Visual Fidelity
 Key requirements for authentic AVS behavior:
@@ -214,42 +251,76 @@ Key requirements for authentic AVS behavior:
 - **Coordinate systems** (polar vs rectangular) must behave identically
 - **Beat detection** and **variable persistence** must match original timing
 
-## Implementation Phases
+### Interpolation Modes
+The `CoordinateLookupTable` supports three modes for authentic AVS reproduction:
+- `NONE` - No interpolation, creates classic stepped/blocky artifacts
+- `LINEAR` - Bilinear interpolation for smooth transforms
+- `NEAREST` - Nearest neighbor, sharp but less blocky than none
 
-### Phase 1: Core Infrastructure
-1. Split existing `TransformEffect` into `MovementEffect` and `DynamicMovementEffect`
-2. Create shared script components (`EELExecutor`, `ScriptContext`, `ScriptVariables`)
-3. Create `FullResolutionTable` for `MovementEffect`
+## Implementation Status
 
-### Phase 2: Minimal Effect Implementation
-1. Implement `MovementEffect` with 2-3 presets + custom scripting
-2. Implement `DynamicMovementEffect` with basic 4-phase execution
-3. Implement `SuperScopeEffect` with point-phase rendering
+### Completed
+- Core parameter system with typed values
+- Plugin registration and factory pattern
+- UI layout system with data-driven controls
+- RADIO_GROUP with typed enums
+- BlurEffect (bit-shift optimized, matches original r_blur.cpp)
+- BrightnessEffect (lookup table based, matches r_bright.cpp)
+- ClearEffect (with blend modes)
+- OscilloscopeEffect (basic non-scriptable version)
+- CoordinateLookupTable with interpolation modes
+- MovementEffect (23 presets + custom scripting)
+- DynamicMovementEffect (multi-phase scripting)
 
-### Phase 3: Validation
-1. Load and test existing AVS presets
-2. Verify visual output matches original AVS
-3. Benchmark performance against requirements
-
-### Phase 4: UI Integration
-1. Design effect chain management system
-2. Implement real-time parameter editing
-3. Create preset browser and save/load functionality
+### Planned / Not Yet Implemented
+- SuperScopeEffect with POINT-phase scripting
+- Preset file loading (.avs format)
+- Full NS-EEL compatibility (current parser covers common subset)
+- Remaining ~40 AVS effects
 
 ## Performance Considerations
 
 - **MovementEffect**: O(width × height) script evaluations per frame
 - **DynamicMovementEffect**: O(gridWidth × gridHeight) script evaluations + interpolation
+- **BlurEffect**: O(n) single-pass with bit-shift division, auto-vectorizes to NEON/SSE
 - **Script compilation**: Cache compiled scripts until parameters change
 - **Memory usage**: Pre-allocate lookup tables, reuse when possible
-- **Threading**: Most effects support multi-threading via original AVS SMP interface
+
+### Optimisation Strategy
+
+The original AVS used hand-written x86 MMX assembly for performance-critical effects. Our approach instead relies on:
+
+1. **Bit-manipulation techniques** from original AVS (e.g., channel-isolated division via masks)
+2. **Compiler auto-vectorization** with `-O3 -mtune=native`
+3. **NEON intrinsics** as a fallback if auto-vectorization proves insufficient
+
+This achieves comparable performance without platform-specific assembly, confirmed by inspecting compiler output which shows ARM NEON instructions (`ld4.4s`, `ushr.4s`, `add.4s`) being generated automatically.
+
+See **[OPTIMISATION.md](OPTIMISATION.md)** for detailed analysis including bit-shift division masks, sample assembly output, and NEON intrinsics reference.
 
 ## Testing Strategy
 
-Each effect should have:
-1. **Unit tests** for parameter handling and script compilation
-2. **Integration tests** for preset loading and visual output verification
-3. **Performance tests** to ensure real-time capability
-4. **Compatibility tests** using known AVS presets with expected output
+### What We Test
 
-This architecture ensures we can recreate the full AVS experience while maintaining clean, maintainable code that developers can understand and extend.
+Tests focus on **deterministic, verifiable components**:
+- **Coordinate transformations** - polar/rectangular conversion accuracy
+- **Interpolation algorithms** - bilinear sampling correctness
+- **Script parsing** - expression evaluation, variable handling
+- **Parameter systems** - value storage, range clamping, type conversion
+- **Lookup table generation** - grid coordinate calculations
+
+### What We Don't Test
+
+**Pixel-level effect output is not tested directly.** The final rendered output of effects depends on:
+- Floating-point accumulation across many operations
+- Interpolation edge cases at image boundaries
+- Interaction between multiple effects in a chain
+- Audio input values that vary per frame
+
+Predicting exact pixel values would require duplicating the entire rendering logic in tests, which provides little value. Instead, visual verification is done manually by comparing output against original AVS.
+
+### Test Types
+
+1. **Unit tests** - Parameter handling, script compilation, coordinate math
+2. **Visual verification** - Manual comparison with original AVS output
+3. **Performance tests** - Ensure real-time capability (not yet automated)
