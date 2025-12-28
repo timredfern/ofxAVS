@@ -341,15 +341,25 @@ TEST_CASE("Script Engine - Level 7: Full Scripts", "[script][level7][integration
     }
     
     SECTION("Error handling") {
-        // Math errors are handled gracefully (no throw) to avoid crashing visualizations
+        // All errors are handled gracefully (no throw) to avoid crashing visualizations
+        // Errors can be checked via has_error()/get_error()
+
         REQUIRE_NOTHROW(engine.evaluate("1 / 0")); // Division by zero returns 0
         REQUIRE(engine.evaluate("1 / 0") == 0.0);
 
         // sqrt(-1) returns NaN or 0, depending on implementation
         REQUIRE_NOTHROW(engine.evaluate("sqrt(-1)"));
 
-        // Unknown functions and syntax errors should throw
-        REQUIRE_THROWS(engine.evaluate("unknown_function(5)")); // Unknown function
-        REQUIRE_THROWS(engine.evaluate("x + * y")); // Syntax error - can't have * after +
+        // Unknown functions return 0 and set error
+        REQUIRE_NOTHROW(engine.evaluate("unknown_function(5)"));
+        REQUIRE(engine.has_error());
+
+        // Syntax errors return 0 and set error
+        REQUIRE_NOTHROW(engine.evaluate("x + * y"));
+        REQUIRE(engine.has_error());
+
+        // Incomplete expressions (common during live editing) don't crash
+        REQUIRE_NOTHROW(engine.evaluate("x ="));
+        REQUIRE(engine.has_error());
     }
 }
