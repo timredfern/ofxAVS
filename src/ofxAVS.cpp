@@ -99,6 +99,32 @@ void ofxAVS::removeEffectFromChain(int index) {
     }
 }
 
+void ofxAVS::duplicateEffect(int index) {
+    if (index >= 0 && index < static_cast<int>(effect_chain.size())) {
+        // Get the source effect
+        auto* source_effect = renderer->get_effect(static_cast<size_t>(index));
+        if (!source_effect) return;
+
+        // Create a new effect of the same type
+        const std::string& effect_name = effect_chain[index].name;
+        auto new_effect = avs::PluginManager::instance().create_effect(effect_name);
+        if (!new_effect) return;
+
+        // Copy parameters from source to new effect
+        new_effect->parameters().copy_from(source_effect->parameters());
+
+        // Insert after the current effect
+        size_t insert_pos = static_cast<size_t>(index) + 1;
+        renderer->insert_effect(insert_pos, std::move(new_effect));
+
+        // Update effect chain metadata
+        effect_chain.insert(effect_chain.begin() + insert_pos, effect_chain[index]);
+
+        // Select the new duplicate
+        selected_effect_index = static_cast<int>(insert_pos);
+    }
+}
+
 void ofxAVS::moveEffectUp(int index) {
     if (index > 0 && index < static_cast<int>(effect_chain.size())) {
         renderer->swap_effects(static_cast<size_t>(index), static_cast<size_t>(index - 1));
@@ -184,12 +210,17 @@ void ofxAVS::drawChainPanel() {
             }
             
             if (ImGui::BeginPopup(("effect_menu_" + std::to_string(i)).c_str())) {
+                if (ImGui::MenuItem("x2 (Duplicate)")) {
+                    duplicateEffect(i);
+                }
+                ImGui::Separator();
                 if (ImGui::MenuItem("Move Up", nullptr, false, i > 0)) {
                     moveEffectUp(i);
                 }
                 if (ImGui::MenuItem("Move Down", nullptr, false, i < effect_chain.size() - 1)) {
                     moveEffectDown(i);
                 }
+                ImGui::Separator();
                 if (ImGui::MenuItem("Remove")) {
                     removeEffectFromChain(i);
                 }

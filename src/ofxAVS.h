@@ -41,6 +41,7 @@ public:
     // Effect chain management
     void addEffectToChain(const std::string& effectName);
     void removeEffectFromChain(int index);
+    void duplicateEffect(int index);
     void moveEffectUp(int index);
     void moveEffectDown(int index);
     

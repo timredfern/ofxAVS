@@ -111,6 +111,16 @@ public:
         return parameters_;
     }
 
+    // Copy parameter values from another group (for duplicating effects)
+    void copy_from(const ParameterGroup& other) {
+        for (const auto& [name, param] : other.parameters_) {
+            auto it = parameters_.find(name);
+            if (it != parameters_.end()) {
+                it->second->set_value(param->get_value());
+            }
+        }
+    }
+
 private:
     std::map<std::string, std::shared_ptr<Parameter>> parameters_;
 };

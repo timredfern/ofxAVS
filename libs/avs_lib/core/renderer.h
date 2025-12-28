@@ -55,6 +55,7 @@ public:
     
     // Effect chain management
     void add_effect(std::unique_ptr<EffectBase> effect);
+    void insert_effect(size_t index, std::unique_ptr<EffectBase> effect);
     void remove_effect(size_t index);
     void clear_effects();
     size_t effect_count() const { return effects_.size(); }
@@ -124,6 +125,17 @@ template<typename PixelType>
 void Renderer<PixelType>::add_effect(std::unique_ptr<EffectBase> effect) {
     if (effect) {
         effects_.push_back(std::move(effect));
+    }
+}
+
+template<typename PixelType>
+void Renderer<PixelType>::insert_effect(size_t index, std::unique_ptr<EffectBase> effect) {
+    if (effect) {
+        if (index >= effects_.size()) {
+            effects_.push_back(std::move(effect));
+        } else {
+            effects_.insert(effects_.begin() + index, std::move(effect));
+        }
     }
 }
 
