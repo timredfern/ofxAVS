@@ -8,6 +8,7 @@
 #include "plugin_manager.h"
 #include "../effects/clear_effect.h"
 #include "../effects/oscilloscope_effect.h"
+#include "../effects/superscope_effect.h"
 #include "../effects/blur_effect.h"
 #include "../effects/brightness_effect.h"
 #include "../effects/movement_effect.h"
