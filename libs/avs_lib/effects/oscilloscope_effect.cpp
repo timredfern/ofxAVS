@@ -93,6 +93,12 @@ int OscilloscopeEffect::render(AudioData visdata, int isBeat,
         audio_data = &visdata[0][0][0];
     }
 
+    // Helper to convert signed audio sample to unsigned (XOR with 128)
+    // Original AVS: (fa_data[x]^128) converts signed char to 0-255 range
+    auto sample_to_unsigned = [](char sample) -> int {
+        return static_cast<unsigned char>(sample) ^ 128;
+    };
+
     if (draw_style == DrawStyle::SOLID) {
         // Solid scope: draw vertical bars from center to waveform value
         for (int x = 0; x < w; x++) {
@@ -101,7 +107,8 @@ int OscilloscopeEffect::render(AudioData visdata, int isBeat,
             float frac = r - idx;
             if (idx >= sample_count - 1) idx = sample_count - 2;
 
-            float yr = audio_data[idx] * (1.0f - frac) + audio_data[idx + 1] * frac;
+            float yr = sample_to_unsigned(audio_data[idx]) * (1.0f - frac) +
+                       sample_to_unsigned(audio_data[idx + 1]) * frac;
             int y = y_base + static_cast<int>(yr * y_scale);
 
             draw_line(framebuffer, w, h, x, y_center, x, y, color);
@@ -110,11 +117,11 @@ int OscilloscopeEffect::render(AudioData visdata, int isBeat,
         // Line scope: draw connected line segments
         float xs = 1.0f / x_scale;  // w / 288.0
         int lx = 0;
-        int ly = y_base + static_cast<int>(audio_data[0] * y_scale);
+        int ly = y_base + static_cast<int>(sample_to_unsigned(audio_data[0]) * y_scale);
 
         for (int i = 1; i < sample_count; i++) {
             int ox = static_cast<int>(i * xs);
-            int oy = y_base + static_cast<int>(audio_data[i] * y_scale);
+            int oy = y_base + static_cast<int>(sample_to_unsigned(audio_data[i]) * y_scale);
 
             draw_line(framebuffer, w, h, lx, ly, ox, oy, color);
 
@@ -129,7 +136,8 @@ int OscilloscopeEffect::render(AudioData visdata, int isBeat,
             float frac = r - idx;
             if (idx >= sample_count - 1) idx = sample_count - 2;
 
-            float yr = audio_data[idx] * (1.0f - frac) + audio_data[idx + 1] * frac;
+            float yr = sample_to_unsigned(audio_data[idx]) * (1.0f - frac) +
+                       sample_to_unsigned(audio_data[idx + 1]) * frac;
             int y = y_base + static_cast<int>(yr * y_scale);
 
             if (y >= 0 && y < h) {
