@@ -207,14 +207,20 @@ void renderImGui(const avs::EffectUILayout& layout, avs::EffectBase* effect) {
                 // Multi-line text edit for scripts
                 std::string value = params.get_string(control.id);
 
-                // Use a static map to store edit buffers per control (char arrays for ImGui)
+                // Use static maps to store edit buffers and last known values
                 static std::unordered_map<std::string, std::array<char, 4096>> edit_buffers;
+                static std::unordered_map<std::string, std::string> last_param_values;
                 std::string buffer_key = control.id + "_" + std::to_string(reinterpret_cast<uintptr_t>(effect));
 
-                // Initialize buffer if needed
-                if (edit_buffers.find(buffer_key) == edit_buffers.end()) {
+                // Initialize or sync buffer when parameter changes externally
+                bool needs_sync = (edit_buffers.find(buffer_key) == edit_buffers.end()) ||
+                                  (last_param_values[buffer_key] != value &&
+                                   std::string(edit_buffers[buffer_key].data()) == last_param_values[buffer_key]);
+
+                if (needs_sync) {
                     strncpy(edit_buffers[buffer_key].data(), value.c_str(), 4095);
                     edit_buffers[buffer_key][4095] = '\0';
+                    last_param_values[buffer_key] = value;
                 }
 
                 // Label above the edit box
@@ -230,7 +236,9 @@ void renderImGui(const avs::EffectUILayout& layout, avs::EffectBase* effect) {
                     ImVec2(controlwidth , controlheight ),  //2.0f
                     ImGuiInputTextFlags_AllowTabInput)) {
                     // Update parameter when text changes
-                    params.set_string(control.id, std::string(edit_buffers[buffer_key].data()));
+                    std::string new_value(edit_buffers[buffer_key].data());
+                    params.set_string(control.id, new_value);
+                    last_param_values[buffer_key] = new_value;
                 }
                 break;
             }

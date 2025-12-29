@@ -186,20 +186,21 @@ int SuperScopeEffect::render(AudioData visdata, int isBeat,
     int current_color = color & 0xFFFFFF;
 
     // Prepare audio data
+    // visdata[0] = waveform, visdata[1] = spectrum
     char* audio_data;
     static char center_channel[576];
     int ws = (source_mode == 1) ? 1 : 0;  // 0=waveform, 1=spectrum
-    int xorv = (ws * 128) ^ 128;  // XOR value for signed/unsigned conversion
+    int xorv = (ws == 0) ? 128 : 0;  // Waveform is signed (needs XOR 128), spectrum is unsigned
 
     if (channel == 1) {  // Center
         for (int i = 0; i < 576; i++) {
-            center_channel[i] = visdata[ws ^ 1][0][i] / 2 + visdata[ws ^ 1][1][i] / 2;
+            center_channel[i] = visdata[ws][0][i] / 2 + visdata[ws][1][i] / 2;
         }
         audio_data = center_channel;
     } else if (channel == 2) {  // Right
-        audio_data = &visdata[ws ^ 1][1][0];
+        audio_data = &visdata[ws][1][0];
     } else {  // Left (default)
-        audio_data = &visdata[ws ^ 1][0][0];
+        audio_data = &visdata[ws][0][0];
     }
 
     // Set up engine variables

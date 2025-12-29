@@ -59,7 +59,10 @@ int OscilloscopeEffect::render(AudioData visdata, int isBeat,
     auto channel = static_cast<AudioChannel>(parameters().get_int("channel"));
     auto draw_style = static_cast<DrawStyle>(parameters().get_int("draw_style"));
     auto position = static_cast<VerticalPosition>(parameters().get_int("position"));
-    // auto mode = static_cast<RenderMode>(parameters().get_int("mode")); // TODO: implement spectrum mode
+    auto mode = static_cast<RenderMode>(parameters().get_int("mode"));
+
+    // Source: 0 = spectrum (visdata[1]), 1 = waveform (visdata[0])
+    int source = (mode == RenderMode::SPECTRUM) ? 1 : 0;
 
     // Scale factors matching original AVS (uses 288 samples, scales to screen width)
     const int sample_count = 288;
@@ -82,21 +85,28 @@ int OscilloscopeEffect::render(AudioData visdata, int isBeat,
     static char mixed_data[576];
 
     if (channel == AudioChannel::RIGHT) {
-        audio_data = &visdata[0][1][0];
+        audio_data = &visdata[source][1][0];
     } else if (channel == AudioChannel::CENTER) {
         // Mix both channels
         for (int i = 0; i < 576; i++) {
-            mixed_data[i] = (visdata[0][0][i] + visdata[0][1][i]) / 2;
+            mixed_data[i] = (visdata[source][0][i] + visdata[source][1][i]) / 2;
         }
         audio_data = mixed_data;
     } else {  // LEFT (default)
-        audio_data = &visdata[0][0][0];
+        audio_data = &visdata[source][0][0];
     }
 
-    // Helper to convert signed audio sample to unsigned (XOR with 128)
-    // Original AVS: (fa_data[x]^128) converts signed char to 0-255 range
-    auto sample_to_unsigned = [](char sample) -> int {
-        return static_cast<unsigned char>(sample) ^ 128;
+    // Helper to convert audio sample to unsigned
+    // Waveform: signed char needs XOR 128 to convert to 0-255
+    // Spectrum: already unsigned 0-255, no conversion needed
+    auto sample_to_unsigned = [source](char sample) -> int {
+        if (source == 0) {
+            // Waveform: convert signed to unsigned
+            return static_cast<unsigned char>(sample) ^ 128;
+        } else {
+            // Spectrum: already unsigned
+            return static_cast<unsigned char>(sample);
+        }
     };
 
     if (draw_style == DrawStyle::SOLID) {

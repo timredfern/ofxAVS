@@ -88,13 +88,14 @@ protected:
                     }
                     break;
                 case ControlType::EDITTEXT:
-                    // Multi-line text edit - handled separately with STRING params
-                    // Don't auto-create here, let the effect add them manually
+                    // Multi-line text edit - create STRING parameter
+                    parameters_.add_parameter(std::make_shared<Parameter>(
+                        control.id, ParameterType::STRING, std::string("")));
                     break;
                 case ControlType::DROPDOWN:
                     parameters_.add_parameter(std::make_shared<Parameter>(
                         control.id, ParameterType::INT, control.default_val,
-                        control.range.min, control.range.max));
+                        0, static_cast<int>(control.options.size()) - 1));
                     break;
                 default:
                     break;
