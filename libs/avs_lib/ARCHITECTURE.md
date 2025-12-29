@@ -14,7 +14,7 @@ This library recreates the Advanced Visualization Studio (AVS) effect system wit
 Each AVS effect is implemented as a separate class that exactly matches the original behavior:
 - `MovementEffect` → `r_trans.cpp` (Trans/Movement)
 - `DynamicMovementEffect` → `r_dmove.cpp` (Trans/Dynamic Movement)
-- `OscilloscopeEffect` → `r_oscstar.cpp` (Render/Oscilloscope)
+- `OscilloscopeEffect` → `r_simple.cpp` (Render/Simple)
 - `BlurEffect` → `r_blur.cpp` (Trans/Blur)
 - `BrightnessEffect` → `r_bright.cpp` (Trans/Brightness)
 - `ClearEffect` → `r_clear.cpp` (Render/Clear Screen)
@@ -41,13 +41,13 @@ The custom parser supports the subset of EEL syntax used by AVS effects (arithme
 
 **Original Plan:**
 - `FullResolutionTable` class (int* lookup, one entry per pixel) for MovementEffect
-- `CoordinateLookupTable` class (sparse grid with interpolation) for DynamicMovementEffect
+- `CoordinateGrid` class (sparse grid with interpolation) for DynamicMovementEffect
 
 **Current Implementation:**
 - `MovementEffect`: Internal `std::vector<int> lookup_table_` (full resolution)
-- `DynamicMovementEffect`: Uses `CoordinateLookupTable` class (sparse grid)
+- `DynamicMovementEffect`: Uses `CoordinateGrid` class (sparse grid)
 
-**Rationale for change:** The full-resolution table was inlined into `MovementEffect` rather than extracted to a separate class. This keeps the simpler effect self-contained while the more complex grid-based interpolation in `DynamicMovementEffect` benefits from the separate `CoordinateLookupTable` utility class.
+**Rationale for change:** The full-resolution table was inlined into `MovementEffect` rather than extracted to a separate class. This keeps the simpler effect self-contained while the more complex grid-based interpolation in `DynamicMovementEffect` benefits from the separate `CoordinateGrid` utility class.
 
 ## Directory Structure
 
@@ -61,7 +61,7 @@ libs/avs_lib/
 │   │   └── script_variables.cpp
 │   └── transforms/
 │       ├── full_resolution_table.cpp
-│       └── coordinate_lookup_table.cpp
+│       └── coordinate_grid.cpp
 ```
 
 **Current Structure:**
@@ -75,7 +75,7 @@ libs/avs_lib/
 │   │   ├── lexer.cpp           # Token scanning
 │   │   ├── parser.cpp          # Expression parsing
 │   │   └── script_engine.cpp   # Variable context and evaluation
-│   ├── coordinate_lookup_table.cpp  # Grid-based transforms with interpolation
+│   ├── coordinate_grid.cpp          # Grid-based transforms with interpolation
 │   ├── builtin_effects.cpp     # Built-in effect presets
 │   ├── parameter.cpp           # Parameter system
 │   ├── plugin_manager.cpp      # Effect registration and factory
@@ -84,7 +84,7 @@ libs/avs_lib/
 ├── effects/
 │   ├── movement_effect.cpp         # Trans/Movement (r_trans.cpp)
 │   ├── dynamic_movement_effect.cpp # Trans/Dynamic Movement (r_dmove.cpp)
-│   ├── oscilloscope_effect.cpp     # Render/Oscilloscope (r_oscstar.cpp)
+│   ├── oscilloscope_effect.cpp     # Render/Simple (r_simple.cpp)
 │   ├── blur_effect.cpp             # Trans/Blur (r_blur.cpp)
 │   ├── brightness_effect.cpp       # Trans/Brightness (r_bright.cpp)
 │   └── clear_effect.cpp            # Render/Clear Screen (r_clear.cpp)
@@ -93,7 +93,7 @@ libs/avs_lib/
 ```
 
 **Rationale for changes:**
-- `transforms/` subdirectory was not created; `coordinate_lookup_table.cpp` lives directly in `core/`
+- `transforms/` subdirectory was not created; `coordinate_grid.cpp` lives directly in `core/`
 - `full_resolution_table` was not extracted as separate class
 - Added `EFFECTS.md` for documenting original AVS UI layouts
 - Added `OPTIMISATION.md` for performance findings
@@ -202,7 +202,7 @@ class MovementEffect : public EffectBase {
 ### Dynamic Transform Effects (DynamicMovementEffect)
 ```cpp
 class DynamicMovementEffect : public EffectBase {
-    CoordinateLookupTable grid_table_;  // Sparse grid with interpolation
+    CoordinateGrid grid_;  // Sparse grid with interpolation
 
     void render(...) {
         // Execute frame-level scripts
@@ -251,11 +251,18 @@ Key requirements for authentic AVS behavior:
 - **Coordinate systems** (polar vs rectangular) must behave identically
 - **Beat detection** and **variable persistence** must match original timing
 
-### Interpolation Modes
-The `CoordinateLookupTable` supports three modes for authentic AVS reproduction:
-- `NONE` - No interpolation, creates classic stepped/blocky artifacts
-- `LINEAR` - Bilinear interpolation for smooth transforms
-- `NEAREST` - Nearest neighbor, sharp but less blocky than none
+### Interpolation in CoordinateGrid
+
+The `CoordinateGrid` class uses a two-stage transformation matching original AVS:
+
+**Stage 1 - Grid interpolation** (always bilinear):
+- Script runs at sparse grid points (e.g., 16x16)
+- For each output pixel, bilinearly interpolates between grid points
+- Small grids create visible stepping artifacts
+
+**Stage 2 - Pixel sampling** (controlled by `subpixel` flag):
+- `subpixel=true`: Bilinear sample from source image (smooth)
+- `subpixel=false`: Nearest neighbor from source (sharp/blocky)
 
 ## Implementation Status
 
@@ -268,7 +275,7 @@ The `CoordinateLookupTable` supports three modes for authentic AVS reproduction:
 - BrightnessEffect (lookup table based, matches r_bright.cpp)
 - ClearEffect (with blend modes)
 - OscilloscopeEffect (basic non-scriptable version)
-- CoordinateLookupTable with interpolation modes
+- CoordinateGrid with two-stage transformation
 - MovementEffect (23 presets + custom scripting)
 - DynamicMovementEffect (multi-phase scripting)
 
