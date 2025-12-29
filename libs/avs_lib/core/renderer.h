@@ -7,6 +7,8 @@
 #pragma once
 
 #include "effect_base.h"
+#include "effect_container.h"
+#include "../effects/effect_list.h"
 #include <memory>
 #include <vector>
 #include <cstdint>
@@ -53,26 +55,38 @@ public:
     Renderer(int width, int height);
     ~Renderer();
     
-    // Effect chain management
-    void add_effect(std::unique_ptr<EffectBase> effect);
-    void insert_effect(size_t index, std::unique_ptr<EffectBase> effect);
-    void remove_effect(size_t index);
-    void clear_effects();
-    size_t effect_count() const { return effects_.size(); }
+    // Root effect list access
+    EffectList* root() { return root_.get(); }
+    const EffectList* root() const { return root_.get(); }
 
-    // Access effects for UI/parameter modification
+    // Effect chain management - delegates to root
+    void add_effect(std::unique_ptr<EffectBase> effect) {
+        root_->add_child(std::move(effect));
+    }
+    void insert_effect(size_t index, std::unique_ptr<EffectBase> effect) {
+        root_->insert_child(index, std::move(effect));
+    }
+    void remove_effect(size_t index) {
+        root_->remove_child(index);
+    }
+    void clear_effects() {
+        while (root_->child_count() > 0) {
+            root_->remove_child(0);
+        }
+    }
+    size_t effect_count() const { return root_->child_count(); }
+
+    // Access effects for UI/parameter modification - delegates to root
     EffectBase* get_effect(size_t index) {
-        return index < effects_.size() ? effects_[index].get() : nullptr;
+        return root_->get_child(index);
     }
     const EffectBase* get_effect(size_t index) const {
-        return index < effects_.size() ? effects_[index].get() : nullptr;
+        return root_->get_child(index);
     }
 
-    // Swap two effects in the chain
+    // Swap two effects in the chain - delegates to root
     void swap_effects(size_t index_a, size_t index_b) {
-        if (index_a < effects_.size() && index_b < effects_.size()) {
-            std::swap(effects_[index_a], effects_[index_b]);
-        }
+        root_->swap_children(index_a, index_b);
     }
     
     // Main render call - now templated for pixel type
@@ -89,26 +103,28 @@ public:
 private:
     int width_;
     int height_;
-    
+
     // Double buffering for effect chain - now templated
     std::vector<PixelType> buffer_a_;
     std::vector<PixelType> buffer_b_;
-    
-    // Effect chain
-    std::vector<std::unique_ptr<EffectBase>> effects_;
-    
+
+    // Root effect list (the "Main" container)
+    std::unique_ptr<EffectList> root_;
+
     // Helper to get buffer pointers
     PixelType* get_buffer_a() { return buffer_a_.data(); }
     PixelType* get_buffer_b() { return buffer_b_.data(); }
-    
+
     void allocate_buffers();
 };
 
 // Template implementation
 template<typename PixelType>
-Renderer<PixelType>::Renderer(int width, int height) 
+Renderer<PixelType>::Renderer(int width, int height)
     : width_(width), height_(height) {
     allocate_buffers();
+    root_ = std::make_unique<EffectList>();
+    root_->set_is_root(true);
 }
 
 template<typename PixelType>
@@ -121,35 +137,6 @@ void Renderer<PixelType>::allocate_buffers() {
     buffer_b_.resize(buffer_size);
 }
 
-template<typename PixelType>
-void Renderer<PixelType>::add_effect(std::unique_ptr<EffectBase> effect) {
-    if (effect) {
-        effects_.push_back(std::move(effect));
-    }
-}
-
-template<typename PixelType>
-void Renderer<PixelType>::insert_effect(size_t index, std::unique_ptr<EffectBase> effect) {
-    if (effect) {
-        if (index >= effects_.size()) {
-            effects_.push_back(std::move(effect));
-        } else {
-            effects_.insert(effects_.begin() + index, std::move(effect));
-        }
-    }
-}
-
-template<typename PixelType>
-void Renderer<PixelType>::remove_effect(size_t index) {
-    if (index < effects_.size()) {
-        effects_.erase(effects_.begin() + index);
-    }
-}
-
-template<typename PixelType>
-void Renderer<PixelType>::clear_effects() {
-    effects_.clear();
-}
 
 template<typename PixelType>
 void Renderer<PixelType>::resize(int width, int height) {
@@ -160,45 +147,24 @@ void Renderer<PixelType>::resize(int width, int height) {
 
 template<typename PixelType>
 void Renderer<PixelType>::render(AudioData visdata, bool is_beat, PixelType* output_buffer) {
-    if (effects_.empty()) {
+    if (!root_ || root_->child_count() == 0) {
         // No effects - clear output buffer
         std::fill_n(output_buffer, width_ * height_, PixelType{});
         return;
     }
-    
+
     // Don't auto-clear buffer - preserve previous frame for feedback effects
-    // The Clear effect will handle clearing when needed
-    
-    // Chain effects using double buffering
-    PixelType* current_input = get_buffer_a();
-    PixelType* current_output = get_buffer_b();
-    bool use_buffer_a = true;
-    
-    for (auto& effect : effects_) {
-        if (!effect->is_enabled()) continue;
-        
-        int result = effect->render(visdata, is_beat ? 1 : 0, 
-                                   reinterpret_cast<uint32_t*>(current_input), 
-                                   reinterpret_cast<uint32_t*>(current_output), 
-                                   width_, height_);
-        
-        // Handle result according to AVS convention:
-        // 0 = use input buffer, 1 = use output buffer
-        if (result == 1) {
-            // Effect wrote to output buffer, swap for next effect
-            std::swap(current_input, current_output);
-            use_buffer_a = !use_buffer_a;
-        }
-        // If result == 0, next effect reads from same input buffer
-    }
-    
+    // The Clear effect or EffectList clear_each_frame will handle clearing when needed
+
+    // Render the root effect list - it handles buffer swapping for its children
+    // Result is always in framebuffer (buffer_a) per EffectList convention
+    root_->render(visdata, is_beat ? 1 : 0,
+                  reinterpret_cast<uint32_t*>(get_buffer_a()),
+                  reinterpret_cast<uint32_t*>(get_buffer_b()),
+                  width_, height_);
+
     // Copy final result to output
-    std::memcpy(output_buffer, current_input, width_ * height_ * sizeof(PixelType));
-    
-    // Preserve final result in buffer_a for next frame (feedback)
-    if (current_input != get_buffer_a()) {
-        std::memcpy(get_buffer_a(), current_input, width_ * height_ * sizeof(PixelType));
-    }
+    std::memcpy(output_buffer, get_buffer_a(), width_ * height_ * sizeof(PixelType));
 }
 
 template<typename PixelType>

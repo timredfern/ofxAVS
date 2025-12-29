@@ -10,18 +10,14 @@
 #include "core/renderer.h"
 #include "core/plugin_manager.h"
 #include "core/effect_base.h"
+#include "core/effect_container.h"
 #include <vector>
+#include <unordered_set>
 
 // FFT mode selection:
 // Define AVS_ENHANCED_FFT for modern processing (2048 samples, smoothing, dB scale)
 // Undefine for original Winamp behavior (512 samples, log table, no smoothing)
 //#define AVS_ENHANCED_FFT
-
-// Effect chain item for the UI (metadata only - effects owned by renderer)
-struct EffectChainItem {
-    std::string name;
-    std::string display_name;
-};
 
 // Available effect info
 struct AvailableEffectInfo {
@@ -46,18 +42,17 @@ public:
     void drawUI();
 
     // Effect chain management
-    void addEffectToChain(const std::string& effectName);
-    void removeEffectFromChain(int index);
-    void duplicateEffect(int index);
-    void moveEffectUp(int index);
-    void moveEffectDown(int index);
+    void addEffect(const std::string& effectName, avs::EffectContainer* parent = nullptr);
+    void removeEffect(avs::EffectBase* effect);
+    void duplicateEffect(avs::EffectBase* effect);
+    void moveEffectUp(avs::EffectBase* effect);
+    void moveEffectDown(avs::EffectBase* effect);
 
     // UI panel management
-    void setSelectedEffect(int index);
-    int getSelectedEffect() const { return selected_effect_index; }
+    void setSelectedEffect(avs::EffectBase* effect) { selected_effect_ = effect; }
+    avs::EffectBase* getSelectedEffect() const { return selected_effect_; }
 
-    // Effect chain access
-    const std::vector<EffectChainItem>& getEffectChain() const { return effect_chain; }
+    // Effect access
     const std::vector<AvailableEffectInfo>& getAvailableEffects() const { return available_effects; }
 
 private:
@@ -78,14 +73,16 @@ private:
     unsigned char logTable[256];       // AVS log compression table
 #endif
 
-    // Effect chain and UI state
-    std::vector<EffectChainItem> effect_chain;
+    // Effect UI state
     std::vector<AvailableEffectInfo> available_effects;
-    int selected_effect_index = -1;
+    avs::EffectBase* selected_effect_ = nullptr;
+
+    // Track collapsed containers for tree view
+    std::unordered_set<avs::EffectContainer*> collapsed_containers_;
 
     // UI panel dimensions
-    int chain_panel_width = 200;
-    int available_panel_width = 200;
+    int chain_panel_width = 280;
+    int chain_panel_height = 480;
     int parameters_panel_width = 440;
     int parameters_panel_height = 480;
 
@@ -94,6 +91,17 @@ private:
 
     // UI rendering methods
     void drawChainPanel();
-    void drawAvailableEffectsPanel();
     void drawParametersPanel();
+
+    // Tree view helpers
+    void drawEffectTree(avs::EffectContainer* container, int depth = 0);
+    avs::EffectContainer* findParentContainer(avs::EffectBase* effect, avs::EffectContainer* searchIn = nullptr);
+
+    // Popup menu helpers
+    void drawAddEffectMenu(avs::EffectContainer* targetContainer);
+    void drawAddEffectMenuInsertAfter(avs::EffectContainer* container, int afterIndex);
+    void drawEffectContextMenu(avs::EffectBase* effect);
+
+    // Effect insertion helper
+    void insertEffect(const std::string& effectName, avs::EffectContainer* container, size_t index);
 };

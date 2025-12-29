@@ -7,6 +7,7 @@
 #include "core/plugin_manager.h"
 #include "core/builtin_effects.h"
 #include <cmath>
+#include <map>
 
 ofxAVS::ofxAVS() : fft(nullptr) {
 #ifdef AVS_ENHANCED_FFT
@@ -25,9 +26,8 @@ ofxAVS::ofxAVS() : fft(nullptr) {
 }
 
 ofxAVS::~ofxAVS() {
-    // Clear effect chain to ensure proper cleanup
+    // Clear renderer to ensure proper cleanup
     renderer.reset();
-    effect_chain.clear();
 
     // Clean up FFT
     if (fft) {
@@ -62,8 +62,8 @@ void ofxAVS::setup() {
     initializeAvailableEffects();
     
     // Add default effects to see something
-    addEffectToChain("Brightness");
-    addEffectToChain("Oscilloscope");
+    addEffect("Brightness");
+    addEffect("Oscilloscope");
 }
 
 void ofxAVS::update() {
@@ -208,91 +208,110 @@ void ofxAVS::draw(int x, int y, int w, int h) {
 
 void ofxAVS::drawUI() {
     drawChainPanel();
-    drawAvailableEffectsPanel();
     drawParametersPanel();
 }
 
-void ofxAVS::addEffectToChain(const std::string& effectName) {
-    // Find display name from available effects
-    std::string displayName = effectName;
-    for (const auto& effect : available_effects) {
-        if (effect.name == effectName) {
-            displayName = effect.display_name;
-            break;
-        }
+void ofxAVS::addEffect(const std::string& effectName, avs::EffectContainer* parent) {
+    // Use root if no parent specified
+    if (!parent) {
+        parent = renderer->root();
     }
 
-    // Create effect and add directly to renderer
+    // Create effect and add to container
     auto new_effect = avs::PluginManager::instance().create_effect(effectName);
     if (new_effect) {
-        renderer->add_effect(std::move(new_effect));
-
-        // Add metadata to effect_chain
-        effect_chain.push_back({effectName, displayName});
+        avs::EffectBase* effect_ptr = new_effect.get();
+        parent->add_child(std::move(new_effect));
 
         // Select the newly added effect
-        selected_effect_index = static_cast<int>(effect_chain.size()) - 1;
+        selected_effect_ = effect_ptr;
     }
 }
 
-void ofxAVS::removeEffectFromChain(int index) {
-    if (index >= 0 && index < static_cast<int>(effect_chain.size())) {
-        renderer->remove_effect(static_cast<size_t>(index));
-        effect_chain.erase(effect_chain.begin() + index);
+void ofxAVS::removeEffect(avs::EffectBase* effect) {
+    if (!effect) return;
 
-        // Adjust selected index
-        if (selected_effect_index >= static_cast<int>(effect_chain.size())) {
-            selected_effect_index = static_cast<int>(effect_chain.size()) - 1;
+    // Find parent container
+    avs::EffectContainer* parent = findParentContainer(effect);
+    if (!parent) return;
+
+    int index = parent->find_child_index(effect);
+    if (index >= 0) {
+        // Clear selection if we're removing the selected effect
+        if (selected_effect_ == effect) {
+            selected_effect_ = nullptr;
+        }
+        parent->remove_child(static_cast<size_t>(index));
+    }
+}
+
+void ofxAVS::duplicateEffect(avs::EffectBase* effect) {
+    if (!effect) return;
+
+    // Find parent container
+    avs::EffectContainer* parent = findParentContainer(effect);
+    if (!parent) return;
+
+    int index = parent->find_child_index(effect);
+    if (index < 0) return;
+
+    // Get effect type name from plugin info
+    const std::string& effect_name = effect->get_plugin_info().name;
+    auto new_effect = avs::PluginManager::instance().create_effect(effect_name);
+    if (!new_effect) return;
+
+    // Copy parameters from source to new effect
+    new_effect->parameters().copy_from(effect->parameters());
+
+    // Insert after the current effect
+    avs::EffectBase* new_effect_ptr = new_effect.get();
+    parent->insert_child(static_cast<size_t>(index + 1), std::move(new_effect));
+
+    // Select the new duplicate
+    selected_effect_ = new_effect_ptr;
+}
+
+void ofxAVS::moveEffectUp(avs::EffectBase* effect) {
+    if (!effect) return;
+
+    avs::EffectContainer* parent = findParentContainer(effect);
+    if (!parent) return;
+
+    parent->move_child_up(static_cast<size_t>(parent->find_child_index(effect)));
+}
+
+void ofxAVS::moveEffectDown(avs::EffectBase* effect) {
+    if (!effect) return;
+
+    avs::EffectContainer* parent = findParentContainer(effect);
+    if (!parent) return;
+
+    parent->move_child_down(static_cast<size_t>(parent->find_child_index(effect)));
+}
+
+avs::EffectContainer* ofxAVS::findParentContainer(avs::EffectBase* effect, avs::EffectContainer* searchIn) {
+    if (!effect) return nullptr;
+
+    // Start search from root if not specified
+    if (!searchIn) {
+        searchIn = renderer->root();
+    }
+
+    // Check if effect is a direct child
+    for (size_t i = 0; i < searchIn->child_count(); i++) {
+        if (searchIn->get_child(i) == effect) {
+            return searchIn;
+        }
+
+        // Check if child is a container and recurse
+        auto* child_container = dynamic_cast<avs::EffectContainer*>(searchIn->get_child(i));
+        if (child_container) {
+            auto* found = findParentContainer(effect, child_container);
+            if (found) return found;
         }
     }
-}
 
-void ofxAVS::duplicateEffect(int index) {
-    if (index >= 0 && index < static_cast<int>(effect_chain.size())) {
-        // Get the source effect
-        auto* source_effect = renderer->get_effect(static_cast<size_t>(index));
-        if (!source_effect) return;
-
-        // Create a new effect of the same type
-        const std::string& effect_name = effect_chain[index].name;
-        auto new_effect = avs::PluginManager::instance().create_effect(effect_name);
-        if (!new_effect) return;
-
-        // Copy parameters from source to new effect
-        new_effect->parameters().copy_from(source_effect->parameters());
-
-        // Insert after the current effect
-        size_t insert_pos = static_cast<size_t>(index) + 1;
-        renderer->insert_effect(insert_pos, std::move(new_effect));
-
-        // Update effect chain metadata
-        effect_chain.insert(effect_chain.begin() + insert_pos, effect_chain[index]);
-
-        // Select the new duplicate
-        selected_effect_index = static_cast<int>(insert_pos);
-    }
-}
-
-void ofxAVS::moveEffectUp(int index) {
-    if (index > 0 && index < static_cast<int>(effect_chain.size())) {
-        renderer->swap_effects(static_cast<size_t>(index), static_cast<size_t>(index - 1));
-        std::swap(effect_chain[index], effect_chain[index - 1]);
-        selected_effect_index = index - 1;
-    }
-}
-
-void ofxAVS::moveEffectDown(int index) {
-    if (index >= 0 && index < static_cast<int>(effect_chain.size()) - 1) {
-        renderer->swap_effects(static_cast<size_t>(index), static_cast<size_t>(index + 1));
-        std::swap(effect_chain[index], effect_chain[index + 1]);
-        selected_effect_index = index + 1;
-    }
-}
-
-void ofxAVS::setSelectedEffect(int index) {
-    if (index >= -1 && index < static_cast<int>(effect_chain.size())) {
-        selected_effect_index = index;
-    }
+    return nullptr;
 }
 
 void ofxAVS::initializeAvailableEffects() {
@@ -326,105 +345,274 @@ void ofxAVS::initializeAvailableEffects() {
 
 void ofxAVS::drawChainPanel() {
     ImGui::SetNextWindowPos(ImVec2(10, 10));
-    ImGui::SetNextWindowSize(ImVec2(chain_panel_width, 400));
-    
+    ImGui::SetNextWindowSize(ImVec2(chain_panel_width, chain_panel_height));
+
     ImGui::PushStyleColor(ImGuiCol_TitleBg, ImVec4(0.2f, 0.2f, 0.2f, 1.0f));
     ImGui::PushStyleColor(ImGuiCol_TitleBgActive, ImVec4(0.2f, 0.2f, 0.2f, 1.0f));
     ImGui::PushStyleColor(ImGuiCol_TitleBgCollapsed, ImVec4(0.2f, 0.2f, 0.2f, 1.0f));
-    
-    if (ImGui::Begin("Effect Chain", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove)) {
-        for (int i = 0; i < effect_chain.size(); i++) {
-            const auto& item = effect_chain[i];
-            bool is_selected = (i == selected_effect_index);
 
-            // Selection highlighting
+    if (ImGui::Begin("Effect Chain", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove)) {
+        // Draw the root container as "Main"
+        avs::EffectList* root = renderer->root();
+        if (root) {
+            bool root_selected = (selected_effect_ == root);
+            bool is_expanded = collapsed_containers_.find(root) == collapsed_containers_.end();
+
+            // Arrow button for expand/collapse
+            if (ImGui::ArrowButton("##main_arrow", is_expanded ? ImGuiDir_Down : ImGuiDir_Right)) {
+                if (is_expanded) {
+                    collapsed_containers_.insert(root);
+                } else {
+                    collapsed_containers_.erase(root);
+                }
+            }
+            ImGui::SameLine();
+
+            // Main selectable
+            if (root_selected) {
+                ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.4f, 0.4f, 0.6f, 1.0f));
+            }
+            if (ImGui::Selectable("Main", root_selected, ImGuiSelectableFlags_None, ImVec2(chain_panel_width - 50, 0))) {
+                selected_effect_ = root;
+            }
+            if (root_selected) {
+                ImGui::PopStyleColor();
+            }
+
+            // Context menu for root
+            if (ImGui::BeginPopupContextItem("main_context")) {
+                drawAddEffectMenu(root);
+                ImGui::EndPopup();
+            }
+
+            // Draw children if expanded
+            if (is_expanded) {
+                drawEffectTree(root, 1);
+            }
+        }
+    }
+    ImGui::End();
+    ImGui::PopStyleColor(3);
+}
+
+void ofxAVS::drawEffectTree(avs::EffectContainer* container, int depth) {
+    float indent = depth * 20.0f;
+
+    for (size_t i = 0; i < container->child_count(); i++) {
+        avs::EffectBase* effect = container->get_child(i);
+        if (!effect) continue;
+
+        ImGui::Indent(indent);
+
+        // Check if this is a container
+        auto* child_container = dynamic_cast<avs::EffectContainer*>(effect);
+        bool is_selected = (selected_effect_ == effect);
+
+        // Generate unique ID
+        std::string id = "##effect_" + std::to_string(reinterpret_cast<uintptr_t>(effect));
+
+        if (child_container) {
+            // Container: draw arrow + name
+            bool is_expanded = collapsed_containers_.find(child_container) == collapsed_containers_.end();
+
+            if (ImGui::ArrowButton(("##arrow" + id).c_str(), is_expanded ? ImGuiDir_Down : ImGuiDir_Right)) {
+                if (is_expanded) {
+                    collapsed_containers_.insert(child_container);
+                } else {
+                    collapsed_containers_.erase(child_container);
+                }
+            }
+            ImGui::SameLine();
+
             if (is_selected) {
-                ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.6f, 0.6f, 0.6f, 1.0f));
+                ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.4f, 0.4f, 0.6f, 1.0f));
             }
-            
-            // Effect button - use index for unique ID
-            std::string label = item.display_name + "##" + std::to_string(i);
-            if (ImGui::Button(label.c_str(), ImVec2(chain_panel_width-15, 25))) {
-                setSelectedEffect(i);
+            std::string label = effect->get_plugin_info().name + id;
+            if (ImGui::Selectable(label.c_str(), is_selected, ImGuiSelectableFlags_None, ImVec2(chain_panel_width - indent - 50, 0))) {
+                selected_effect_ = effect;
             }
-            
             if (is_selected) {
                 ImGui::PopStyleColor();
             }
-            
-            // Context menu for effect management
-            if (ImGui::IsItemClicked(ImGuiMouseButton_Right)) {
-                ImGui::OpenPopup(("effect_menu_" + std::to_string(i)).c_str());
+
+            // Context menu
+            if (ImGui::BeginPopupContextItem()) {
+                drawEffectContextMenu(effect);
+                ImGui::EndPopup();
             }
-            
-            if (ImGui::BeginPopup(("effect_menu_" + std::to_string(i)).c_str())) {
-                if (ImGui::MenuItem("x2 (Duplicate)")) {
-                    duplicateEffect(i);
-                }
-                ImGui::Separator();
-                if (ImGui::MenuItem("Move Up", nullptr, false, i > 0)) {
-                    moveEffectUp(i);
-                }
-                if (ImGui::MenuItem("Move Down", nullptr, false, i < effect_chain.size() - 1)) {
-                    moveEffectDown(i);
-                }
-                ImGui::Separator();
-                if (ImGui::MenuItem("Remove")) {
-                    removeEffectFromChain(i);
-                }
+
+            // Recurse if expanded
+            if (is_expanded) {
+                ImGui::Unindent(indent);
+                drawEffectTree(child_container, depth + 1);
+                ImGui::Indent(indent);
+            }
+        } else {
+            // Regular effect: just name
+            if (is_selected) {
+                ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.4f, 0.4f, 0.6f, 1.0f));
+            }
+            std::string label = effect->get_plugin_info().name + id;
+            if (ImGui::Selectable(label.c_str(), is_selected)) {
+                selected_effect_ = effect;
+            }
+            if (is_selected) {
+                ImGui::PopStyleColor();
+            }
+
+            // Context menu
+            if (ImGui::BeginPopupContextItem()) {
+                drawEffectContextMenu(effect);
                 ImGui::EndPopup();
             }
         }
+
+        ImGui::Unindent(indent);
     }
-    ImGui::End();
-    ImGui::PopStyleColor(3);
 }
 
-void ofxAVS::drawAvailableEffectsPanel() {
-    int panel_x = chain_panel_width + 20;
-    ImGui::SetNextWindowPos(ImVec2(panel_x, 10));
-    ImGui::SetNextWindowSize(ImVec2(available_panel_width, 400));
-    
-    ImGui::PushStyleColor(ImGuiCol_TitleBg, ImVec4(0.2f, 0.2f, 0.2f, 1.0f));
-    ImGui::PushStyleColor(ImGuiCol_TitleBgActive, ImVec4(0.2f, 0.2f, 0.2f, 1.0f));
-    ImGui::PushStyleColor(ImGuiCol_TitleBgCollapsed, ImVec4(0.2f, 0.2f, 0.2f, 1.0f));
-    
-    if (ImGui::Begin("Available Effects", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove)) {
+void ofxAVS::drawAddEffectMenu(avs::EffectContainer* targetContainer) {
+    if (ImGui::BeginMenu("Add Effect")) {
+        // Group effects by category
+        std::map<std::string, std::vector<const AvailableEffectInfo*>> categories;
+
         for (const auto& effect : available_effects) {
-            if (ImGui::Button((effect.display_name + " +").c_str(), ImVec2(available_panel_width-15, 25))) {
-                addEffectToChain(effect.name);
+            // Parse category from name (e.g., "Render / Clear Screen" -> "Render")
+            std::string category = "Misc";
+            std::string name = effect.display_name;
+
+            size_t sep = effect.display_name.find(" / ");
+            if (sep != std::string::npos) {
+                category = effect.display_name.substr(0, sep);
+                name = effect.display_name.substr(sep + 3);
             }
-            
-            if (ImGui::IsItemHovered()) {
-                ImGui::SetTooltip("%s", effect.description.c_str());
+
+            categories[category].push_back(&effect);
+        }
+
+        // Draw categorized menu
+        for (const auto& [category, effects] : categories) {
+            if (ImGui::BeginMenu(category.c_str())) {
+                for (const auto* effect : effects) {
+                    // Extract just the effect name (after category)
+                    std::string name = effect->display_name;
+                    size_t sep = effect->display_name.find(" / ");
+                    if (sep != std::string::npos) {
+                        name = effect->display_name.substr(sep + 3);
+                    }
+
+                    if (ImGui::MenuItem(name.c_str())) {
+                        addEffect(effect->name, targetContainer);
+                    }
+                    if (ImGui::IsItemHovered() && !effect->description.empty()) {
+                        ImGui::SetTooltip("%s", effect->description.c_str());
+                    }
+                }
+                ImGui::EndMenu();
             }
         }
+        ImGui::EndMenu();
     }
-    ImGui::End();
-    ImGui::PopStyleColor(3);
 }
 
+void ofxAVS::drawAddEffectMenuInsertAfter(avs::EffectContainer* container, int afterIndex) {
+    if (ImGui::BeginMenu("Add Effect")) {
+        // Group effects by category
+        std::map<std::string, std::vector<const AvailableEffectInfo*>> categories;
+
+        for (const auto& effect : available_effects) {
+            std::string category = "Misc";
+            size_t sep = effect.display_name.find(" / ");
+            if (sep != std::string::npos) {
+                category = effect.display_name.substr(0, sep);
+            }
+            categories[category].push_back(&effect);
+        }
+
+        // Draw categorized menu
+        for (const auto& [category, effects] : categories) {
+            if (ImGui::BeginMenu(category.c_str())) {
+                for (const auto* effect : effects) {
+                    std::string name = effect->display_name;
+                    size_t sep = effect->display_name.find(" / ");
+                    if (sep != std::string::npos) {
+                        name = effect->display_name.substr(sep + 3);
+                    }
+
+                    if (ImGui::MenuItem(name.c_str())) {
+                        insertEffect(effect->name, container, static_cast<size_t>(afterIndex + 1));
+                    }
+                    if (ImGui::IsItemHovered() && !effect->description.empty()) {
+                        ImGui::SetTooltip("%s", effect->description.c_str());
+                    }
+                }
+                ImGui::EndMenu();
+            }
+        }
+        ImGui::EndMenu();
+    }
+}
+
+void ofxAVS::insertEffect(const std::string& effectName, avs::EffectContainer* container, size_t index) {
+    auto new_effect = avs::PluginManager::instance().create_effect(effectName);
+    if (new_effect) {
+        avs::EffectBase* effect_ptr = new_effect.get();
+        container->insert_child(index, std::move(new_effect));
+        selected_effect_ = effect_ptr;
+    }
+}
+
+void ofxAVS::drawEffectContextMenu(avs::EffectBase* effect) {
+    avs::EffectContainer* parent = findParentContainer(effect);
+    int index = parent ? parent->find_child_index(effect) : -1;
+
+    // Check if this effect is a container
+    auto* as_container = dynamic_cast<avs::EffectContainer*>(effect);
+
+    // Add Effect submenu
+    if (as_container) {
+        // For containers: add inside the container
+        drawAddEffectMenu(as_container);
+    } else if (parent) {
+        // For regular effects: insert after this effect
+        drawAddEffectMenuInsertAfter(parent, index);
+    }
+    ImGui::Separator();
+
+    if (ImGui::MenuItem("x2 (Duplicate)")) {
+        duplicateEffect(effect);
+    }
+    ImGui::Separator();
+    if (ImGui::MenuItem("Move Up", nullptr, false, index > 0)) {
+        moveEffectUp(effect);
+    }
+    if (ImGui::MenuItem("Move Down", nullptr, false, parent && index < static_cast<int>(parent->child_count()) - 1)) {
+        moveEffectDown(effect);
+    }
+    ImGui::Separator();
+    if (ImGui::MenuItem("Remove")) {
+        removeEffect(effect);
+    }
+}
 
 void ofxAVS::drawParametersPanel() {
-    int panel_x = chain_panel_width + available_panel_width + 30;
+    int panel_x = chain_panel_width + 20;
     ImGui::SetNextWindowPos(ImVec2(panel_x, 10));
     ImGui::SetNextWindowSize(ImVec2(parameters_panel_width, parameters_panel_height));
-    
+
     ImGui::PushStyleColor(ImGuiCol_TitleBg, ImVec4(0.2f, 0.2f, 0.2f, 1.0f));
     ImGui::PushStyleColor(ImGuiCol_TitleBgActive, ImVec4(0.2f, 0.2f, 0.2f, 1.0f));
     ImGui::PushStyleColor(ImGuiCol_TitleBgCollapsed, ImVec4(0.2f, 0.2f, 0.2f, 1.0f));
-    
+
     if (ImGui::Begin("Parameters", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove)) {
-        if (selected_effect_index >= 0 && selected_effect_index < static_cast<int>(effect_chain.size())) {
-            const auto& effect_item = effect_chain[selected_effect_index];
+        if (selected_effect_) {
+            // Get effect name and UI layout
+            const std::string& effect_name = selected_effect_->get_plugin_info().name;
+            const avs::EffectUILayout* layout = avs::PluginManager::instance().get_ui_layout(effect_name);
 
-            // Get the actual effect from renderer and UI layout
-            avs::EffectBase* effect = renderer->get_effect(static_cast<size_t>(selected_effect_index));
-            const avs::EffectUILayout* layout = avs::PluginManager::instance().get_ui_layout(effect_item.name);
-
-            if (layout && effect) {
-                // Render UI directly modifying the renderer's effect
-                avs_ui::renderImGui(*layout, effect);
+            if (layout) {
+                // Render UI directly modifying the effect
+                avs_ui::renderImGui(*layout, selected_effect_);
             } else {
                 ImGui::Text("No parameters available");
             }
