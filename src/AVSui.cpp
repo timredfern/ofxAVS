@@ -235,6 +235,31 @@ void renderImGui(const avs::EffectUILayout& layout, avs::EffectBase* effect) {
                 break;
             }
 
+            case avs::ControlType::DROPDOWN: {
+                int current_value = params.get_int(control.id);
+                std::string unique_label = control.text + "##" + control.id + "_" + std::to_string(reinterpret_cast<uintptr_t>(effect));
+
+                // Get current item name for preview
+                const char* preview = (current_value >= 0 && current_value < static_cast<int>(control.options.size()))
+                    ? control.options[current_value].c_str()
+                    : "(none)";
+
+                ImGui::SetNextItemWidth(controlwidth);
+                if (ImGui::BeginCombo(unique_label.c_str(), preview)) {
+                    for (int i = 0; i < static_cast<int>(control.options.size()); i++) {
+                        bool is_selected = (current_value == i);
+                        if (ImGui::Selectable(control.options[i].c_str(), is_selected)) {
+                            params.set_int(control.id, i);
+                        }
+                        if (is_selected) {
+                            ImGui::SetItemDefaultFocus();
+                        }
+                    }
+                    ImGui::EndCombo();
+                }
+                break;
+            }
+
             default:
                 ImGui::Text("%s (unsupported)", control.text.c_str());
                 break;
