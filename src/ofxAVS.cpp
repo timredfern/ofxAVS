@@ -9,7 +9,19 @@
 #include <cmath>
 
 ofxAVS::ofxAVS() : fft(nullptr) {
+#ifdef AVS_ENHANCED_FFT
     memset(smoothedSpectrum, 0, sizeof(smoothedSpectrum));
+#else
+    // Initialize AVS log table (base ~60 compression)
+    // Formula: log(x * 60/255 + 1) / log(60) * 255
+    for (int x = 0; x < 256; x++) {
+        double a = log(x * 60.0 / 255.0 + 1.0) / log(60.0);
+        int t = static_cast<int>(a * 255.0);
+        if (t < 0) t = 0;
+        if (t > 255) t = 255;
+        logTable[x] = static_cast<unsigned char>(t);
+    }
+#endif
 }
 
 ofxAVS::~ofxAVS() {
@@ -29,7 +41,12 @@ void ofxAVS::setup() {
     height = 600;
 
     // Initialize FFT
+#ifdef AVS_ENHANCED_FFT
     fft = ofxFft::create(FFT_SIZE, OF_FFT_WINDOW_HAMMING);
+#else
+    // Original Winamp used Hann window
+    fft = ofxFft::create(FFT_SIZE, OF_FFT_WINDOW_HANNING);
+#endif
 
     // Initialize renderer
     renderer = std::make_unique<avs::DefaultRenderer>(width, height);
@@ -89,6 +106,10 @@ void ofxAVS::audioIn(ofSoundBuffer& buffer) {
     float* amplitude = fft->getAmplitude();
     int binSize = fft->getBinSize();
 
+#ifdef AVS_ENHANCED_FFT
+    // ========== ENHANCED MODE ==========
+    // Higher resolution FFT with smoothing and dB scale
+
     // Smoothing constants
     const float attack = 0.8f;   // How fast values rise
     const float decay = 0.4f;    // How fast values fall (slower = smoother)
@@ -126,6 +147,49 @@ void ofxAVS::audioIn(ofSoundBuffer& buffer) {
         current_audio_data[1][0][i] = static_cast<char>(val);
         current_audio_data[1][1][i] = static_cast<char>(val);
     }
+
+#else
+    // ========== ORIGINAL WINAMP MODE ==========
+    // 512-sample FFT → 256 bins → expand to 576 → log table compression
+
+    // Temporary buffer for Winamp-style spectrum (before log compression)
+    unsigned char spectrumRaw[576];
+    int outIdx = 0;
+    float lastValue = 0.0f;
+
+    // Process 256 FFT bins, output 2 values each (512 total)
+    for (int x = 0; x < 256 && outIdx < 512; x++) {
+        // Magnitude calculation: sqrt(re² + im²) / 16
+        // ofxFft gives us amplitude directly, but we need to scale like Winamp
+        float mag = amplitude[x] * 16.0f;  // Scale to roughly match Winamp's /16 divisor
+
+        // Clamp to 255
+        if (mag > 255.0f) mag = 255.0f;
+
+        // Output smoothed value (average with previous)
+        unsigned char smoothed = static_cast<unsigned char>((mag + lastValue) / 2.0f);
+        spectrumRaw[outIdx++] = smoothed;
+
+        // Output raw value
+        spectrumRaw[outIdx++] = static_cast<unsigned char>(mag);
+
+        lastValue = mag;
+    }
+
+    // Fill remaining slots (576 - 512 = 64) with decaying values
+    while (outIdx < 576) {
+        lastValue /= 2.0f;
+        spectrumRaw[outIdx++] = static_cast<unsigned char>(lastValue);
+    }
+
+    // Apply AVS log table compression
+    for (int i = 0; i < 576; i++) {
+        unsigned char compressed = logTable[spectrumRaw[i]];
+        current_audio_data[1][0][i] = static_cast<char>(compressed);
+        current_audio_data[1][1][i] = static_cast<char>(compressed);
+    }
+
+#endif
 }
 
 void ofxAVS::setAudioData(const avs::AudioData& data) {

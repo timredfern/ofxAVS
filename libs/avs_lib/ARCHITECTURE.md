@@ -339,28 +339,59 @@ typedef char AudioData[2][2][576];
 
 ### Original Winamp/AVS FFT Pipeline
 
-Investigation of the original Winamp source code (`Src/nsutil/fft.h`, `main.cpp`) and AVS source (`vis_avs/main.cpp`) revealed:
+Investigation of the original Winamp source code revealed a two-stage pipeline:
 
-**1. Winamp FFT**: Used Intel Performance Primitives (IPP) for high-quality FFT:
+#### Stage 1: Winamp FFT Generation (`Winamp/VIS.cpp`)
+
+**FFT Parameters:**
+| Parameter | Value |
+|-----------|-------|
+| Input samples | 512 |
+| FFT order | 9 (2^9 = 512) |
+| Window function | Hann |
+| DC filter | High-pass (y = x - x1 + 0.99 * y1) |
+| FFT output bins | 256 complex |
+
+**Spectrum Expansion (256 → 576 bins):**
 ```cpp
-// nsutil/main.cpp
-ippsFFTFwd_RToPerm_32f_I(signal, ippi_fft->fft_spec, ippi_fft->work_buffer);
+// VIS.cpp lines 723-742
+for (x = 0; x < 256; x++) {
+    float sinT = wavetrum[x*2];
+    float cosT = wavetrum[x*2+1];
+    float thisValue = sqrt(sinT*sinT + cosT*cosT) / 16.0f;
+
+    FASTMIN(thisValue, 255.f);
+    data[data_offs++] = lrint((thisValue + la)/2.f);  // smoothed (avg with prev)
+    data[data_offs++] = lrint(thisValue);              // raw value
+    la = thisValue;
+}
+// Fill remaining 64 slots (576-512) with decaying values
+while ((data_offs % 576) != 0) {
+    la /= 2;
+    data[data_offs++] = lrint(la);
+}
 ```
 
-**2. AVS Spectrum Processing**: Applied a logarithmic lookup table (base ~60) to compress dynamic range:
+The 576 bins come from:
+1. Each of 256 FFT bins outputs 2 values (smoothed + raw) = 512 values
+2. Remaining 64 high-frequency slots filled with exponentially decaying values
+
+#### Stage 2: AVS Log Table Processing (`vis_avs/main.cpp`)
+
+AVS applied a logarithmic lookup table to compress dynamic range:
 ```cpp
-// vis_avs/main.cpp - Log table creation
+// Log table creation (base ~60)
 for (x = 0; x < 256; x++) {
     double a = log(x * 60.0 / 255.0 + 1.0) / log(60.0);
     int t = (int)(a * 255.0);
     g_logtab[x] = (unsigned char)t;
 }
 
-// Application to spectrum data
+// Application to spectrum data from Winamp
 g_visdata[0][0][x] = g_logtab[(unsigned char)this_mod->spectrumData[0][x]];
 ```
 
-**3. Optional Peak Hold**: When `g_visdata_pstat` was false, spectrum values only increased (never decreased within a frame):
+**Optional Peak Hold**: When `g_visdata_pstat` was false, spectrum values only increased:
 ```cpp
 int t = g_logtab[(unsigned char)this_mod->spectrumData[0][x]];
 if (g_visdata[0][0][x] < t)
@@ -369,16 +400,23 @@ if (g_visdata[0][0][x] < t)
 
 ### Current Implementation (ofxAVS)
 
-The ofxAVS addon uses **ofxFft** for FFT computation and provides enhanced processing:
-- FFT size: 2048 samples (higher resolution than original)
+The ofxAVS addon supports two modes controlled by `#define AVS_ENHANCED_FFT`:
+
+#### Enhanced Mode (default, `AVS_ENHANCED_FFT` defined)
+- FFT size: 2048 samples (higher resolution)
 - Linear interpolation for bin mapping to 576 output values
 - Temporal smoothing with attack/decay envelope
-- dB scale normalization
+- dB scale normalization with 80dB range
 
-**Note:** These enhancements (interpolation, smoothing) are **not authentic** to original AVS behavior. The original used only the log lookup table without temporal smoothing. For authentic behavior, the spectrum processing should use the simpler log table approach.
+#### Original Mode (`AVS_ENHANCED_FFT` not defined)
+- FFT size: 512 samples (matching original Winamp)
+- 256 FFT bins expanded to 576 using Winamp's algorithm
+- Log table compression (base ~60) matching original AVS
+- No temporal smoothing
 
 ### Source Code References
 
-- **Winamp FFT**: `winamp/Src/nsutil/main.cpp` lines 144-175
+- **Winamp FFT generation**: `winamp/Src/Winamp/VIS.cpp` lines 679-790
+- **Winamp FFT function**: `winamp/Src/Winamp/fft.h` - fft_9() for 512-sample FFT
 - **AVS log table**: `vis_avs/avs/vis_avs/main.cpp` lines 243-287
 - **ofxAVS implementation**: `src/ofxAVS.cpp` `audioIn()` method

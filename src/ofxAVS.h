@@ -12,6 +12,11 @@
 #include "core/effect_base.h"
 #include <vector>
 
+// FFT mode selection:
+// Define AVS_ENHANCED_FFT for modern processing (2048 samples, smoothing, dB scale)
+// Undefine for original Winamp behavior (512 samples, log table, no smoothing)
+#define AVS_ENHANCED_FFT
+
 // Effect chain item for the UI (metadata only - effects owned by renderer)
 struct EffectChainItem {
     std::string name;
@@ -21,7 +26,7 @@ struct EffectChainItem {
 // Available effect info
 struct AvailableEffectInfo {
     std::string name;
-    std::string display_name; 
+    std::string display_name;
     std::string description;
 };
 
@@ -29,28 +34,28 @@ class ofxAVS {
 public:
     ofxAVS();
     ~ofxAVS();
-    
+
     // Setup and audio
     void setup();
     void update();
     void audioIn(ofSoundBuffer& buffer);  // Process audio with FFT
     void setAudioData(const avs::AudioData& data);  // Direct access if needed
-    
+
     // Rendering
     void draw(int x, int y, int width, int height);
     void drawUI();
-    
+
     // Effect chain management
     void addEffectToChain(const std::string& effectName);
     void removeEffectFromChain(int index);
     void duplicateEffect(int index);
     void moveEffectUp(int index);
     void moveEffectDown(int index);
-    
+
     // UI panel management
     void setSelectedEffect(int index);
     int getSelectedEffect() const { return selected_effect_index; }
-    
+
     // Effect chain access
     const std::vector<EffectChainItem>& getEffectChain() const { return effect_chain; }
     const std::vector<AvailableEffectInfo>& getAvailableEffects() const { return available_effects; }
@@ -65,9 +70,14 @@ private:
 
     // FFT for spectrum analysis
     ofxFft* fft;
-    static const int FFT_SIZE = 2048;  // Higher resolution
+#ifdef AVS_ENHANCED_FFT
+    static const int FFT_SIZE = 2048;  // Higher resolution for enhanced mode
     float smoothedSpectrum[576];       // Temporal smoothing buffer
-    
+#else
+    static const int FFT_SIZE = 512;   // Original Winamp FFT size
+    unsigned char logTable[256];       // AVS log compression table
+#endif
+
     // Effect chain and UI state
     std::vector<EffectChainItem> effect_chain;
     std::vector<AvailableEffectInfo> available_effects;
@@ -78,7 +88,7 @@ private:
     int available_panel_width = 200;
     int parameters_panel_width = 440;
     int parameters_panel_height = 480;
-    
+
     // Internal methods
     void initializeAvailableEffects();
 
