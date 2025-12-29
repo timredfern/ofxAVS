@@ -352,8 +352,11 @@ void ofxAVS::drawChainPanel() {
     ImGui::PushStyleColor(ImGuiCol_TitleBgCollapsed, ImVec4(0.2f, 0.2f, 0.2f, 1.0f));
 
     if (ImGui::Begin("Effect Chain", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove)) {
+        // Handle keyboard navigation
+        handleEffectListKeyboard();
+
         // Draw the root container as "Main"
-        avs::EffectList* root = renderer->root();
+        avs::EffectListRoot* root = renderer->root();
         if (root) {
             bool root_selected = (selected_effect_ == root);
             bool is_expanded = collapsed_containers_.find(root) == collapsed_containers_.end();
@@ -606,13 +609,13 @@ void ofxAVS::drawParametersPanel() {
 
     if (ImGui::Begin("Parameters", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove)) {
         if (selected_effect_) {
-            // Get effect name and UI layout
-            const std::string& effect_name = selected_effect_->get_plugin_info().name;
-            const avs::EffectUILayout* layout = avs::PluginManager::instance().get_ui_layout(effect_name);
+            // Get UI layout directly from effect's plugin info
+            const avs::PluginInfo& info = selected_effect_->get_plugin_info();
+            const avs::EffectUILayout& layout = info.ui_layout;
 
-            if (layout) {
+            if (!layout.getControls().empty()) {
                 // Render UI directly modifying the effect
-                avs_ui::renderImGui(*layout, selected_effect_);
+                avs_ui::renderImGui(layout, selected_effect_);
             } else {
                 ImGui::Text("No parameters available");
             }
@@ -622,4 +625,98 @@ void ofxAVS::drawParametersPanel() {
     }
     ImGui::End();
     ImGui::PopStyleColor(3);
+}
+
+void ofxAVS::buildVisibleEffectList(avs::EffectContainer* container, std::vector<avs::EffectBase*>& list) {
+    // Add the container itself (except root which is handled separately)
+    if (container != renderer->root()) {
+        list.push_back(container);
+    }
+
+    // If collapsed, don't add children
+    if (collapsed_containers_.find(container) != collapsed_containers_.end()) {
+        return;
+    }
+
+    // Add visible children
+    for (size_t i = 0; i < container->child_count(); i++) {
+        avs::EffectBase* child = container->get_child(i);
+        if (!child) continue;
+
+        auto* child_container = dynamic_cast<avs::EffectContainer*>(child);
+        if (child_container) {
+            buildVisibleEffectList(child_container, list);
+        } else {
+            list.push_back(child);
+        }
+    }
+}
+
+avs::EffectBase* ofxAVS::getNextVisibleEffect(avs::EffectBase* current) {
+    std::vector<avs::EffectBase*> visible;
+    visible.push_back(renderer->root());  // Root is always first
+    buildVisibleEffectList(renderer->root(), visible);
+
+    for (size_t i = 0; i < visible.size(); i++) {
+        if (visible[i] == current && i + 1 < visible.size()) {
+            return visible[i + 1];
+        }
+    }
+    return current;  // No next, stay on current
+}
+
+avs::EffectBase* ofxAVS::getPrevVisibleEffect(avs::EffectBase* current) {
+    std::vector<avs::EffectBase*> visible;
+    visible.push_back(renderer->root());  // Root is always first
+    buildVisibleEffectList(renderer->root(), visible);
+
+    for (size_t i = 1; i < visible.size(); i++) {
+        if (visible[i] == current) {
+            return visible[i - 1];
+        }
+    }
+    return current;  // No prev, stay on current
+}
+
+void ofxAVS::handleEffectListKeyboard() {
+    // Only handle if effect chain window is focused
+    if (!ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows)) {
+        return;
+    }
+
+    bool shift = ImGui::GetIO().KeyShift;
+
+    if (ImGui::IsKeyPressed(ImGuiKey_UpArrow)) {
+        if (shift) {
+            // Shift+Up: collapse current container
+            auto* container = dynamic_cast<avs::EffectContainer*>(selected_effect_);
+            if (container) {
+                collapsed_containers_.insert(container);
+            }
+        } else {
+            // Up: move to previous effect
+            if (selected_effect_) {
+                selected_effect_ = getPrevVisibleEffect(selected_effect_);
+            } else {
+                selected_effect_ = renderer->root();
+            }
+        }
+    }
+
+    if (ImGui::IsKeyPressed(ImGuiKey_DownArrow)) {
+        if (shift) {
+            // Shift+Down: expand current container
+            auto* container = dynamic_cast<avs::EffectContainer*>(selected_effect_);
+            if (container) {
+                collapsed_containers_.erase(container);
+            }
+        } else {
+            // Down: move to next effect
+            if (selected_effect_) {
+                selected_effect_ = getNextVisibleEffect(selected_effect_);
+            } else {
+                selected_effect_ = renderer->root();
+            }
+        }
+    }
 }

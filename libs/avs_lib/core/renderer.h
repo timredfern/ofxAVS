@@ -8,7 +8,7 @@
 
 #include "effect_base.h"
 #include "effect_container.h"
-#include "../effects/effect_list.h"
+#include "../effects/effect_list_root.h"
 #include <memory>
 #include <vector>
 #include <cstdint>
@@ -56,8 +56,8 @@ public:
     ~Renderer();
     
     // Root effect list access
-    EffectList* root() { return root_.get(); }
-    const EffectList* root() const { return root_.get(); }
+    EffectListRoot* root() { return root_.get(); }
+    const EffectListRoot* root() const { return root_.get(); }
 
     // Effect chain management - delegates to root
     void add_effect(std::unique_ptr<EffectBase> effect) {
@@ -109,7 +109,7 @@ private:
     std::vector<PixelType> buffer_b_;
 
     // Root effect list (the "Main" container)
-    std::unique_ptr<EffectList> root_;
+    std::unique_ptr<EffectListRoot> root_;
 
     // Helper to get buffer pointers
     PixelType* get_buffer_a() { return buffer_a_.data(); }
@@ -123,8 +123,7 @@ template<typename PixelType>
 Renderer<PixelType>::Renderer(int width, int height)
     : width_(width), height_(height) {
     allocate_buffers();
-    root_ = std::make_unique<EffectList>();
-    root_->set_is_root(true);
+    root_ = std::make_unique<EffectListRoot>();
 }
 
 template<typename PixelType>

@@ -19,8 +19,8 @@ EffectList::EffectList() {
 int EffectList::render(AudioData visdata, int isBeat,
                        uint32_t* framebuffer, uint32_t* fbout,
                        int w, int h) {
-    // Check if enabled (sub-lists only - root is always enabled)
-    if (!is_root_ && !is_enabled()) {
+    // Check if enabled
+    if (!is_enabled()) {
         return 0;
     }
 

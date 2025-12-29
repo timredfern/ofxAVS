@@ -14,12 +14,13 @@ struct PluginInfo;
 
 namespace avs {
 
-// Effect List - the classic AVS container effect
+// Effect List - the classic AVS container effect for nested groups
 // Matches original r_list.cpp behavior with:
 // - Input/output blending with adjustable alpha
 // - Optional init/frame scripts for dynamic control
 // - OnBeat enable for N frames
 // - Clear framebuffer option
+// - Enabled checkbox (can be disabled unlike root)
 class EffectList : public EffectContainer {
 public:
     EffectList();
@@ -32,14 +33,7 @@ public:
 
     const PluginInfo& get_plugin_info() const override { return effect_info; }
 
-    // Whether this is the root list (Main) - affects UI and behavior
-    bool is_root() const { return is_root_; }
-    void set_is_root(bool is_root) { is_root_ = is_root; }
-
     static const PluginInfo effect_info;
-
-private:
-    bool is_root_ = false;
 
     // For future scripting support:
     // std::string init_script_;

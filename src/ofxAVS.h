@@ -11,6 +11,7 @@
 #include "core/plugin_manager.h"
 #include "core/effect_base.h"
 #include "core/effect_container.h"
+#include "effects/effect_list_root.h"
 #include <vector>
 #include <unordered_set>
 
@@ -104,4 +105,10 @@ private:
 
     // Effect insertion helper
     void insertEffect(const std::string& effectName, avs::EffectContainer* container, size_t index);
+
+    // Keyboard navigation helpers
+    void handleEffectListKeyboard();
+    avs::EffectBase* getNextVisibleEffect(avs::EffectBase* current);
+    avs::EffectBase* getPrevVisibleEffect(avs::EffectBase* current);
+    void buildVisibleEffectList(avs::EffectContainer* container, std::vector<avs::EffectBase*>& list);
 };
