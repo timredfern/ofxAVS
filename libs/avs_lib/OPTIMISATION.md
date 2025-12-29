@@ -153,6 +153,74 @@ For portable SIMD, consider:
 - **Fallback paths**: Always provide scalar implementations
 - **Abstraction libraries**: Libraries like `simde` or `xsimd` can abstract across ARM/x86
 
+## FFT/Audio Processing Loops
+
+The audio processing in `ofxAVS::audioIn()` contains several loops that **do not auto-vectorize well** due to inherent algorithmic constraints.
+
+### Loop Analysis
+
+| Loop | Location | Vectorizes? | Reason |
+|------|----------|-------------|--------|
+| Waveform extraction | lines 85-97 | ❌ No | Strided access (`buffer[i * numChannels]`), conditionals inside loop, float→char conversion |
+| Zero padding | lines 100-102 | ✅ Yes | Simple memset pattern, compiler optimizes |
+| Enhanced mode spectrum | lines 119-149 | ❌ No | `log10f()` call, multiple conditionals, read-modify-write |
+| Original mode expansion | lines 161-179 | ❌ No | **Loop-carried dependency** on `lastValue` |
+| Original mode decay | lines 182-185 | ❌ No | Loop-carried dependency on `lastValue` |
+| Log table lookup | lines 188-192 | ⚠️ Partial | Gather operation (table lookup), may vectorize on AVX2/NEON but unlikely to be fast |
+
+### Key Blockers
+
+**1. Loop-carried dependencies (Original mode)**
+
+The Winamp-style spectrum expansion averages each bin with the previous:
+```cpp
+unsigned char smoothed = static_cast<unsigned char>((mag + lastValue) / 2.0f);
+lastValue = mag;
+```
+Each iteration depends on the previous iteration's `lastValue`, preventing parallel execution.
+
+**2. `log10f()` function call (Enhanced mode)**
+
+The dB conversion requires a logarithm:
+```cpp
+float db = 20.0f * log10f(mag + 0.00001f);
+```
+Standard math library functions are not vectorized unless using `-ffast-math` with a vectorized math library (e.g., libmvec on Linux, Accelerate on macOS).
+
+**3. Table lookups (Original mode)**
+
+The AVS log compression table:
+```cpp
+unsigned char compressed = logTable[spectrumRaw[i]];
+```
+Table lookups are gather operations. While AVX2 and NEON have gather instructions, they're typically slower than compute operations.
+
+### Performance Impact
+
+At 576 samples per audio callback at 44.1kHz (~86 callbacks/second), this code processes only ~50,000 samples/second. Even without vectorization, this is negligible compared to the rendering workload. **Optimization here is not a priority.**
+
+### Potential Improvements (if needed)
+
+1. **Unroll the 256→512 expansion** to compute pairs without dependency:
+   ```cpp
+   // Process two bins at once, eliminating lastValue dependency
+   for (int x = 0; x < 256; x += 2) {
+       float mag0 = amplitude[x] * 128.0f;
+       float mag1 = amplitude[x+1] * 128.0f;
+       // First pair
+       spectrumRaw[x*2] = (mag0 + prevMag) / 2.0f;
+       spectrumRaw[x*2+1] = mag0;
+       // Second pair
+       spectrumRaw[x*2+2] = (mag1 + mag0) / 2.0f;
+       spectrumRaw[x*2+3] = mag1;
+       prevMag = mag1;
+   }
+   ```
+
+2. **Use vectorized math** with `-ffast-math` or platform-specific libraries for `log10f()`.
+
+3. **SIMD gather for table lookup** using `vqtbl1q_u8` (NEON) or `_mm256_i32gather_epi32` (AVX2).
+
 ## Conclusions
 
 1. **The original AVS bit-shift technique is optimal** - It avoids per-channel operations and maps directly to SIMD shift/mask instructions.
@@ -162,3 +230,5 @@ For portable SIMD, consider:
 3. **The 4-pixel-at-a-time loop unrolling helps** - The compiler can better schedule memory operations and keep SIMD lanes utilized.
 
 4. **Original MMX assembly was for its era** - The x86 MMX assembly in the original AVS (circa 2005) was necessary because compilers of that time couldn't auto-vectorize effectively. Modern compilers make this unnecessary.
+
+5. **Audio processing loops don't vectorize but don't need to** - The FFT/spectrum processing has algorithmic constraints (loop-carried dependencies, math functions, table lookups) that prevent vectorization, but the workload is too small to matter.
