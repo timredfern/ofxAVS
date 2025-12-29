@@ -1015,12 +1015,13 @@ Utility and control effects.
   - Out (Visual only): SLIDER, Position(13, 66), Size(124, 11), ID(IDC_OUT)
 
 54. ### Effect List
-- **Purpose**: Container for effect chain
+- **Purpose**: Container for grouping effects with optional scripted control
 - **Source File**: `r_list.cpp`
 - **Inputs**:
   - Input from previous effect
-- **Outputs**: Output of contained effects
-- **Blend Modes**: Per-effect
+  - Audio data (passed to scripts and child effects)
+- **Outputs**: Output of contained effects (with optional blending)
+- **Blend Modes**: Configurable input/output blending with adjustable alpha
 - **Controls (Root List / IDD_CFG_LISTROOT)**:
   - Clear every frame: CHECKBOX, Position(0, 0), Size(71, 10), ID(IDC_CHECK1)
 - **Controls (Sub-list / IDD_CFG_LIST)**:
@@ -1040,6 +1041,25 @@ Utility and control effects.
   - Init script: EDITTEXT, Position(25, 93), Size(208, 26), ID(IDC_EDIT4)
   - Frame script: EDITTEXT, Position(25, 119), Size(208, 71), ID(IDC_EDIT5)
   - Expression help: BUTTON, Position(25, 193), Size(67, 14), ID(IDC_BUTTON2)
+- **Script Variables** (when "Use evaluation override" is enabled):
+  | Variable | Type | Description |
+  |----------|------|-------------|
+  | `beat` | R/W | Beat flag (read incoming, write to pass/block to children) |
+  | `enabled` | R/W | Enable/disable entire effect list (0=disabled, non-zero=enabled) |
+  | `clear` | R/W | Clear framebuffer before rendering children |
+  | `alphain` | R/W | Input blend alpha (0.0-1.0, maps to 0-255) |
+  | `alphaout` | R/W | Output blend alpha (0.0-1.0, maps to 0-255) |
+  | `w` | R | Frame width in pixels |
+  | `h` | R | Frame height in pixels |
+- **Script Execution**:
+  - Init script runs once when effect list is created or code changes
+  - Frame script runs every frame before child effects render
+  - Scripts execute before blending/clear decisions are applied
+- **Example Use Cases**:
+  - Beat gating: `beat = beat * (count % 4 == 0); count = count + beat;`
+  - Pulsing visibility: `enabled = sin(t) > 0; t = t + 0.1;`
+  - Beat-reactive fade: `alphaout = beat ? 1.0 : alphaout * 0.95;`
+  - Conditional clear: `clear = beat;`
 
 55. ### Transition
 - **Purpose**: Define global preset transition behaviors and settings.
