@@ -420,3 +420,91 @@ The ofxAVS addon supports two modes controlled by `#define AVS_ENHANCED_FFT`:
 - **Winamp FFT function**: `winamp/Src/Winamp/fft.h` - fft_9() for 512-sample FFT
 - **AVS log table**: `vis_avs/avs/vis_avs/main.cpp` lines 243-287
 - **ofxAVS implementation**: `src/ofxAVS.cpp` `audioIn()` method
+
+## Key Implementation Notes
+
+Research into the original AVS codebase revealed several important behaviors that affect authenticity. See **[AVS_PARAMS.md](AVS_PARAMS.md)** for complete documentation of global parameters and UI.
+
+### Beat Detection Algorithm
+
+The original beat detection is surprisingly simple - no FFT-based onset detection or tempo tracking:
+
+```cpp
+// Sum absolute waveform values for energy
+for (x = 0; x < 576; x++) {
+    int r = *f++ ^ 128;  // Convert unsigned to signed
+    r -= 128;
+    if (r < 0) r = -r;
+    lt[ch] += r;
+}
+
+// Beat triggers when energy exceeds decaying threshold
+if (lt[0] >= (beat_peak1 * 34) / 32 && lt[0] > (576 * 16)) {
+    avs_beat = 1;
+}
+```
+
+The "advanced" BPM mode (`cfg_smartbeat`) adds prediction and sticky beat locking, but the fundamental trigger is energy threshold comparison.
+
+**Status:** Not yet implemented in avs_lib. Would be straightforward to add.
+
+### Peak Hold Mode
+
+The `g_visdata_pstat` flag controls spectrum decay behavior:
+- **Normal mode** (`pstat=1`): Spectrum values update freely each frame
+- **Peak hold mode** (`pstat=0`): Values only increase, never decrease
+
+This creates the "sticky" spectrum appearance where peaks linger. The flag toggles each frame after the render thread copies the data.
+
+**Status:** Not implemented. Our spectrum always updates freely.
+
+### Effect List Code
+
+Effect lists (containers) can have their own init/frame expressions, not just the effects inside them:
+
+```cpp
+// From r_list.cpp - effect lists have code too
+use_code;           // Whether list code is enabled
+effect_exp[0];      // Init expression
+effect_exp[1];      // Frame expression
+```
+
+This adds a scripting layer at the container level that runs before child effects.
+
+**Status:** Not implemented. Our effect lists are pure containers.
+
+### Preset File Format
+
+Binary format starting with signature `"Nullsoft AVS Preset 0.2\x1a"`:
+- Each effect serializes its own config blob via `save_config()`/`load_config()`
+- Effect index (4 bytes) maps to effect type
+- Nested effect lists serialize recursively
+- APE (third-party) effects use 32-byte string identifiers
+
+**Status:** Not implemented. Required for loading existing .avs presets.
+
+### Transitions System
+
+More sophisticated than simple crossfades:
+1. **Pre-initialization**: Next preset renders in background before transition starts
+2. **Transition animation**: Configurable duration (250ms - 8s) and style
+3. **Keep rendering**: Option to continue old effect during transition
+
+Controlled by `cfg_transitions`, `cfg_transitions2`, `cfg_transitions_speed`.
+
+**Status:** Not implemented.
+
+### Thread Priority
+
+Original AVS had explicit render thread priority control (`cfg_render_prio`) to prevent visualization from interfering with audio playback. Options: Same as Winamp, Idle, Lowest, Normal, Highest.
+
+**Status:** Not applicable - modern systems handle this differently.
+
+### The 576 Constant
+
+The magic number 576 appears throughout AVS. It originates from Winamp's VIS API:
+- 256 FFT bins × 2 (smoothed + raw) = 512 values
+- Plus 64 high-frequency padding with exponential decay
+- Total: 576 samples per channel
+
+This is Winamp-specific, not a standard audio buffer size.
