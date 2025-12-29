@@ -458,6 +458,29 @@ This creates the "sticky" spectrum appearance where peaks linger. The flag toggl
 
 **Status:** Not implemented. Our spectrum always updates freely.
 
+### Global Frame Buffers
+
+AVS provides 8 global frame buffers (`NBUF=8` in r_defs.h) that effects can use for storing and retrieving frames:
+
+```cpp
+// From rlib.cpp
+void *g_n_buffers[NBUF];          // Buffer pointers
+int g_n_buffers_w[NBUF];          // Buffer widths
+int g_n_buffers_h[NBUF];          // Buffer heights
+
+void *getGlobalBuffer(int w, int h, int n, int do_alloc);
+```
+
+Used by:
+- **Buffer Save effect** (`r_stack.cpp`): Save/restore framebuffer with blend modes
+- **Effect Lists** (`r_list.cpp`): Save/restore buffer state when entering/exiting nested lists
+- **Dynamic Movement** (`r_dmove.cpp`): For coordinate caching
+- **Bump effect** (`r_bump.cpp`): For depth buffer
+
+The Buffer Save effect exposes these to users with operations (save/restore/alternate) and blend modes (replace, 50/50, additive, every other line, subtractive, XOR, max, min, multiply, adjustable).
+
+**Status:** Not implemented. Required for complex layered presets.
+
 ### Effect List Code
 
 Effect lists (containers) can have their own init/frame expressions, not just the effects inside them:

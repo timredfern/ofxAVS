@@ -10,6 +10,7 @@ For reference when examining original AVS implementation:
 - **SuperScope**: `r_sscope.cpp`
 - **Dot Grid**: `r_dotgrid.cpp`
 - **Dot Plane**: `r_dotpln.cpp`
+- **Dot Fountain**: `r_dotfnt.cpp`
 - **Moving Particle**: `r_parts.cpp`
 - **OnBeat Clear**: `r_nfclr.cpp`
 - **Picture/Picture II**: `r_picture.cpp`
@@ -175,7 +176,25 @@ Effects that generate new visual content from audio data or clear the screen.
   - Low Color: COLOR_BUTTON, Position(7, 112), Size(41, 10), ID(IDC_C4)
   - Bottom Color: COLOR_BUTTON, Position(7, 123), Size(41, 10), ID(IDC_C5)
 
-6. ### Moving Particle
+6. ### Dot Fountain
+- **Purpose**: 3D rotating dot fountain particle effect
+- **Source File**: `r_dotfnt.cpp`
+- **Inputs**:
+  - Beat signal
+  - Framebuffer
+- **Outputs**: 3D particle fountain rendered to Framebuffer
+- **Blend Modes**: Direct draw
+- **Controls**: (Uses IDD_CFG_DOTPLANE dialog)
+  - Rotation speed: SLIDER, Position(5, 11), Size(97, 21), ID(IDC_SPEED)
+  - Zero rotation speed: BUTTON, Position(103, 15), Size(28, 10), ID(IDC_BUTTON1)
+  - Angle/Perspective: SLIDER, Position(6, 45), Size(126, 15), ID(IDC_ANGLE)
+  - Top Color: COLOR_BUTTON, Position(7, 79), Size(41, 10), ID(IDC_C1)
+  - High Color: COLOR_BUTTON, Position(7, 90), Size(41, 10), ID(IDC_C2)
+  - Mid Color: COLOR_BUTTON, Position(7, 101), Size(41, 10), ID(IDC_C3)
+  - Low Color: COLOR_BUTTON, Position(7, 112), Size(41, 10), ID(IDC_C4)
+  - Bottom Color: COLOR_BUTTON, Position(7, 123), Size(41, 10), ID(IDC_C5)
+
+7. ### Moving Particle
 - **Purpose**: Particle system driven by audio
 - **Source File**: `r_parts.cpp`
 - **Inputs**:
