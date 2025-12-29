@@ -27,21 +27,13 @@ public:
     void windowResized(int w, int h);
     void dragEvent(ofDragInfo dragInfo);
     void gotMessage(ofMessage msg);
-    
-    // Audio callbacks
+
+    // Audio callback
     void audioIn(ofSoundBuffer& buffer);
 
 private:
-    // Main AVS visualization with UI
     ofxAVS avs;
-    
-    // Audio input
     ofSoundStream soundStream;
     bool audioInitialized;
-    
-    // ImGui setup
     ofxImGui::Gui gui;
-    
-    // Audio processing
-    void processAudioData(ofSoundBuffer& buffer);
 };

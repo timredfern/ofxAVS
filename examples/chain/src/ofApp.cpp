@@ -8,45 +8,38 @@
 void ofApp::setup(){
     ofSetWindowTitle("AVS Chain Example");
     ofSetWindowShape(1500, 640);
-    
-    // Initialize audio flag
+
     audioInitialized = false;
-    
-    // Setup ImGui
+
     gui.setup();
-    
-    // Setup AVS
     avs.setup();
-    
-    // Setup audio input - try to find a working device
+
+    // Setup audio input
     vector<ofSoundDevice> devices = soundStream.getDeviceList();
-    
+
     ofSoundStreamSettings settings;
     settings.sampleRate = 44100;
-    settings.numInputChannels = 1;  // Start with mono
+    settings.numInputChannels = 1;
     settings.numOutputChannels = 0;
-    settings.bufferSize = 576;  // Match AVS audio buffer size
+    settings.bufferSize = 576;
     settings.setInListener(this);
-    
-    // Try to find a working input device
-    bool audioSetup = false;
+
     for (auto& device : devices) {
         if (device.inputChannels > 0) {
             settings.setInDevice(device);
             try {
                 soundStream.setup(settings);
-                audioSetup = true;
                 audioInitialized = true;
-                ofLogNotice() << "Audio setup successful with device: " << device.name;
+                ofLogNotice() << "Audio setup with: " << device.name;
                 break;
             } catch (...) {
-                ofLogWarning() << "Failed to setup audio with device: " << device.name;
+                ofLogWarning() << "Failed: " << device.name;
             }
         }
     }
-    
-    if (!audioSetup) {
-        ofLogWarning() << "No audio input available - running without audio";
+
+    if (!audioInitialized) {
+        ofLogWarning() << "No audio input available";
     }
 }
 
@@ -58,11 +51,8 @@ void ofApp::update(){
 //--------------------------------------------------------------
 void ofApp::draw(){
     ofBackground(20);
-    
-    // Draw visualization directly
     avs.draw(880, 20, 600, 600);
-    
-    // Draw UI panels only
+
     gui.begin();
     avs.drawUI();
     gui.end();
@@ -70,82 +60,7 @@ void ofApp::draw(){
 
 //--------------------------------------------------------------
 void ofApp::audioIn(ofSoundBuffer& buffer) {
-    processAudioData(buffer);
-}
-
-//--------------------------------------------------------------
-void ofApp::processAudioData(ofSoundBuffer& buffer) {
-    // Convert OF audio buffer to AVS format - raw samples, no downsampling
-    avs::AudioData audioData;
-    memset(&audioData, 0, sizeof(avs::AudioData));
-
-    int numChannels = buffer.getNumChannels();
-    int numSamples = std::min(static_cast<int>(buffer.getNumFrames()), 576);
-
-    // Copy raw samples directly starting at sample 0
-    for (int i = 0; i < numSamples; i++) {
-        // Convert float [-1, 1] to signed char [-128, 127]
-        char left = static_cast<char>(buffer[i * numChannels] * 127.0f);
-        audioData[0][0][i] = left;
-
-        if (numChannels >= 2) {
-            audioData[0][1][i] = static_cast<char>(buffer[i * numChannels + 1] * 127.0f);
-        } else {
-            audioData[0][1][i] = left;  // Mono to stereo
-        }
-    }
-
-    avs.setAudioData(audioData);
-}
-
-//--------------------------------------------------------------
-void ofApp::keyPressed(int key){
-
-}
-
-//--------------------------------------------------------------
-void ofApp::keyReleased(int key){
-
-}
-
-//--------------------------------------------------------------
-void ofApp::mouseMoved(int x, int y ){
-
-}
-
-//--------------------------------------------------------------
-void ofApp::mouseDragged(int x, int y, int button){
-
-}
-
-//--------------------------------------------------------------
-void ofApp::mousePressed(int x, int y, int button){
-
-}
-
-//--------------------------------------------------------------
-void ofApp::mouseReleased(int x, int y, int button){
-
-}
-
-//--------------------------------------------------------------
-void ofApp::mouseEntered(int x, int y){
-
-}
-
-//--------------------------------------------------------------
-void ofApp::mouseExited(int x, int y){
-
-}
-
-//--------------------------------------------------------------
-void ofApp::windowResized(int w, int h){
-
-}
-
-//--------------------------------------------------------------
-void ofApp::gotMessage(ofMessage msg){
-
+    avs.audioIn(buffer);
 }
 
 //--------------------------------------------------------------
@@ -158,6 +73,14 @@ void ofApp::exit(){
 }
 
 //--------------------------------------------------------------
-void ofApp::dragEvent(ofDragInfo dragInfo){ 
-
-}
+void ofApp::keyPressed(int key){}
+void ofApp::keyReleased(int key){}
+void ofApp::mouseMoved(int x, int y){}
+void ofApp::mouseDragged(int x, int y, int button){}
+void ofApp::mousePressed(int x, int y, int button){}
+void ofApp::mouseReleased(int x, int y, int button){}
+void ofApp::mouseEntered(int x, int y){}
+void ofApp::mouseExited(int x, int y){}
+void ofApp::windowResized(int w, int h){}
+void ofApp::dragEvent(ofDragInfo dragInfo){}
+void ofApp::gotMessage(ofMessage msg){}

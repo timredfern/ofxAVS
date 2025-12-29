@@ -324,3 +324,61 @@ Predicting exact pixel values would require duplicating the entire rendering log
 1. **Unit tests** - Parameter handling, script compilation, coordinate math
 2. **Visual verification** - Manual comparison with original AVS output
 3. **Performance tests** - Ensure real-time capability (not yet automated)
+
+## Audio Data Format
+
+### AudioData Structure
+
+AVS uses a fixed audio data format:
+```cpp
+typedef char AudioData[2][2][576];
+// [spectrum/waveform][left/right][samples]
+// visdata[0] = spectrum (unsigned 0-255)
+// visdata[1] = waveform (signed, XOR 128 for unsigned)
+```
+
+### Original Winamp/AVS FFT Pipeline
+
+Investigation of the original Winamp source code (`Src/nsutil/fft.h`, `main.cpp`) and AVS source (`vis_avs/main.cpp`) revealed:
+
+**1. Winamp FFT**: Used Intel Performance Primitives (IPP) for high-quality FFT:
+```cpp
+// nsutil/main.cpp
+ippsFFTFwd_RToPerm_32f_I(signal, ippi_fft->fft_spec, ippi_fft->work_buffer);
+```
+
+**2. AVS Spectrum Processing**: Applied a logarithmic lookup table (base ~60) to compress dynamic range:
+```cpp
+// vis_avs/main.cpp - Log table creation
+for (x = 0; x < 256; x++) {
+    double a = log(x * 60.0 / 255.0 + 1.0) / log(60.0);
+    int t = (int)(a * 255.0);
+    g_logtab[x] = (unsigned char)t;
+}
+
+// Application to spectrum data
+g_visdata[0][0][x] = g_logtab[(unsigned char)this_mod->spectrumData[0][x]];
+```
+
+**3. Optional Peak Hold**: When `g_visdata_pstat` was false, spectrum values only increased (never decreased within a frame):
+```cpp
+int t = g_logtab[(unsigned char)this_mod->spectrumData[0][x]];
+if (g_visdata[0][0][x] < t)
+    g_visdata[0][0][x] = t;
+```
+
+### Current Implementation (ofxAVS)
+
+The ofxAVS addon uses **ofxFft** for FFT computation and provides enhanced processing:
+- FFT size: 2048 samples (higher resolution than original)
+- Linear interpolation for bin mapping to 576 output values
+- Temporal smoothing with attack/decay envelope
+- dB scale normalization
+
+**Note:** These enhancements (interpolation, smoothing) are **not authentic** to original AVS behavior. The original used only the log lookup table without temporal smoothing. For authentic behavior, the spectrum processing should use the simpler log table approach.
+
+### Source Code References
+
+- **Winamp FFT**: `winamp/Src/nsutil/main.cpp` lines 144-175
+- **AVS log table**: `vis_avs/avs/vis_avs/main.cpp` lines 243-287
+- **ofxAVS implementation**: `src/ofxAVS.cpp` `audioIn()` method

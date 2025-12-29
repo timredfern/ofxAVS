@@ -6,6 +6,7 @@
 
 #include "ofMain.h"
 #include "ofxImGui.h"
+#include "ofxFft.h"
 #include "core/renderer.h"
 #include "core/plugin_manager.h"
 #include "core/effect_base.h"
@@ -32,7 +33,8 @@ public:
     // Setup and audio
     void setup();
     void update();
-    void setAudioData(const avs::AudioData& data);
+    void audioIn(ofSoundBuffer& buffer);  // Process audio with FFT
+    void setAudioData(const avs::AudioData& data);  // Direct access if needed
     
     // Rendering
     void draw(int x, int y, int width, int height);
@@ -60,6 +62,11 @@ private:
     ofPixels pixels;
     int width, height;
     avs::AudioData current_audio_data;
+
+    // FFT for spectrum analysis
+    ofxFft* fft;
+    static const int FFT_SIZE = 2048;  // Higher resolution
+    float smoothedSpectrum[576];       // Temporal smoothing buffer
     
     // Effect chain and UI state
     std::vector<EffectChainItem> effect_chain;

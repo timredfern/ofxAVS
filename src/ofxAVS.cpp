@@ -6,21 +6,31 @@
 #include "AVSui.h"
 #include "core/plugin_manager.h"
 #include "core/builtin_effects.h"
+#include <cmath>
 
-ofxAVS::ofxAVS() {
-    
+ofxAVS::ofxAVS() : fft(nullptr) {
+    memset(smoothedSpectrum, 0, sizeof(smoothedSpectrum));
 }
 
 ofxAVS::~ofxAVS() {
     // Clear effect chain to ensure proper cleanup
     renderer.reset();
     effect_chain.clear();
+
+    // Clean up FFT
+    if (fft) {
+        delete fft;
+        fft = nullptr;
+    }
 }
 
 void ofxAVS::setup() {
     width = 600;
     height = 600;
-    
+
+    // Initialize FFT
+    fft = ofxFft::create(FFT_SIZE, OF_FFT_WINDOW_HAMMING);
+
     // Initialize renderer
     renderer = std::make_unique<avs::DefaultRenderer>(width, height);
 
@@ -44,6 +54,78 @@ void ofxAVS::update() {
     renderer->render(current_audio_data, false,
                      reinterpret_cast<uint32_t*>(pixels.getData()));
     texture.loadData(pixels);
+}
+
+void ofxAVS::audioIn(ofSoundBuffer& buffer) {
+    memset(current_audio_data, 0, sizeof(avs::AudioData));
+
+    int numChannels = buffer.getNumChannels();
+    int numSamples = std::min(static_cast<int>(buffer.getNumFrames()), 576);
+
+    static vector<float> fftSamples(FFT_SIZE);
+
+    // Process waveform and prepare FFT input
+    for (int i = 0; i < numSamples; i++) {
+        float left = buffer[i * numChannels];
+        float right = (numChannels >= 2) ? buffer[i * numChannels + 1] : left;
+
+        // Waveform: convert float [-1, 1] to signed char [-128, 127]
+        current_audio_data[0][0][i] = static_cast<char>(left * 127.0f);
+        current_audio_data[0][1][i] = static_cast<char>(right * 127.0f);
+
+        // Mix to mono for FFT
+        if (i < FFT_SIZE) {
+            fftSamples[i] = (left + right) * 0.5f;
+        }
+    }
+
+    // Zero-pad FFT input if needed
+    for (int i = numSamples; i < FFT_SIZE; i++) {
+        fftSamples[i] = 0;
+    }
+
+    // Compute FFT spectrum
+    fft->setSignal(fftSamples);
+    float* amplitude = fft->getAmplitude();
+    int binSize = fft->getBinSize();
+
+    // Smoothing constants
+    const float attack = 0.8f;   // How fast values rise
+    const float decay = 0.4f;    // How fast values fall (slower = smoother)
+
+    // Convert spectrum to AVS format (576 bins, 0-255 unsigned char)
+    // Use linear interpolation and temporal smoothing
+    for (int i = 0; i < 576; i++) {
+        // Map output bin to FFT bin with interpolation
+        float srcPos = (float)i * (binSize - 1) / 575.0f;
+        int srcIdx = (int)srcPos;
+        float frac = srcPos - srcIdx;
+        if (srcIdx >= binSize - 1) {
+            srcIdx = binSize - 2;
+            frac = 1.0f;
+        }
+
+        // Linear interpolation between adjacent bins
+        float mag = amplitude[srcIdx] * (1.0f - frac) + amplitude[srcIdx + 1] * frac;
+
+        // Log scale (dB) with adjusted range
+        float db = 20.0f * log10f(mag + 0.00001f);
+        float normalized = (db + 80.0f) / 80.0f;  // Wider dynamic range
+        if (normalized < 0) normalized = 0;
+        if (normalized > 1) normalized = 1;
+
+        // Temporal smoothing (attack/decay envelope)
+        float target = normalized;
+        if (target > smoothedSpectrum[i]) {
+            smoothedSpectrum[i] = smoothedSpectrum[i] + (target - smoothedSpectrum[i]) * attack;
+        } else {
+            smoothedSpectrum[i] = smoothedSpectrum[i] + (target - smoothedSpectrum[i]) * decay;
+        }
+
+        unsigned char val = static_cast<unsigned char>(smoothedSpectrum[i] * 255.0f);
+        current_audio_data[1][0][i] = static_cast<char>(val);
+        current_audio_data[1][1][i] = static_cast<char>(val);
+    }
 }
 
 void ofxAVS::setAudioData(const avs::AudioData& data) {
