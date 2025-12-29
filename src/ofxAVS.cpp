@@ -45,7 +45,7 @@ void ofxAVS::setup() {
     fft = ofxFft::create(FFT_SIZE, OF_FFT_WINDOW_HAMMING);
 #else
     // Original Winamp used Hann window
-    fft = ofxFft::create(FFT_SIZE, OF_FFT_WINDOW_HANNING);
+    fft = ofxFft::create(FFT_SIZE, OF_FFT_WINDOW_HANN);
 #endif
 
     // Initialize renderer
@@ -159,9 +159,11 @@ void ofxAVS::audioIn(ofSoundBuffer& buffer) {
 
     // Process 256 FFT bins, output 2 values each (512 total)
     for (int x = 0; x < 256 && outIdx < 512; x++) {
-        // Magnitude calculation: sqrt(re² + im²) / 16
-        // ofxFft gives us amplitude directly, but we need to scale like Winamp
-        float mag = amplitude[x] * 16.0f;  // Scale to roughly match Winamp's /16 divisor
+        // ofxFft normalizes amplitude by 2/windowSum (≈ 1/128 for 512-sample Hann)
+        // A full-scale sinusoid gives amplitude ≈ 2.0 after normalization
+        // Winamp's /16 divisor was empirically chosen for typical audio levels
+        // Scale by 128 to map normalized amplitudes to 0-255 range
+        float mag = amplitude[x] * 128.0f;
 
         // Clamp to 255
         if (mag > 255.0f) mag = 255.0f;

@@ -15,7 +15,7 @@
 // FFT mode selection:
 // Define AVS_ENHANCED_FFT for modern processing (2048 samples, smoothing, dB scale)
 // Undefine for original Winamp behavior (512 samples, log table, no smoothing)
-#define AVS_ENHANCED_FFT
+//#define AVS_ENHANCED_FFT
 
 // Effect chain item for the UI (metadata only - effects owned by renderer)
 struct EffectChainItem {
