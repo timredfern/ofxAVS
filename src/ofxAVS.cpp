@@ -48,27 +48,33 @@ void ofxAVS::setup() {
     fft = ofxFft::create(FFT_SIZE, OF_FFT_WINDOW_HANN);
 #endif
 
+    // Initialize beat detector
+    beat_detector_ = std::make_unique<avs::BeatDetector>();
+
     // Initialize renderer
     renderer = std::make_unique<avs::DefaultRenderer>(width, height);
 
     // Initialize texture - use BGRA to match our uint32_t ARGB format
     pixels.allocate(width, height, OF_PIXELS_BGRA);
     texture.allocate(pixels);
-    
+
     // Register built-in effects
     avs::register_builtin_effects();
-    
+
     // Initialize available effects list
     initializeAvailableEffects();
-    
+
     // Add default effects to see something
     addEffect("Brightness");
     addEffect("Oscilloscope");
 }
 
 void ofxAVS::update() {
+    // Process beat detection
+    bool isBeat = beat_detector_->process(current_audio_data);
+
     // Render directly into pixels buffer (no intermediate copy)
-    renderer->render(current_audio_data, false,
+    renderer->render(current_audio_data, isBeat,
                      reinterpret_cast<uint32_t*>(pixels.getData()));
     texture.loadData(pixels);
 }
@@ -224,7 +230,7 @@ void ofxAVS::addEffect(const std::string& effectName, avs::EffectContainer* pare
         parent->add_child(std::move(new_effect));
 
         // Select the newly added effect
-        selected_effect_ = effect_ptr;
+        selected_ = effect_ptr;
     }
 }
 
@@ -238,8 +244,8 @@ void ofxAVS::removeEffect(avs::EffectBase* effect) {
     int index = parent->find_child_index(effect);
     if (index >= 0) {
         // Clear selection if we're removing the selected effect
-        if (selected_effect_ == effect) {
-            selected_effect_ = nullptr;
+        if (selected_ == effect) {
+            selected_ = nullptr;
         }
         parent->remove_child(static_cast<size_t>(index));
     }
@@ -268,7 +274,7 @@ void ofxAVS::duplicateEffect(avs::EffectBase* effect) {
     parent->insert_child(static_cast<size_t>(index + 1), std::move(new_effect));
 
     // Select the new duplicate
-    selected_effect_ = new_effect_ptr;
+    selected_ = new_effect_ptr;
 }
 
 void ofxAVS::moveEffectUp(avs::EffectBase* effect) {
@@ -351,18 +357,39 @@ void ofxAVS::drawChainPanel() {
     ImGui::PushStyleColor(ImGuiCol_TitleBgActive, ImVec4(0.2f, 0.2f, 0.2f, 1.0f));
     ImGui::PushStyleColor(ImGuiCol_TitleBgCollapsed, ImVec4(0.2f, 0.2f, 0.2f, 1.0f));
 
-    if (ImGui::Begin("Effect Chain", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove)) {
+    if (ImGui::Begin("AVS", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove)) {
         // Handle keyboard navigation
         handleEffectListKeyboard();
 
-        // Draw the root container as "Main"
+        // Draw Beat detector (always first, not expandable)
+        bool beat_selected = (selected_ == beat_detector_.get());
+        if (beat_selected) {
+            ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.4f, 0.4f, 0.6f, 1.0f));
+        }
+
+        // Show BPM info in the label if available
+        std::string beat_label = "Beat detector";
+        if (beat_detector_->getBpm() > 0) {
+            beat_label += " (" + std::to_string(beat_detector_->getBpm()) + " BPM)";
+        }
+
+        if (ImGui::Selectable(beat_label.c_str(), beat_selected, ImGuiSelectableFlags_None, ImVec2(chain_panel_width - 30, 0))) {
+            selected_ = beat_detector_.get();
+        }
+        if (beat_selected) {
+            ImGui::PopStyleColor();
+        }
+
+        ImGui::Separator();
+
+        // Draw the root container as "Effect chain"
         avs::EffectListRoot* root = renderer->root();
         if (root) {
-            bool root_selected = (selected_effect_ == root);
+            bool root_selected = (selected_ == root);
             bool is_expanded = collapsed_containers_.find(root) == collapsed_containers_.end();
 
             // Arrow button for expand/collapse
-            if (ImGui::ArrowButton("##main_arrow", is_expanded ? ImGuiDir_Down : ImGuiDir_Right)) {
+            if (ImGui::ArrowButton("##chain_arrow", is_expanded ? ImGuiDir_Down : ImGuiDir_Right)) {
                 if (is_expanded) {
                     collapsed_containers_.insert(root);
                 } else {
@@ -371,19 +398,19 @@ void ofxAVS::drawChainPanel() {
             }
             ImGui::SameLine();
 
-            // Main selectable
+            // Effect chain selectable
             if (root_selected) {
                 ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.4f, 0.4f, 0.6f, 1.0f));
             }
-            if (ImGui::Selectable("Main", root_selected, ImGuiSelectableFlags_None, ImVec2(chain_panel_width - 50, 0))) {
-                selected_effect_ = root;
+            if (ImGui::Selectable("Effect chain", root_selected, ImGuiSelectableFlags_None, ImVec2(chain_panel_width - 50, 0))) {
+                selected_ = root;
             }
             if (root_selected) {
                 ImGui::PopStyleColor();
             }
 
             // Context menu for root
-            if (ImGui::BeginPopupContextItem("main_context")) {
+            if (ImGui::BeginPopupContextItem("chain_context")) {
                 drawAddEffectMenu(root);
                 ImGui::EndPopup();
             }
@@ -409,7 +436,7 @@ void ofxAVS::drawEffectTree(avs::EffectContainer* container, int depth) {
 
         // Check if this is a container
         auto* child_container = dynamic_cast<avs::EffectContainer*>(effect);
-        bool is_selected = (selected_effect_ == effect);
+        bool is_selected = (selected_ == effect);
 
         // Generate unique ID
         std::string id = "##effect_" + std::to_string(reinterpret_cast<uintptr_t>(effect));
@@ -432,7 +459,7 @@ void ofxAVS::drawEffectTree(avs::EffectContainer* container, int depth) {
             }
             std::string label = effect->get_plugin_info().name + id;
             if (ImGui::Selectable(label.c_str(), is_selected, ImGuiSelectableFlags_None, ImVec2(chain_panel_width - indent - 50, 0))) {
-                selected_effect_ = effect;
+                selected_ = effect;
             }
             if (is_selected) {
                 ImGui::PopStyleColor();
@@ -457,7 +484,7 @@ void ofxAVS::drawEffectTree(avs::EffectContainer* container, int depth) {
             }
             std::string label = effect->get_plugin_info().name + id;
             if (ImGui::Selectable(label.c_str(), is_selected)) {
-                selected_effect_ = effect;
+                selected_ = effect;
             }
             if (is_selected) {
                 ImGui::PopStyleColor();
@@ -561,7 +588,7 @@ void ofxAVS::insertEffect(const std::string& effectName, avs::EffectContainer* c
     if (new_effect) {
         avs::EffectBase* effect_ptr = new_effect.get();
         container->insert_child(index, std::move(new_effect));
-        selected_effect_ = effect_ptr;
+        selected_ = effect_ptr;
     }
 }
 
@@ -608,19 +635,22 @@ void ofxAVS::drawParametersPanel() {
     ImGui::PushStyleColor(ImGuiCol_TitleBgCollapsed, ImVec4(0.2f, 0.2f, 0.2f, 1.0f));
 
     if (ImGui::Begin("Parameters", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove)) {
-        if (selected_effect_) {
-            // Get UI layout directly from effect's plugin info
-            const avs::PluginInfo& info = selected_effect_->get_plugin_info();
-            const avs::EffectUILayout& layout = info.ui_layout;
+        if (selected_) {
+            // Show the display name as header
+            ImGui::Text("%s", selected_->get_display_name().c_str());
+            ImGui::Separator();
+
+            // Get UI layout from the Configurable interface
+            const avs::EffectUILayout& layout = selected_->get_ui_layout();
 
             if (!layout.getControls().empty()) {
-                // Render UI directly modifying the effect
-                avs_ui::renderImGui(layout, selected_effect_);
+                // Render UI using the Configurable's parameters
+                avs_ui::renderImGui(layout, selected_);
             } else {
                 ImGui::Text("No parameters available");
             }
         } else {
-            ImGui::Text("Select an effect to see its parameters");
+            ImGui::Text("Select an item to see its parameters");
         }
     }
     ImGui::End();
@@ -679,26 +709,40 @@ avs::EffectBase* ofxAVS::getPrevVisibleEffect(avs::EffectBase* current) {
 }
 
 void ofxAVS::handleEffectListKeyboard() {
-    // Only handle if effect chain window is focused
+    // Only handle if AVS window is focused
     if (!ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows)) {
         return;
     }
 
     bool shift = ImGui::GetIO().KeyShift;
 
+    // Cast selected to effect if it is one (for navigation purposes)
+    auto* selected_effect = dynamic_cast<avs::EffectBase*>(selected_);
+
     if (ImGui::IsKeyPressed(ImGuiKey_UpArrow)) {
         if (shift) {
             // Shift+Up: collapse current container
-            auto* container = dynamic_cast<avs::EffectContainer*>(selected_effect_);
+            auto* container = dynamic_cast<avs::EffectContainer*>(selected_);
             if (container) {
                 collapsed_containers_.insert(container);
             }
         } else {
-            // Up: move to previous effect
-            if (selected_effect_) {
-                selected_effect_ = getPrevVisibleEffect(selected_effect_);
+            // Up: move to previous item
+            if (selected_ == beat_detector_.get()) {
+                // Already at top, do nothing
+            } else if (selected_ == renderer->root()) {
+                // Move from root to beat detector
+                selected_ = beat_detector_.get();
+            } else if (selected_effect) {
+                auto* prev = getPrevVisibleEffect(selected_effect);
+                if (prev == renderer->root() && selected_effect == renderer->root()->get_child(0)) {
+                    // First effect, could go to root or beat detector
+                    selected_ = renderer->root();
+                } else {
+                    selected_ = prev;
+                }
             } else {
-                selected_effect_ = renderer->root();
+                selected_ = beat_detector_.get();
             }
         }
     }
@@ -706,16 +750,19 @@ void ofxAVS::handleEffectListKeyboard() {
     if (ImGui::IsKeyPressed(ImGuiKey_DownArrow)) {
         if (shift) {
             // Shift+Down: expand current container
-            auto* container = dynamic_cast<avs::EffectContainer*>(selected_effect_);
+            auto* container = dynamic_cast<avs::EffectContainer*>(selected_);
             if (container) {
                 collapsed_containers_.erase(container);
             }
         } else {
-            // Down: move to next effect
-            if (selected_effect_) {
-                selected_effect_ = getNextVisibleEffect(selected_effect_);
+            // Down: move to next item
+            if (selected_ == beat_detector_.get()) {
+                // Move from beat detector to root
+                selected_ = renderer->root();
+            } else if (selected_effect) {
+                selected_ = getNextVisibleEffect(selected_effect);
             } else {
-                selected_effect_ = renderer->root();
+                selected_ = beat_detector_.get();
             }
         }
     }

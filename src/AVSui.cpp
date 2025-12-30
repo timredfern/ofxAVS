@@ -29,15 +29,13 @@ static int squareCurve(int val) {
     return 4096 + static_cast<int>(curved * 4096);
 }
 
-void renderImGui(const avs::EffectUILayout& layout, avs::EffectBase* effect) {
-    if (!effect) return;
+void renderImGui(const avs::EffectUILayout& layout, avs::Configurable* configurable) {
+    if (!configurable) return;
 
-    
-    std::string child_id = "EffectDialog##" + std::to_string(reinterpret_cast<uintptr_t>(effect));
-    //ImGui::BeginChild(child_id.c_str(), ImVec2(385, 365), true);
+    std::string child_id = "ConfigDialog##" + std::to_string(reinterpret_cast<uintptr_t>(configurable));
     ImGui::BeginChild(child_id.c_str(), ImVec2(420, 440), true);
 
-    auto& params = effect->parameters();
+    auto& params = configurable->parameters();
 
     // Push universal slider styling
     ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.3f, 0.3f, 0.3f, 1.0f));
@@ -60,7 +58,7 @@ void renderImGui(const avs::EffectUILayout& layout, avs::EffectBase* effect) {
         switch (control.type) {
             case avs::ControlType::CHECKBOX: {
                 bool value = params.get_bool(control.id);
-                std::string unique_label = control.text + "##" + control.id + "_" + std::to_string(reinterpret_cast<uintptr_t>(effect));
+                std::string unique_label = control.text + "##" + control.id + "_" + std::to_string(reinterpret_cast<uintptr_t>(configurable));
                 if (ImGui::Checkbox(unique_label.c_str(), &value)) {
                     params.set_bool(control.id, value);
                 }
@@ -73,7 +71,7 @@ void renderImGui(const avs::EffectUILayout& layout, avs::EffectBase* effect) {
                 int value = param->as_int();
                 int min_val = std::get<int>(param->min_value());
                 int max_val = std::get<int>(param->max_value());
-                std::string unique_label = control.text + "##" + control.id + "_" + std::to_string(reinterpret_cast<uintptr_t>(effect));
+                std::string unique_label = control.text + "##" + control.id + "_" + std::to_string(reinterpret_cast<uintptr_t>(configurable));
 
                 // Check if this is a brightness RGB slider
                 bool is_brightness_rgb = (control.id == "red_adjust" ||
@@ -112,7 +110,7 @@ void renderImGui(const avs::EffectUILayout& layout, avs::EffectBase* effect) {
             }
 
             case avs::ControlType::BUTTON: {
-                std::string unique_label = control.text + "##" + control.id + "_" + std::to_string(reinterpret_cast<uintptr_t>(effect));
+                std::string unique_label = control.text + "##" + control.id + "_" + std::to_string(reinterpret_cast<uintptr_t>(configurable));
                 if (ImGui::Button(unique_label.c_str(), ImVec2(control.w, control.h))) {
                     // Handle brightness reset buttons
                     if (control.id == "red_reset" || control.id == "green_reset" || control.id == "blue_reset") {
@@ -139,7 +137,7 @@ void renderImGui(const avs::EffectUILayout& layout, avs::EffectBase* effect) {
                 int option_index = 0;
                 for (const auto& option : control.radio_options) {
                     ImGui::SetCursorPos(ImVec2(option.x * scale, option.y * scale));
-                    std::string unique_label = option.label + "##" + control.id + "_" + std::to_string(option_index) + "_" + std::to_string(reinterpret_cast<uintptr_t>(effect));
+                    std::string unique_label = option.label + "##" + control.id + "_" + std::to_string(option_index) + "_" + std::to_string(reinterpret_cast<uintptr_t>(configurable));
                     if (ImGui::RadioButton(unique_label.c_str(), current_value == option_index)) {
                         params.set_int(control.id, option_index);
                     }
@@ -156,8 +154,8 @@ void renderImGui(const avs::EffectUILayout& layout, avs::EffectBase* effect) {
                     (color & 0xFF) / 255.0f,          // B
                     ((color >> 24) & 0xFF) / 255.0f   // A
                 };
-                std::string unique_label = control.text + "##" + control.id + "_" + std::to_string(reinterpret_cast<uintptr_t>(effect));
-                std::string popup_id = "ColorPicker##" + control.id + "_" + std::to_string(reinterpret_cast<uintptr_t>(effect));
+                std::string unique_label = control.text + "##" + control.id + "_" + std::to_string(reinterpret_cast<uintptr_t>(configurable));
+                std::string popup_id = "ColorPicker##" + control.id + "_" + std::to_string(reinterpret_cast<uintptr_t>(configurable));
                 if (ImGui::ColorButton(unique_label.c_str(), ImVec4(col[0], col[1], col[2], col[3]))) {
                     ImGui::OpenPopup(popup_id.c_str());
                 }
@@ -177,7 +175,7 @@ void renderImGui(const avs::EffectUILayout& layout, avs::EffectBase* effect) {
 
             case avs::ControlType::TEXT_INPUT: {
                 // Single-line text or integer input
-                std::string unique_label = control.text + "##" + control.id + "_" + std::to_string(reinterpret_cast<uintptr_t>(effect));
+                std::string unique_label = control.text + "##" + control.id + "_" + std::to_string(reinterpret_cast<uintptr_t>(configurable));
 
                 if (control.range.max > 0) {
                     // Integer input with range
@@ -210,7 +208,7 @@ void renderImGui(const avs::EffectUILayout& layout, avs::EffectBase* effect) {
                 // Use static maps to store edit buffers and last known values
                 static std::unordered_map<std::string, std::array<char, 4096>> edit_buffers;
                 static std::unordered_map<std::string, std::string> last_param_values;
-                std::string buffer_key = control.id + "_" + std::to_string(reinterpret_cast<uintptr_t>(effect));
+                std::string buffer_key = control.id + "_" + std::to_string(reinterpret_cast<uintptr_t>(configurable));
 
                 // Initialize or sync buffer when parameter changes externally
                 bool needs_sync = (edit_buffers.find(buffer_key) == edit_buffers.end()) ||
@@ -227,7 +225,7 @@ void renderImGui(const avs::EffectUILayout& layout, avs::EffectBase* effect) {
                 ImGui::Text("%s:", control.text.c_str());
                 ImGui::SetCursorPos(ImVec2(control.x , ImGui::GetCursorPosY())); //* 2.0f
 
-                std::string unique_label = "##" + control.id + "_" + std::to_string(reinterpret_cast<uintptr_t>(effect));
+                std::string unique_label = "##" + control.id + "_" + std::to_string(reinterpret_cast<uintptr_t>(configurable));
 
                 // Multiline input (sizes scaled 2x)
                 if (ImGui::InputTextMultiline(unique_label.c_str(),
@@ -245,7 +243,7 @@ void renderImGui(const avs::EffectUILayout& layout, avs::EffectBase* effect) {
 
             case avs::ControlType::DROPDOWN: {
                 int current_value = params.get_int(control.id);
-                std::string unique_label = control.text + "##" + control.id + "_" + std::to_string(reinterpret_cast<uintptr_t>(effect));
+                std::string unique_label = control.text + "##" + control.id + "_" + std::to_string(reinterpret_cast<uintptr_t>(configurable));
 
                 // Get current item name for preview
                 const char* preview = (current_value >= 0 && current_value < static_cast<int>(control.options.size()))

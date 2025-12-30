@@ -11,9 +11,12 @@
 #include "core/plugin_manager.h"
 #include "core/effect_base.h"
 #include "core/effect_container.h"
+#include "core/beat_detector.h"
+#include "core/configurable.h"
 #include "effects/effect_list_root.h"
 #include <vector>
 #include <unordered_set>
+#include <memory>
 
 // FFT mode selection:
 // Define AVS_ENHANCED_FFT for modern processing (2048 samples, smoothing, dB scale)
@@ -49,9 +52,12 @@ public:
     void moveEffectUp(avs::EffectBase* effect);
     void moveEffectDown(avs::EffectBase* effect);
 
-    // UI panel management
-    void setSelectedEffect(avs::EffectBase* effect) { selected_effect_ = effect; }
-    avs::EffectBase* getSelectedEffect() const { return selected_effect_; }
+    // UI panel management - now uses Configurable interface for effects and settings
+    void setSelected(avs::Configurable* item) { selected_ = item; }
+    avs::Configurable* getSelected() const { return selected_; }
+
+    // Beat detector access
+    avs::BeatDetector* getBeatDetector() { return beat_detector_.get(); }
 
     // Effect access
     const std::vector<AvailableEffectInfo>& getAvailableEffects() const { return available_effects; }
@@ -74,9 +80,12 @@ private:
     unsigned char logTable[256];       // AVS log compression table
 #endif
 
+    // Beat detector
+    std::unique_ptr<avs::BeatDetector> beat_detector_;
+
     // Effect UI state
     std::vector<AvailableEffectInfo> available_effects;
-    avs::EffectBase* selected_effect_ = nullptr;
+    avs::Configurable* selected_ = nullptr;  // Can be effect, beat detector, or other settings
 
     // Track collapsed containers for tree view
     std::unordered_set<avs::EffectContainer*> collapsed_containers_;

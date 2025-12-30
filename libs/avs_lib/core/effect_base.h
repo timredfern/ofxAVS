@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include "configurable.h"
 #include "parameter.h"
 #include "ui.h"
 #include <string>
@@ -21,7 +22,7 @@ struct PluginInfo;
 typedef char AudioData[2][2][576];
 
 // Base class for all AVS effects
-class EffectBase {
+class EffectBase : public Configurable {
 public:
     virtual ~EffectBase() = default;
     
@@ -35,9 +36,13 @@ public:
     // Use get_plugin_info().name and get_plugin_info().description for effect identification
     virtual const PluginInfo& get_plugin_info() const = 0;
 
+    // Configurable interface implementation
+    std::string get_display_name() const override;
+    const EffectUILayout& get_ui_layout() const override;
+
     // Parameter system
-    virtual ParameterGroup& parameters() { return parameters_; }
-    virtual const ParameterGroup& parameters() const { return parameters_; }
+    ParameterGroup& parameters() override { return parameters_; }
+    const ParameterGroup& parameters() const override { return parameters_; }
     
     // Configuration - modern replacement for binary config
     virtual void load_parameters(const std::vector<uint8_t>& data) {}

@@ -5,17 +5,18 @@
 #pragma once
 
 #include "core/ui.h"
-#include "core/effect_base.h"
+#include "core/configurable.h"
 
 namespace avs_ui {
 
 /**
- * Render an effect's UI layout using ImGui
+ * Render a Configurable's UI layout using ImGui
  * This function provides the ImGui-specific rendering for avs::EffectUILayout
+ * Works with any Configurable: effects, beat detector, and other settings
  *
  * @param layout The UI layout describing the controls
- * @param effect The effect instance to read/write parameters from
+ * @param configurable The Configurable instance to read/write parameters from
  */
-void renderImGui(const avs::EffectUILayout& layout, avs::EffectBase* effect);
+void renderImGui(const avs::EffectUILayout& layout, avs::Configurable* configurable);
 
 } // namespace avs_ui

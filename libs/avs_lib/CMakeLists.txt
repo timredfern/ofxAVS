@@ -10,7 +10,11 @@ option(BUILD_EXAMPLES "Build example applications" ON)
 
 # Core library
 add_library(avs_core STATIC
+    core/configurable.h
     core/effect_base.h
+    core/effect_base.cpp
+    core/beat_detector.h
+    core/beat_detector.cpp
     core/renderer.h
     core/parameter.h
     core/parameter.cpp
