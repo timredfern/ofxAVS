@@ -28,7 +28,7 @@ public:
     void dragEvent(ofDragInfo dragInfo);
     void gotMessage(ofMessage msg);
 
-    // Audio callback
+    // Audio callback for mic input
     void audioIn(ofSoundBuffer& buffer);
 
 private:
@@ -36,4 +36,12 @@ private:
     ofSoundStream soundStream;
     bool audioInitialized;
     ofxImGui::Gui gui;
+
+    // Sound file playback
+    ofSoundPlayer soundPlayer;
+    bool useFileInput = false;
+    std::string loadedFileName;
+
+    void loadSoundFile(const std::string& path);
+    void drawAudioControls();
 };
