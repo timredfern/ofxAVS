@@ -9,28 +9,35 @@ void ofApp::setup(){
     ofSetWindowTitle("AVS Chain Example");
     ofSetWindowShape(1500, 640);
 
-    audioInitialized = false;
-
     gui.setup();
     avs.setup();
 
-    // Setup audio input (microphone)
+    // Setup audio - configure for both input (mic) and output (file playback)
     vector<ofSoundDevice> devices = soundStream.getDeviceList();
+
+    ofLogNotice() << "Available audio devices:";
+    for (auto& device : devices) {
+        ofLogNotice() << "  " << device.deviceID << ": " << device.name
+                      << " (in:" << device.inputChannels << " out:" << device.outputChannels << ")";
+    }
 
     ofSoundStreamSettings settings;
     settings.sampleRate = 44100;
-    settings.numInputChannels = 1;
-    settings.numOutputChannels = 0;
     settings.bufferSize = 576;
     settings.setInListener(this);
+    settings.setOutListener(this);
 
+    // Try to find a device with both input and output
     for (auto& device : devices) {
-        if (device.inputChannels > 0) {
+        if (device.inputChannels > 0 && device.outputChannels >= 2) {
+            settings.numInputChannels = 1;
+            settings.numOutputChannels = 2;
             settings.setInDevice(device);
+            settings.setOutDevice(device);
             try {
                 soundStream.setup(settings);
                 audioInitialized = true;
-                ofLogNotice() << "Audio setup with: " << device.name;
+                ofLogNotice() << "Audio setup (in+out) with: " << device.name;
                 break;
             } catch (...) {
                 ofLogWarning() << "Failed: " << device.name;
@@ -38,23 +45,39 @@ void ofApp::setup(){
         }
     }
 
+    // Fallback: separate input and output devices
     if (!audioInitialized) {
-        ofLogWarning() << "No audio input available";
+        ofSoundDevice* inputDevice = nullptr;
+        ofSoundDevice* outputDevice = nullptr;
+
+        for (auto& device : devices) {
+            if (!inputDevice && device.inputChannels > 0) inputDevice = &device;
+            if (!outputDevice && device.outputChannels >= 2) outputDevice = &device;
+        }
+
+        if (outputDevice) {
+            settings.numInputChannels = inputDevice ? 1 : 0;
+            settings.numOutputChannels = 2;
+            if (inputDevice) settings.setInDevice(*inputDevice);
+            settings.setOutDevice(*outputDevice);
+            try {
+                soundStream.setup(settings);
+                audioInitialized = true;
+                ofLogNotice() << "Audio setup with separate devices - out: " << outputDevice->name;
+                if (inputDevice) ofLogNotice() << "  in: " << inputDevice->name;
+            } catch (...) {
+                ofLogWarning() << "Failed to setup audio";
+            }
+        }
     }
 
-    // Configure sound player for looping
-    soundPlayer.setLoop(true);
+    if (!audioInitialized) {
+        ofLogWarning() << "No audio device available";
+    }
 }
 
 //--------------------------------------------------------------
 void ofApp::update(){
-    // Update sound system (required for ofSoundPlayer)
-    ofSoundUpdate();
-
-    // Note: File playback plays audio but doesn't provide visualization data.
-    // ofSoundGetSpectrum() exists but isn't implemented on macOS.
-    // To visualize file audio, would need to decode and stream through ofSoundStream.
-
     avs.update();
 }
 
@@ -82,7 +105,7 @@ void ofApp::drawAudioControls() {
     // Audio source toggle
     if (ImGui::RadioButton("Microphone", !useFileInput)) {
         if (useFileInput) {
-            soundPlayer.stop();
+            isPlaying = false;
             useFileInput = false;
         }
     }
@@ -96,13 +119,16 @@ void ofApp::drawAudioControls() {
     ImGui::SameLine();
 
     if (useFileInput) {
-        if (soundPlayer.isLoaded()) {
+        if (audioFileBuffer.getNumFrames() > 0) {
             // Play/Stop button
-            if (ImGui::Button(soundPlayer.isPlaying() ? "Stop" : "Play", ImVec2(60, 0))) {
-                if (soundPlayer.isPlaying()) {
-                    soundPlayer.stop();
+            if (ImGui::Button(isPlaying ? "Stop" : "Play", ImVec2(60, 0))) {
+                if (isPlaying) {
+                    isPlaying = false;
                 } else {
-                    soundPlayer.play();
+                    if (playbackPos >= audioFileBuffer.getNumFrames()) {
+                        playbackPos = 0;
+                    }
+                    isPlaying = true;
                 }
             }
             ImGui::SameLine();
@@ -111,19 +137,19 @@ void ofApp::drawAudioControls() {
             ImGui::Text("%s", loadedFileName.c_str());
             ImGui::SameLine();
 
-            float progress = soundPlayer.getPosition();
-            ImGui::ProgressBar(progress, ImVec2(150, 0));
+            float progress = (float)playbackPos / audioFileBuffer.getNumFrames();
+            ImGui::ProgressBar(progress, ImVec2(100, 0));
 
             // Click on progress bar to seek
             if (ImGui::IsItemClicked()) {
                 ImVec2 mousePos = ImGui::GetMousePos();
                 ImVec2 itemPos = ImGui::GetItemRectMin();
-                float seekPos = (mousePos.x - itemPos.x) / 150.0f;
+                float seekPos = (mousePos.x - itemPos.x) / 100.0f;
                 seekPos = ofClamp(seekPos, 0.0f, 1.0f);
-                soundPlayer.setPosition(seekPos);
+                playbackPos = (size_t)(seekPos * audioFileBuffer.getNumFrames());
             }
         } else {
-            ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Drop audio file here (.wav, .mp3, .ogg, .aiff)");
+            ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Drop audio file here");
         }
     } else {
         ImGui::TextColored(ImVec4(0.5f, 1.0f, 0.5f, 1.0f), "Listening to microphone...");
@@ -137,11 +163,22 @@ void ofApp::drawAudioControls() {
 void ofApp::loadSoundFile(const std::string& path) {
     ofLogNotice() << "Loading sound file: " << path;
 
-    if (soundPlayer.load(path)) {
+    if (ofxAudioDecoder::load(audioFileBuffer, path)) {
         loadedFileName = ofFilePath::getFileName(path);
+        playbackPos = 0;
         useFileInput = true;
-        soundPlayer.play();
-        ofLogNotice() << "Loaded: " << loadedFileName;
+        isPlaying = true;
+
+        // Resample to 44100 if needed
+        if (audioFileBuffer.getSampleRate() != 44100) {
+            float ratio = 44100.0f / audioFileBuffer.getSampleRate();
+            audioFileBuffer.resample(ratio);
+            audioFileBuffer.setSampleRate(44100);
+        }
+
+        ofLogNotice() << "Loaded: " << loadedFileName
+                      << " (" << audioFileBuffer.getNumFrames() << " frames, "
+                      << audioFileBuffer.getNumChannels() << " channels)";
     } else {
         ofLogError() << "Failed to load sound file: " << path;
     }
@@ -149,33 +186,67 @@ void ofApp::loadSoundFile(const std::string& path) {
 
 //--------------------------------------------------------------
 void ofApp::audioIn(ofSoundBuffer& buffer) {
-    // Only use mic input if not using file
-    // Note: When using file playback, spectrum comes from ofSoundGetSpectrum()
-    // which is called internally by OF. Waveform visualization won't work
-    // with file playback - only spectrum-based effects will respond.
-    if (!useFileInput) {
+    // Use mic input when not playing file
+    if (!useFileInput || !isPlaying) {
         avs.audioIn(buffer);
     }
 }
 
 //--------------------------------------------------------------
+void ofApp::audioOut(ofSoundBuffer& buffer) {
+    // Only output audio if playing a file
+    if (!useFileInput || !isPlaying || audioFileBuffer.getNumFrames() == 0) {
+        buffer.set(0);
+        return;
+    }
+
+    size_t numFrames = buffer.getNumFrames();
+    int outChannels = buffer.getNumChannels();
+    int fileChannels = audioFileBuffer.getNumChannels();
+
+    for (size_t i = 0; i < numFrames; i++) {
+        if (playbackPos >= audioFileBuffer.getNumFrames()) {
+            // Loop back to start
+            playbackPos = 0;
+        }
+
+        float left = audioFileBuffer.getSample(playbackPos, 0);
+        float right = (fileChannels >= 2) ? audioFileBuffer.getSample(playbackPos, 1) : left;
+
+        // Write to output buffer
+        if (outChannels >= 2) {
+            buffer.getSample(i, 0) = left;
+            buffer.getSample(i, 1) = right;
+        } else if (outChannels == 1) {
+            buffer.getSample(i, 0) = (left + right) * 0.5f;
+        }
+
+        playbackPos++;
+    }
+
+    // Pass audio to AVS for visualization
+    avs.audioIn(buffer);
+}
+
+//--------------------------------------------------------------
 void ofApp::exit(){
-    soundPlayer.stop();
     if (audioInitialized) {
         soundStream.stop();
         soundStream.close();
-        audioInitialized = false;
     }
 }
 
 //--------------------------------------------------------------
 void ofApp::keyPressed(int key){
     if (key == ' ') {
-        if (useFileInput && soundPlayer.isLoaded()) {
-            if (soundPlayer.isPlaying()) {
-                soundPlayer.stop();
+        if (useFileInput && audioFileBuffer.getNumFrames() > 0) {
+            if (isPlaying) {
+                isPlaying = false;
             } else {
-                soundPlayer.play();
+                if (playbackPos >= audioFileBuffer.getNumFrames()) {
+                    playbackPos = 0;
+                }
+                isPlaying = true;
             }
         }
     }
@@ -193,15 +264,7 @@ void ofApp::windowResized(int w, int h){}
 //--------------------------------------------------------------
 void ofApp::dragEvent(ofDragInfo dragInfo){
     if (dragInfo.files.size() > 0) {
-        std::string path = dragInfo.files[0];
-        std::string ext = ofToLower(ofFilePath::getFileExt(path));
-
-        // Check for supported audio formats
-        if (ext == "wav" || ext == "mp3" || ext == "ogg" || ext == "aiff" || ext == "aif" || ext == "flac") {
-            loadSoundFile(path);
-        } else {
-            ofLogWarning() << "Unsupported audio format: " << ext;
-        }
+        loadSoundFile(dragInfo.files[0]);
     }
 }
 

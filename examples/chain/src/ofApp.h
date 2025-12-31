@@ -7,6 +7,7 @@
 #include "ofMain.h"
 #include "ofxAVS.h"
 #include "ofxImGui.h"
+#include "ofxAudioDecoder.h"
 
 class ofApp : public ofBaseApp {
 
@@ -28,18 +29,21 @@ public:
     void dragEvent(ofDragInfo dragInfo);
     void gotMessage(ofMessage msg);
 
-    // Audio callback for mic input
+    // Audio callbacks
     void audioIn(ofSoundBuffer& buffer);
+    void audioOut(ofSoundBuffer& buffer);
 
 private:
     ofxAVS avs;
     ofSoundStream soundStream;
-    bool audioInitialized;
+    bool audioInitialized = false;
     ofxImGui::Gui gui;
 
     // Sound file playback
-    ofSoundPlayer soundPlayer;
+    ofSoundBuffer audioFileBuffer;
+    size_t playbackPos = 0;
     bool useFileInput = false;
+    bool isPlaying = false;
     std::string loadedFileName;
 
     void loadSoundFile(const std::string& path);
