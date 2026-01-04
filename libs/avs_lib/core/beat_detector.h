@@ -22,11 +22,10 @@ namespace avs {
 // - [x] UI: Mode selection (Standard/Advanced)
 // - [x] UI: Sticky beats, Only sticky options
 // - [x] UI: Reset/Adapt on new song
-// - [x] UI: Input sensitivity slider
+// - [x] UI: Input/Output beat indicator sliders (visual only, animate on beats)
 // - [x] UI: 2x, /2, Reset buttons
 // - [ ] UI: BPM and Confidence read-only displays (shown in tree label instead)
-// - [ ] UI: Stick/Unstick toggle buttons
-// - [ ] UI: Output sensitivity slider (was for visual indicator, not detection)
+// - [x] UI: Stick/Unstick toggle buttons
 // - [ ] Song change detection (requires integration with audio source)
 //
 // The original AVS used GetTickCount() for timing; we use a frame counter
@@ -105,6 +104,12 @@ private:
 
     // Frame counter for timing (in lieu of GetTickCount)
     uint32_t frame_count_ = 0;
+
+    // Beat-synced slider animation (visual indicator)
+    int in_slide_ = 0;
+    int out_slide_ = 0;
+    int in_inc_ = 1;
+    int out_inc_ = 1;
 
     // Internal methods
     int detectRawBeat(const AudioData& visdata);

@@ -70,7 +70,9 @@ void renderImGui(const avs::EffectUILayout& layout, avs::Configurable* configura
             control.id == "on_new_song" ||
             control.id == "double_beat" ||
             control.id == "half_beat" ||
-            control.id == "reset"
+            control.id == "reset" ||
+            control.id == "stick" ||
+            control.id == "unstick"
         );
         if (disable_control) {
             ImGui::BeginDisabled();

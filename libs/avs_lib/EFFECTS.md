@@ -1141,9 +1141,11 @@ Utility and control effects.
     - Adapt: Gradually adjust to new tempo
   - Input sensitivity: SLIDER, Position(0, 87), Range(0, 8), Default(4)
   - Output sensitivity: SLIDER, Position(0, 108), Range(0, 8), Default(4)
-  - 2x: BUTTON, Position(0, 130) - Double detected BPM
-  - /2: BUTTON, Position(45, 130) - Halve detected BPM
-  - Reset: BUTTON, Position(90, 130) - Reset BPM tracking
+  - Stick (Keep): BUTTON, Position(34, 80), Size(29, 10) - Lock to current BPM (from res.rc)
+  - Unstick (Readapt): BUTTON, Position(66, 80), Size(29, 10) - Unlock BPM tracking (from res.rc)
+  - 2x: BUTTON, Position(0, 130) - Double detected BPM (dynamically added)
+  - /2: BUTTON, Position(45, 130) - Halve detected BPM (dynamically added)
+  - Reset: BUTTON, Position(90, 130) - Reset BPM tracking (dynamically added)
 - **Mode Behavior**:
   - **Standard mode**: Raw energy-based beat detection. The `isBeat` signal is passed
     directly to effects based on audio energy crossing a threshold. No BPM tracking,

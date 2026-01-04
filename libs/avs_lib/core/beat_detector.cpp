@@ -52,24 +52,39 @@ const EffectUILayout BeatDetector::ui_layout_ = {
             },
             .default_val = 0  // Reset default
         },
-        // Sensitivity sliders
+        // Stick/Unstick buttons from original res.rc (Keep/Readapt)
+        {
+            .id = "stick",
+            .text = "Keep",
+            .type = ControlType::BUTTON,
+            .x = 34, .y = 80, .w = 29, .h = 10,
+            .default_val = 0
+        },
+        {
+            .id = "unstick",
+            .text = "Readapt",
+            .type = ControlType::BUTTON,
+            .x = 66, .y = 80, .w = 29, .h = 10,
+            .default_val = 0
+        },
+        // Beat indicator sliders (visual only - animate on beats)
         {
             .id = "sensitivity_in",
-            .text = "Input sensitivity",
+            .text = "Input beats",
             .type = ControlType::SLIDER,
             .x = 0, .y = 87, .w = 200, .h = 16,
             .range = {0, 8},
-            .default_val = 4
+            .default_val = 0
         },
         {
             .id = "sensitivity_out",
-            .text = "Output sensitivity",
+            .text = "Output beats",
             .type = ControlType::SLIDER,
             .x = 0, .y = 108, .w = 200, .h = 16,
             .range = {0, 8},
-            .default_val = 4
+            .default_val = 0
         },
-        // Beat adjustment buttons
+        // Beat adjustment buttons (dynamically added in original)
         {
             .id = "double_beat",
             .text = "2x",
@@ -124,6 +139,9 @@ void BeatDetector::initParameters() {
                 break;
         }
     }
+    // Hidden parameter for UI visibility control
+    parameters_.add_parameter(std::make_shared<Parameter>(
+        "is_sticked", ParameterType::BOOL, false));
 }
 
 void BeatDetector::reset() {
@@ -156,6 +174,11 @@ void BeatDetector::reset() {
     best_confidence_ = 0;
 
     frame_count_ = 0;
+
+    in_slide_ = 0;
+    out_slide_ = 0;
+    in_inc_ = 1;
+    out_inc_ = 1;
 }
 
 bool BeatDetector::process(const AudioData& visdata) {
@@ -172,6 +195,18 @@ bool BeatDetector::process(const AudioData& visdata) {
         parameters_.set_bool("reset", false);
         reset();
     }
+    if (parameters_.get_bool("stick", false)) {
+        parameters_.set_bool("stick", false);
+        sticked_ = true;
+        sticky_confidence_count_ = 0;
+    }
+    if (parameters_.get_bool("unstick", false)) {
+        parameters_.set_bool("unstick", false);
+        sticked_ = false;
+        sticky_confidence_count_ = 0;
+    }
+    // Update sticked state for UI visibility control
+    parameters_.set_bool("is_sticked", sticked_);
 
     // Increment frame counter (used as tick count proxy)
     // Assuming ~60fps, each frame is ~16.67ms
@@ -179,6 +214,13 @@ bool BeatDetector::process(const AudioData& visdata) {
 
     // Stage 1: Raw energy-based beat detection
     int raw_beat = detectRawBeat(visdata);
+
+    // Animate input slider on raw beat
+    if (raw_beat) {
+        in_slide_ += in_inc_;
+        if (in_slide_ <= 0 || in_slide_ >= 8) in_inc_ *= -1;
+        parameters_.set_int("sensitivity_in", in_slide_);
+    }
 
     // Stage 2: BPM tracking and refinement (only in Advanced mode)
     int mode = parameters_.get_int("mode", 1);
@@ -195,6 +237,13 @@ bool BeatDetector::process(const AudioData& visdata) {
     bool only_sticky = parameters_.get_bool("only_sticky", false);
     if (only_sticky && !sticked_) {
         return false;
+    }
+
+    // Animate output slider on output beat
+    if (refined_beat) {
+        out_slide_ += out_inc_;
+        if (out_slide_ <= 0 || out_slide_ >= 8) out_inc_ *= -1;
+        parameters_.set_int("sensitivity_out", out_slide_);
     }
 
     return refined_beat != 0;
@@ -218,11 +267,6 @@ int BeatDetector::detectRawBeat(const AudioData& visdata) {
     // Use max of both channels
     lt[0] = std::max(lt[0], lt[1]);
 
-    // Apply input sensitivity adjustment (0-8 range, 4 = neutral)
-    int sensitivity_in = parameters_.get_int("sensitivity_in", 4);
-    // Map 0-8 to threshold multiplier: 0=more sensitive (0.5x), 8=less sensitive (1.5x)
-    float sens_factor = 0.5f + (sensitivity_in / 8.0f);
-
     // Decay peak tracking (original: beat_peak1=(beat_peak1*125+beat_peak2*3)/128)
     beat_peak1_ = (beat_peak1_ * 125 + beat_peak2_ * 3) / 128;
 
@@ -231,7 +275,7 @@ int BeatDetector::detectRawBeat(const AudioData& visdata) {
     int avs_beat = 0;
 
     // Beat threshold: 106.25% of peak AND above minimum (576*16 = 9216)
-    int threshold = static_cast<int>((beat_peak1_ * 34 * sens_factor) / 32);
+    int threshold = (beat_peak1_ * 34) / 32;
     int min_energy = 576 * 16;
 
     if (lt[0] >= threshold && lt[0] > min_energy) {
@@ -474,10 +518,13 @@ int BeatDetector::getSmoothedBpm() const {
 void BeatDetector::doubleBeat() {
     if (sticked_ && bpm_ > MIN_BPM) return;
 
-    // Adjust history intervals
+    // Store intervals first, then apply (must not modify in place)
+    uint32_t intervals[HIST_SIZE];
+    for (int i = 0; i < HIST_SIZE - 1; i++) {
+        intervals[i] = history_[i].tick_count - history_[i + 1].tick_count;
+    }
     for (int i = 1; i < HIST_SIZE; i++) {
-        uint32_t interval = history_[i - 1].tick_count - history_[i].tick_count;
-        history_[i].tick_count = history_[i - 1].tick_count - interval / 2;
+        history_[i].tick_count = history_[i - 1].tick_count - intervals[i - 1] / 2;
     }
 
     avg_ /= 2;
@@ -490,10 +537,13 @@ void BeatDetector::doubleBeat() {
 void BeatDetector::halfBeat() {
     if (sticked_ && bpm_ < MIN_BPM) return;
 
-    // Adjust history intervals
+    // Store intervals first, then apply (must not modify in place)
+    uint32_t intervals[HIST_SIZE];
+    for (int i = 0; i < HIST_SIZE - 1; i++) {
+        intervals[i] = history_[i].tick_count - history_[i + 1].tick_count;
+    }
     for (int i = 1; i < HIST_SIZE; i++) {
-        uint32_t interval = history_[i - 1].tick_count - history_[i].tick_count;
-        history_[i].tick_count = history_[i - 1].tick_count - interval * 2;
+        history_[i].tick_count = history_[i - 1].tick_count - intervals[i - 1] * 2;
     }
 
     avg_ *= 2;
