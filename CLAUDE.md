@@ -6,6 +6,46 @@
 
 The user handles all building and testing. After making code changes, wait for the user to confirm whether the fix works before claiming success.
 
+# Project Context
+This is the ORIGINAL AVS (Advanced Visualization Studio) source code being ported to modern C++/OpenFrameworks.
+It contains the original Windows dialog procedures and UI layout data from the Winamp plugin.
+## Source Code Locations
+- **Modern C++ port**: `./libs/avs_lib/effects/` - New effect implementations
+- **Original AVS source**: `../vis_avs/avs/vis_avs/` - Contains g_DlgProc functions and Windows UI layouts
+- **Resource layouts**: Look in `../vis_avs/avs/vis_avs/res.rc` for dialog coordinates
+
+The original source files use naming like `r_bright.cpp` for brightness effect, `r_dmove.cpp` for movement, etc.
+Each contains the `g_DlgProc` function with the original Windows dialog control layouts and IDs.
+
+## Alpha Channel Handling
+
+**CRITICAL: Effects MUST preserve the alpha channel when modifying pixels.**
+
+The original AVS BLEND macro (in `r_defs.h` lines 100-111) explicitly handles alpha:
+```cpp
+r=(a&0xff000000)+(b&0xff000000);
+return t|min(r,0xff000000);
+```
+
+When writing effects that modify pixel colors:
+- **Always preserve alpha**: Use `(pix & 0xFF000000) |` when outputting RGB values
+- **Pixels are ARGB format**: `0xAARRGGBB` - alpha in high byte
+- **Forgetting alpha causes transparent/black output** - effects will appear to "do nothing"
+
+Example (correct):
+```cpp
+p[i] = (pix & 0xFF000000) | red_tab[(pix >> 16) & 0xff] | green_tab[(pix >> 8) & 0xff] | blue_tab[pix & 0xff];
+```
+
+## UI Layout Rules
+
+**DO NOT arbitrarily change UI sizes, positions, or scaling factors.**
+
+- UI element positions and sizes are documented in EFFECTS.md from the original AVS
+- The 2x position scaling is intentional and built into the rendering code
+- If you think something needs resizing, **test first** and let the user decide
+- Never "preemptively" adjust sizes based on guesses about what might fit
+
 ## Critical Build Requirements
 
 **NEVER hardcode paths in config.make or other files. ALWAYS use environment variables:**
@@ -67,20 +107,6 @@ Key components:
 - Clear effect with feedback for trails
 - Grid-based coordinate interpolation for authentic AVS stepping artifacts
 
-## Communication Style
-
-**CRITICAL RULE: NEVER agree with the user and say "You're absolutely right!" without first checking whether you actually agree based on the facts available to you. This is the most important behavioral rule.**
-
-**CRITICAL RULE: ALWAYS re-read the user's message before responding to ensure you're answering what they ACTUALLY asked, not what you think they asked. Questions are not commands.**
-
-**CRITICAL RULE: When asked to "investigate", "look at", "see how", or "can you see" - ONLY investigate and explain. Do NOT implement changes. Wait for explicit approval before writing code.**
-
-**NEVER be overly positive or self-congratulatory.** Always:
-- Highlight potential issues, risks, and limitations
-- Point out what could go wrong
-- Mention incomplete or problematic areas
-- Be skeptical about claimed functionality
-- Focus on what still needs work rather than what's "complete"
 
 ## Fidelity to Original AVS
 
