@@ -1123,7 +1123,43 @@ Utility and control effects.
 - **Controls**:
   - No dedicated UI dialog found. Global variables are managed through scripting within individual effects or via debugging tools.
 
-58. ### MIDI Trace
+58. ### Beat Detector
+- **Purpose**: Detect beats from audio input for use by effects
+- **Source File**: `bpm.cpp`
+- **Inputs**:
+  - Audio waveform data
+- **Outputs**: Beat signal (isBeat flag passed to effects)
+- **Blend Modes**: N/A
+- **Controls**: (Configured in Global BPM Settings / IDD_GCFG_BPM)
+  - Detection mode: RADIO_GROUP
+    - Standard: Position(0, 0) - Raw energy-based detection only
+    - Advanced: Position(0, 14) - BPM tracking with prediction
+  - Sticky beats: CHECKBOX, Position(0, 35) - Lock to detected tempo
+  - Only output when sticky: CHECKBOX, Position(85, 35) - Suppress beats until locked
+  - On new song: RADIO_GROUP, Position(0, 52) - Winamp playlist integration (not implemented)
+    - Reset: Clear BPM tracking on song change
+    - Adapt: Gradually adjust to new tempo
+  - Input sensitivity: SLIDER, Position(0, 87), Range(0, 8), Default(4)
+  - Output sensitivity: SLIDER, Position(0, 108), Range(0, 8), Default(4)
+  - 2x: BUTTON, Position(0, 130) - Double detected BPM
+  - /2: BUTTON, Position(45, 130) - Halve detected BPM
+  - Reset: BUTTON, Position(90, 130) - Reset BPM tracking
+- **Mode Behavior**:
+  - **Standard mode**: Raw energy-based beat detection. The `isBeat` signal is passed
+    directly to effects based on audio energy crossing a threshold. No BPM tracking,
+    no prediction, no sticky behavior. Controls that should be DISABLED in Standard mode:
+    - Sticky beats
+    - Only output when sticky
+    - On new song
+    - 2x, /2, Reset buttons
+  - **Advanced mode**: Full BPM tracking with prediction. Detected beats are refined
+    using tempo history, allowing prediction of beats even during quiet passages.
+    Sticky mode locks to a detected tempo. All controls are enabled.
+- **Implementation Notes**:
+  - UI implementations should disable/grey out Advanced-only controls when mode=Standard
+  - The "On new song" feature requires Winamp playlist integration (song change detection)
+
+59. ### MIDI Trace
 - **Purpose**: Visualize MIDI input (no dedicated UI dialog found).
 - **Source File**: `N/A - No dedicated source file`
 - **Inputs**:

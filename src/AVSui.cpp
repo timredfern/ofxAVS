@@ -44,6 +44,14 @@ void renderImGui(const avs::EffectUILayout& layout, avs::Configurable* configura
     ImGui::PushStyleColor(ImGuiCol_SliderGrab, ImVec4(0.6f, 0.6f, 0.6f, 1.0f));
     ImGui::PushStyleColor(ImGuiCol_SliderGrabActive, ImVec4(0.8f, 0.8f, 0.8f, 1.0f));
 
+    // Check for beat detector mode to disable Advanced-only controls in Standard mode
+    // See EFFECTS.md "Beat Detector" section for documentation
+    bool is_standard_mode = false;
+    auto mode_param = params.get_parameter("mode");
+    if (mode_param) {
+        is_standard_mode = (mode_param->as_int() == 0);
+    }
+
     for (const auto& control : layout.getControls()) {
 
         // Positions and input boxes scaled from original AVS dialogs
@@ -54,6 +62,19 @@ void renderImGui(const avs::EffectUILayout& layout, avs::Configurable* configura
 
         int controlwidth=control.w*scale;
         int controlheight=(control.h*scale)-12; //only used for edit boxes
+
+        // Disable Advanced-only controls when in Standard mode
+        bool disable_control = is_standard_mode && (
+            control.id == "sticky_beats" ||
+            control.id == "only_sticky" ||
+            control.id == "on_new_song" ||
+            control.id == "double_beat" ||
+            control.id == "half_beat" ||
+            control.id == "reset"
+        );
+        if (disable_control) {
+            ImGui::BeginDisabled();
+        }
 
         switch (control.type) {
             case avs::ControlType::CHECKBOX: {
@@ -112,7 +133,10 @@ void renderImGui(const avs::EffectUILayout& layout, avs::Configurable* configura
             case avs::ControlType::BUTTON: {
                 std::string unique_label = control.text + "##" + control.id + "_" + std::to_string(reinterpret_cast<uintptr_t>(configurable));
                 if (ImGui::Button(unique_label.c_str(), ImVec2(control.w, control.h))) {
-                    // Handle brightness reset buttons
+                    // Set button parameter to true (consumed by effect's process())
+                    params.set_bool(control.id, true);
+
+                    // Handle brightness reset buttons specifically
                     if (control.id == "red_reset" || control.id == "green_reset" || control.id == "blue_reset") {
                         int default_val = 4096;  // Center position = 1.0x multiplier
                         if (!params.get_bool("dissoc")) {
@@ -133,10 +157,11 @@ void renderImGui(const avs::EffectUILayout& layout, avs::Configurable* configura
 
             case avs::ControlType::RADIO_GROUP: {
                 // Radio group with explicit positions for each option
+                // Option positions are relative to control position
                 int current_value = params.get_int(control.id);
                 int option_index = 0;
                 for (const auto& option : control.radio_options) {
-                    ImGui::SetCursorPos(ImVec2(option.x * scale, option.y * scale));
+                    ImGui::SetCursorPos(ImVec2((control.x + option.x) * scale, (control.y + option.y) * scale));
                     std::string unique_label = option.label + "##" + control.id + "_" + std::to_string(option_index) + "_" + std::to_string(reinterpret_cast<uintptr_t>(configurable));
                     if (ImGui::RadioButton(unique_label.c_str(), current_value == option_index)) {
                         params.set_int(control.id, option_index);
@@ -269,6 +294,10 @@ void renderImGui(const avs::EffectUILayout& layout, avs::Configurable* configura
             default:
                 ImGui::Text("%s (unsupported)", control.text.c_str());
                 break;
+        }
+
+        if (disable_control) {
+            ImGui::EndDisabled();
         }
     }
 

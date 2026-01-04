@@ -40,6 +40,7 @@ const EffectUILayout BeatDetector::ui_layout_ = {
             .x = 85, .y = 35, .w = 120, .h = 12,
             .default_val = 0
         },
+        // Note: "On new song" relates to Winamp playlist integration - not implemented
         {
             .id = "on_new_song",
             .text = "On new song",
