@@ -218,14 +218,14 @@ Effects that generate new visual content from audio data or clear the screen.
 - **Purpose**: Clears screen on beat detection
 - **Source File**: `r_nfclr.cpp`
 - **Inputs**:
-  - Beat signal signal
+  - Beat signal
   - Framebuffer
 - **Outputs**: Cleared framebuffer on beats
-- **Blend Modes**: Replace or blend
+- **Blend Modes**: Replace or 50/50 blend
 - **Controls**:
-  - Clear every N beats: SLIDER, Position(4, 9), Size(128, 13), ID(IDC_SLIDER1)
-  - Color: COLOR_BUTTON, Position(0, 40), Size(46, 10), ID(IDC_BUTTON1)
-  - Blend to color: CHECKBOX, Position(49, 40), Size(59, 10), ID(IDC_BLEND)
+  - Clear every N beats: SLIDER, Position(4, 9), Size(128, 13), ID(IDC_SLIDER1), Range(0, 100), Default(1)
+  - Color: COLOR_BUTTON, Position(0, 40), Size(46, 10), ID(IDC_BUTTON1), Default(0xFFFFFF)
+  - Blend to color: CHECKBOX, Position(49, 40), Size(59, 10), ID(IDC_BLEND), Default(false)
 
 8. ### Picture/Picture II
 - **Purpose**: Renders bitmap images

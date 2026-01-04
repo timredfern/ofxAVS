@@ -19,6 +19,7 @@ set(AVS_LIB_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/..")
 
 # Build avs_core library for testing (renderer is now header-only)
 add_library(avs_core_test STATIC
+    ${AVS_LIB_ROOT}/core/effect_base.cpp
     ${AVS_LIB_ROOT}/core/parameter.cpp
     ${AVS_LIB_ROOT}/core/plugin_manager.cpp
     ${AVS_LIB_ROOT}/core/script/script_engine.cpp

@@ -38,6 +38,8 @@ add_library(avs_effects STATIC
     effects/movement_effect.cpp
     effects/dynamic_movement_effect.h
     effects/dynamic_movement_effect.cpp
+    effects/onbeat_clear_effect.h
+    effects/onbeat_clear_effect.cpp
     core/builtin_effects.h
     core/builtin_effects.cpp
 )

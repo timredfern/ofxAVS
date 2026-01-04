@@ -122,39 +122,11 @@ Key components:
 - Dialog layouts should match the original coordinates in `res.rc`
 - Control types should match original Windows controls (radio buttons, checkboxes, sliders)
 
-## UI Parameter Pattern
+## Effect Implementation
 
-**CRITICAL: Parameter names MUST exactly match UI control IDs to prevent "unsupported control type" errors.**
+**Before implementing a new effect, READ at least one existing effect file to understand current patterns.** Check constructor pattern, PluginInfo structure, include style, and how parameters are set up.
 
-**Parameter constructor**: `Parameter(name, type, default_value, min_value, max_value)` - the 3rd and 4th parameters after default are the range.
-
-### Pattern for Effect Implementation:
-
-1. **Define UI layout first** with control IDs
-2. **Match setup_parameters() exactly** to those IDs 
-3. **Use simple 1:1 mapping** - each control ID = one parameter name
-
-### Good Example (Blur):
-```cpp
-// UI Layout
-.id = "strength"     → setup_parameters(): "strength"
-.id = "radius"       → setup_parameters(): "radius"
-```
-
-### Bad Example (Clear - WRONG):
-```cpp
-// UI Layout  
-.id = "blend_replace"   → setup_parameters(): "blend_mode"  // MISMATCH!
-.id = "blend_additive"  → setup_parameters(): "blend_mode"  // MISMATCH!
-```
-
-### Fixed Pattern for Radio Button Groups:
-```cpp
-// UI Layout - each radio button is separate parameter
-.id = "blend_replace"   → setup_parameters(): "blend_replace"
-.id = "blend_additive"  → setup_parameters(): "blend_additive"
-.id = "blend_5050"      → setup_parameters(): "blend_5050"
-```
+Use flat includes: `"core/blend.h"` not `"../core/blend.h"`
 
 ## Copyright Headers for Source Files
 

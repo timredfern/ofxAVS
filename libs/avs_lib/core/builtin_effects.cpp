@@ -13,6 +13,7 @@
 #include "../effects/brightness_effect.h"
 #include "../effects/movement_effect.h"
 #include "../effects/dynamic_movement_effect.h"
+#include "../effects/onbeat_clear_effect.h"
 
 namespace avs {
 
