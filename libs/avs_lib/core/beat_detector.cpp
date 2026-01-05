@@ -57,14 +57,14 @@ const EffectUILayout BeatDetector::ui_layout_ = {
             .id = "stick",
             .text = "Keep",
             .type = ControlType::BUTTON,
-            .x = 34, .y = 80, .w = 29, .h = 10,
+            .x = 34, .y = 70, .w = 29, .h = 10,
             .default_val = 0
         },
         {
             .id = "unstick",
             .text = "Readapt",
             .type = ControlType::BUTTON,
-            .x = 66, .y = 80, .w = 29, .h = 10,
+            .x = 66, .y = 70, .w = 29, .h = 10,
             .default_val = 0
         },
         // Beat indicator sliders (visual only - animate on beats)
