@@ -11,6 +11,26 @@
 
 namespace avs_ui {
 
+// Color format conversion between ImGui (RGBA floats) and parameter storage (framebuffer format)
+// Parameters store colors in framebuffer format: 0xAABBGGRR on little-endian
+// ImGui expects col[0]=R, col[1]=G, col[2]=B, col[3]=A as floats 0-1
+
+// Extract ImGui float array from stored color
+inline void color_to_imgui(uint32_t color, float* col) {
+    col[0] = (color & 0xFF) / 255.0f;          // R from byte 0
+    col[1] = ((color >> 8) & 0xFF) / 255.0f;   // G from byte 1
+    col[2] = ((color >> 16) & 0xFF) / 255.0f;  // B from byte 2
+    col[3] = ((color >> 24) & 0xFF) / 255.0f;  // A from byte 3
+}
+
+// Build stored color from ImGui float array
+inline uint32_t imgui_to_color(const float* col) {
+    return ((uint32_t)(col[3] * 255) << 24) |  // A to byte 3
+           ((uint32_t)(col[2] * 255) << 16) |  // B to byte 2
+           ((uint32_t)(col[1] * 255) << 8) |   // G to byte 1
+           ((uint32_t)(col[0] * 255));         // R to byte 0
+}
+
 // Non-linear slider mapping for brightness RGB controls
 // Gives more sensitivity around 1.0x (center position)
 
@@ -175,12 +195,9 @@ void renderImGui(const avs::EffectUILayout& layout, avs::Configurable* configura
 
             case avs::ControlType::COLOR_BUTTON: {
                 uint32_t color = params.get_color(control.id);
-                float col[4] = {
-                    ((color >> 16) & 0xFF) / 255.0f,  // R
-                    ((color >> 8) & 0xFF) / 255.0f,   // G
-                    (color & 0xFF) / 255.0f,          // B
-                    ((color >> 24) & 0xFF) / 255.0f   // A
-                };
+                float col[4];
+                color_to_imgui(color, col);
+
                 std::string unique_label = control.text + "##" + control.id + "_" + std::to_string(reinterpret_cast<uintptr_t>(configurable));
                 std::string popup_id = "ColorPicker##" + control.id + "_" + std::to_string(reinterpret_cast<uintptr_t>(configurable));
                 if (ImGui::ColorButton(unique_label.c_str(), ImVec4(col[0], col[1], col[2], col[3]))) {
@@ -188,12 +205,7 @@ void renderImGui(const avs::EffectUILayout& layout, avs::Configurable* configura
                 }
                 if (ImGui::BeginPopup(popup_id.c_str())) {
                     if (ImGui::ColorPicker4("Color", col)) {
-                        uint32_t new_color =
-                            ((uint32_t)(col[3] * 255) << 24) |  // A
-                            ((uint32_t)(col[0] * 255) << 16) |  // R
-                            ((uint32_t)(col[1] * 255) << 8) |   // G
-                            ((uint32_t)(col[2] * 255));         // B
-                        params.set_color(control.id, new_color);
+                        params.set_color(control.id, imgui_to_color(col));
                     }
                     ImGui::EndPopup();
                 }
@@ -287,13 +299,11 @@ void renderImGui(const avs::EffectUILayout& layout, avs::Configurable* configura
                 for (int i = 0; i < num_colors; i++) {
                     std::string color_param = "color_" + std::to_string(i);
                     uint32_t color = params.get_color(color_param, 0xFFFFFF);
-
-                    // Convert from ARGB to ImGui's ABGR
+                    float col[4];
+                    color_to_imgui(color, col);
                     ImU32 im_color = IM_COL32(
-                        (color >> 16) & 0xFF,  // R
-                        (color >> 8) & 0xFF,   // G
-                        color & 0xFF,          // B
-                        255                    // A
+                        (int)(col[0] * 255), (int)(col[1] * 255),
+                        (int)(col[2] * 255), 255
                     );
 
                     float x1 = bar_pos.x + i * segment_width;
@@ -337,21 +347,13 @@ void renderImGui(const avs::EffectUILayout& layout, avs::Configurable* configura
                     int edit_idx = editing_color[unique_id];
                     std::string color_param = "color_" + std::to_string(edit_idx);
                     uint32_t color = params.get_color(color_param, 0xFFFFFF);
-
-                    float col[4] = {
-                        ((color >> 16) & 0xFF) / 255.0f,  // R
-                        ((color >> 8) & 0xFF) / 255.0f,   // G
-                        (color & 0xFF) / 255.0f,          // B
-                        1.0f                              // A
-                    };
+                    float col[4];
+                    color_to_imgui(color, col);
+                    col[3] = 1.0f;  // Force full alpha for display
 
                     if (ImGui::ColorPicker3(("Color " + std::to_string(edit_idx + 1)).c_str(), col)) {
-                        uint32_t new_color =
-                            0xFF000000 |  // A
-                            ((uint32_t)(col[0] * 255) << 16) |  // R
-                            ((uint32_t)(col[1] * 255) << 8) |   // G
-                            ((uint32_t)(col[2] * 255));         // B
-                        params.set_color(color_param, new_color);
+                        col[3] = 1.0f;  // Ensure alpha stays 1.0
+                        params.set_color(color_param, imgui_to_color(col));
                     }
                     ImGui::EndPopup();
                 }
