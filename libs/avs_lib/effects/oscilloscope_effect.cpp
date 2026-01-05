@@ -163,6 +163,7 @@ int OscilloscopeEffect::render(AudioData visdata, int isBeat,
 // Static member definition
 const PluginInfo OscilloscopeEffect::effect_info {
     .name = "Oscilloscope",
+    .category = "Render",
     .description = "",
     .author = "",
     .version = 1,

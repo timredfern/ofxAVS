@@ -45,6 +45,7 @@ int OnBeatClearEffect::render(AudioData visdata, int isBeat,
 
 const PluginInfo OnBeatClearEffect::effect_info {
     .name = "OnBeat Clear",
+    .category = "Render",
     .description = "Clears screen on beat detection",
     .author = "",
     .version = 1,

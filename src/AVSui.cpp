@@ -134,7 +134,7 @@ void renderImGui(const avs::EffectUILayout& layout, avs::Configurable* configura
 
             case avs::ControlType::BUTTON: {
                 std::string unique_label = control.text + "##" + control.id + "_" + std::to_string(reinterpret_cast<uintptr_t>(configurable));
-                if (ImGui::Button(unique_label.c_str(), ImVec2(control.w, control.h))) {
+                if (ImGui::Button(unique_label.c_str(), ImVec2(control.w * scale, control.h * scale))) {
                     // Set button parameter to true (consumed by effect's process())
                     params.set_bool(control.id, true);
 

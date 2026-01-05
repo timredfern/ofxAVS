@@ -331,9 +331,10 @@ void ofxAVS::initializeAvailableEffects() {
         AvailableEffectInfo info;
         info.name = name;
         
-        // Get effect info which contains description
+        // Get effect info which contains description and category
         auto plugin_info = pm.get_effect_info(name);
         info.display_name = plugin_info.name.empty() ? name : plugin_info.name;
+        info.category = plugin_info.category.empty() ? "Misc" : plugin_info.category;
         info.description = plugin_info.description.empty() ? "AVS effect" : plugin_info.description;
         
         // Try to get UI layout for parameter count
@@ -507,31 +508,14 @@ void ofxAVS::drawAddEffectMenu(avs::EffectContainer* targetContainer) {
         std::map<std::string, std::vector<const AvailableEffectInfo*>> categories;
 
         for (const auto& effect : available_effects) {
-            // Parse category from name (e.g., "Render / Clear Screen" -> "Render")
-            std::string category = "Misc";
-            std::string name = effect.display_name;
-
-            size_t sep = effect.display_name.find(" / ");
-            if (sep != std::string::npos) {
-                category = effect.display_name.substr(0, sep);
-                name = effect.display_name.substr(sep + 3);
-            }
-
-            categories[category].push_back(&effect);
+            categories[effect.category].push_back(&effect);
         }
 
         // Draw categorized menu
         for (const auto& [category, effects] : categories) {
             if (ImGui::BeginMenu(category.c_str())) {
                 for (const auto* effect : effects) {
-                    // Extract just the effect name (after category)
-                    std::string name = effect->display_name;
-                    size_t sep = effect->display_name.find(" / ");
-                    if (sep != std::string::npos) {
-                        name = effect->display_name.substr(sep + 3);
-                    }
-
-                    if (ImGui::MenuItem(name.c_str())) {
+                    if (ImGui::MenuItem(effect->display_name.c_str())) {
                         addEffect(effect->name, targetContainer);
                     }
                     if (ImGui::IsItemHovered() && !effect->description.empty()) {
@@ -551,25 +535,14 @@ void ofxAVS::drawAddEffectMenuInsertAfter(avs::EffectContainer* container, int a
         std::map<std::string, std::vector<const AvailableEffectInfo*>> categories;
 
         for (const auto& effect : available_effects) {
-            std::string category = "Misc";
-            size_t sep = effect.display_name.find(" / ");
-            if (sep != std::string::npos) {
-                category = effect.display_name.substr(0, sep);
-            }
-            categories[category].push_back(&effect);
+            categories[effect.category].push_back(&effect);
         }
 
         // Draw categorized menu
         for (const auto& [category, effects] : categories) {
             if (ImGui::BeginMenu(category.c_str())) {
                 for (const auto* effect : effects) {
-                    std::string name = effect->display_name;
-                    size_t sep = effect->display_name.find(" / ");
-                    if (sep != std::string::npos) {
-                        name = effect->display_name.substr(sep + 3);
-                    }
-
-                    if (ImGui::MenuItem(name.c_str())) {
+                    if (ImGui::MenuItem(effect->display_name.c_str())) {
                         insertEffect(effect->name, container, static_cast<size_t>(afterIndex + 1));
                     }
                     if (ImGui::IsItemHovered() && !effect->description.empty()) {

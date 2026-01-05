@@ -251,7 +251,8 @@ int MovementEffect::render(AudioData visdata, int isBeat,
 // Static member definition
 const PluginInfo MovementEffect::effect_info {
     .name = "Movement",
-    .description = "Trans / Movement - coordinate transformations with presets",
+    .category = "Trans",
+    .description = "Coordinate transformations with presets",
     .author = "",
     .version = 1,
     .factory = []() -> std::unique_ptr<avs::EffectBase> {

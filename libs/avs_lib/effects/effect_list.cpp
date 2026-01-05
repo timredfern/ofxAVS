@@ -60,6 +60,7 @@ int EffectList::render(AudioData visdata, int isBeat,
 // Root lists use a simpler UI (just "clear each frame")
 const PluginInfo EffectList::effect_info {
     .name = "Effect List",
+    .category = "Misc",
     .description = "Container for grouping effects with optional scripted control",
     .author = "",
     .version = 1,

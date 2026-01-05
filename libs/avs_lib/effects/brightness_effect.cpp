@@ -139,6 +139,7 @@ int BrightnessEffect::render(AudioData visdata, int isBeat,
 // Static member definition
 const PluginInfo BrightnessEffect::effect_info {
     .name = "Brightness",
+    .category = "Trans",
     .description = "",
     .author = "",
     .version = 1,

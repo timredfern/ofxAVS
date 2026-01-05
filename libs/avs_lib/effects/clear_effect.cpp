@@ -98,6 +98,7 @@ int ClearEffect::render(AudioData visdata, int isBeat,
 // Static member definition
 const PluginInfo ClearEffect::effect_info {
     .name = "Clear",
+    .category = "Render",
     .description = "",
     .author = "",
     .version = 1,

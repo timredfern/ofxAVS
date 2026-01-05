@@ -27,6 +27,7 @@
 struct AvailableEffectInfo {
     std::string name;
     std::string display_name;
+    std::string category;
     std::string description;
 };
 

@@ -62,6 +62,7 @@ public:
 // Static definition - minimal UI for root
 inline const PluginInfo EffectListRoot::effect_info {
     .name = "Main",
+    .category = "Misc",
     .description = "Root effect container",
     .author = "",
     .version = 1,

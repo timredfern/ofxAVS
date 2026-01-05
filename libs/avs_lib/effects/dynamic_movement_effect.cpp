@@ -144,7 +144,8 @@ void DynamicMovementEffect::execute_beat_script(AudioData visdata, int w, int h)
 // Static member definition
 const PluginInfo DynamicMovementEffect::effect_info {
     .name = "Dynamic Movement",
-    .description = "Trans / Dynamic Movement - grid-based transformations with scripting",
+    .category = "Trans",
+    .description = "Grid-based transformations with scripting",
     .author = "",
     .version = 1,
     .factory = []() -> std::unique_ptr<avs::EffectBase> {

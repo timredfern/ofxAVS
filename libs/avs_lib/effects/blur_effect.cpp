@@ -283,6 +283,7 @@ int BlurEffect::render(AudioData visdata, int isBeat,
 // Static member definition
 const PluginInfo BlurEffect::effect_info {
     .name = "Blur",
+    .category = "Trans",
     .description = "",
     .author = "",
     .version = 1,

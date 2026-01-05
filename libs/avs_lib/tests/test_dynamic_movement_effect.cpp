@@ -19,7 +19,7 @@ TEST_CASE("Dynamic Movement Effect", "[dynamic][movement][effect]") {
     
     SECTION("Effect initialization") {
         REQUIRE(effect.get_plugin_info().name == "Dynamic Movement");
-        REQUIRE(effect.get_plugin_info().description.find("Dynamic Movement") != std::string::npos);
+        REQUIRE(effect.get_plugin_info().category == "Trans");
         REQUIRE(effect.is_enabled() == true);
     }
     

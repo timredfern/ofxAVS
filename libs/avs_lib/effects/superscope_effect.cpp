@@ -309,6 +309,7 @@ static std::vector<std::string> build_preset_names() {
 // Static member definition
 const PluginInfo SuperScopeEffect::effect_info {
     .name = "SuperScope",
+    .category = "Render",
     .description = "Advanced oscilloscope with scripting",
     .author = "",
     .version = 1,

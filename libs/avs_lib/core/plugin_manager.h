@@ -22,6 +22,7 @@ using EffectFactory = std::function<std::unique_ptr<EffectBase>()>;
 // Plugin registration info
 struct PluginInfo {
     std::string name;
+    std::string category;  // "Render", "Trans", or "Misc"
     std::string description;
     std::string author;
     int version;
