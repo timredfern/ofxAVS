@@ -268,6 +268,96 @@ void renderImGui(const avs::EffectUILayout& layout, avs::Configurable* configura
                 break;
             }
 
+            case avs::ControlType::COLOR_ARRAY: {
+                // Multi-color bar with clickable segments
+                // Uses "num_colors" param for count, and "color_0", "color_1", etc. for colors
+                int num_colors = params.get_int("num_colors", 1);
+                int max_colors = control.max_items > 0 ? control.max_items : 16;
+                if (num_colors < 1) num_colors = 1;
+                if (num_colors > max_colors) num_colors = max_colors;
+
+                float bar_width = control.w * scale;
+                float bar_height = control.h * scale;
+                float segment_width = bar_width / num_colors;
+
+                ImVec2 bar_pos = ImGui::GetCursorScreenPos();
+                ImDrawList* draw_list = ImGui::GetWindowDrawList();
+
+                // Draw each color segment
+                for (int i = 0; i < num_colors; i++) {
+                    std::string color_param = "color_" + std::to_string(i);
+                    uint32_t color = params.get_color(color_param, 0xFFFFFF);
+
+                    // Convert from ARGB to ImGui's ABGR
+                    ImU32 im_color = IM_COL32(
+                        (color >> 16) & 0xFF,  // R
+                        (color >> 8) & 0xFF,   // G
+                        color & 0xFF,          // B
+                        255                    // A
+                    );
+
+                    float x1 = bar_pos.x + i * segment_width;
+                    float x2 = bar_pos.x + (i + 1) * segment_width;
+                    draw_list->AddRectFilled(
+                        ImVec2(x1, bar_pos.y),
+                        ImVec2(x2, bar_pos.y + bar_height),
+                        im_color
+                    );
+                }
+
+                // Draw border
+                draw_list->AddRect(
+                    bar_pos,
+                    ImVec2(bar_pos.x + bar_width, bar_pos.y + bar_height),
+                    IM_COL32(128, 128, 128, 255)
+                );
+
+                // Invisible button to capture clicks
+                std::string unique_id = "##colorarray_" + control.id + "_" + std::to_string(reinterpret_cast<uintptr_t>(configurable));
+                ImGui::InvisibleButton(unique_id.c_str(), ImVec2(bar_width, bar_height));
+
+                // Static map to track which color segment is being edited
+                static std::unordered_map<std::string, int> editing_color;
+
+                if (ImGui::IsItemClicked()) {
+                    // Determine which segment was clicked
+                    ImVec2 mouse_pos = ImGui::GetMousePos();
+                    float rel_x = mouse_pos.x - bar_pos.x;
+                    int clicked_index = static_cast<int>(rel_x / segment_width);
+                    if (clicked_index >= 0 && clicked_index < num_colors) {
+                        // Store which color to edit
+                        editing_color[unique_id] = clicked_index;
+                        ImGui::OpenPopup((unique_id + "_picker").c_str());
+                    }
+                }
+
+                // Color picker popup
+                std::string popup_id = unique_id + "_picker";
+                if (ImGui::BeginPopup(popup_id.c_str())) {
+                    int edit_idx = editing_color[unique_id];
+                    std::string color_param = "color_" + std::to_string(edit_idx);
+                    uint32_t color = params.get_color(color_param, 0xFFFFFF);
+
+                    float col[4] = {
+                        ((color >> 16) & 0xFF) / 255.0f,  // R
+                        ((color >> 8) & 0xFF) / 255.0f,   // G
+                        (color & 0xFF) / 255.0f,          // B
+                        1.0f                              // A
+                    };
+
+                    if (ImGui::ColorPicker3(("Color " + std::to_string(edit_idx + 1)).c_str(), col)) {
+                        uint32_t new_color =
+                            0xFF000000 |  // A
+                            ((uint32_t)(col[0] * 255) << 16) |  // R
+                            ((uint32_t)(col[1] * 255) << 8) |   // G
+                            ((uint32_t)(col[2] * 255));         // B
+                        params.set_color(color_param, new_color);
+                    }
+                    ImGui::EndPopup();
+                }
+                break;
+            }
+
             case avs::ControlType::DROPDOWN: {
                 int current_value = params.get_int(control.id);
                 std::string unique_label = control.text + "##" + control.id + "_" + std::to_string(reinterpret_cast<uintptr_t>(configurable));

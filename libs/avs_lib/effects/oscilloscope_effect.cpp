@@ -55,11 +55,41 @@ int OscilloscopeEffect::render(AudioData visdata, int isBeat,
     if (isBeat & 0x80000000) return 0;
 
     // Get parameters
-    uint32_t color = parameters().get_color("color");
     auto channel = static_cast<AudioChannel>(parameters().get_int("channel"));
     auto draw_style = static_cast<DrawStyle>(parameters().get_int("draw_style"));
     auto position = static_cast<VerticalPosition>(parameters().get_int("position"));
     auto mode = static_cast<RenderMode>(parameters().get_int("mode"));
+
+    // Color cycling - matches original AVS behavior
+    int num_colors = parameters().get_int("num_colors", 1);
+    if (num_colors < 1) num_colors = 1;
+    if (num_colors > 16) num_colors = 16;
+
+    uint32_t color;
+    if (num_colors == 1) {
+        // Single color - no cycling
+        color = parameters().get_color("color_0", 0xFFFFFF);
+    } else {
+        // Multi-color cycling with interpolation
+        // Each color gets 64 frames, then interpolates to next
+        color_pos_++;
+        if (color_pos_ >= num_colors * 64) color_pos_ = 0;
+
+        int p = color_pos_ / 64;      // Current color index
+        int r = color_pos_ & 63;      // Interpolation factor (0-63)
+
+        std::string c1_param = "color_" + std::to_string(p);
+        std::string c2_param = "color_" + std::to_string((p + 1 < num_colors) ? p + 1 : 0);
+        uint32_t c1 = parameters().get_color(c1_param, 0xFFFFFF);
+        uint32_t c2 = parameters().get_color(c2_param, 0xFFFFFF);
+
+        // Linear interpolation: blend = ((c1 * (63-r)) + (c2 * r)) / 64
+        int blue = (((c1 & 0xFF) * (63 - r)) + ((c2 & 0xFF) * r)) / 64;
+        int green = ((((c1 >> 8) & 0xFF) * (63 - r)) + (((c2 >> 8) & 0xFF) * r)) / 64;
+        int red = ((((c1 >> 16) & 0xFF) * (63 - r)) + (((c2 >> 16) & 0xFF) * r)) / 64;
+
+        color = 0xFF000000 | (red << 16) | (green << 8) | blue;
+    }
 
     // Source: 0 = spectrum (visdata[1]), 1 = waveform (visdata[0])
     int source = (mode == RenderMode::SPECTRUM) ? 1 : 0;
@@ -156,7 +186,6 @@ int OscilloscopeEffect::render(AudioData visdata, int isBeat,
         }
     }
 
-    color_pos_++;
     return 0;
 }
 
@@ -225,11 +254,12 @@ const PluginInfo OscilloscopeEffect::effect_info {
                 .default_val = 1
             },
             {
-                .id = "color",
-                .text = "Color",
-                .type = ControlType::COLOR_BUTTON,
+                .id = "colors",
+                .text = "",
+                .type = ControlType::COLOR_ARRAY,
                 .x = 6, .y = 122, .w = 127, .h = 11,
-                .default_val = static_cast<int>(0xFFFFFFFF)
+                .default_val = static_cast<int>(0xFFFFFFFF),
+                .max_items = 16
             }
         }
     }

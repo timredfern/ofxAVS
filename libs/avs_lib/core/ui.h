@@ -18,6 +18,7 @@ enum class ControlType {
     TEXT_INPUT,      // Single-line text input
     EDITTEXT,        // Multi-line text edit (for scripts)
     COLOR_BUTTON,
+    COLOR_ARRAY,     // Multi-color bar with clickable segments (uses color_0..color_N params)
     DROPDOWN
 };
 
@@ -48,6 +49,7 @@ struct ControlLayout {
     int default_val = 0;            // Default value for all control types
     std::vector<std::string> options; // For dropdowns
     std::vector<RadioOption> radio_options; // For RADIO_GROUP: each option with position
+    int max_items = 16;             // For array controls (e.g., COLOR_ARRAY): max item count
     bool enabled = true;
 };
 
