@@ -108,7 +108,7 @@ Effects that generate new visual content from audio data or clear the screen.
   - Bottom Position: RADIO_BUTTON, Position(86, 78), Size(38, 10), ID(IDC_BOTTOM)
   - Center Position: RADIO_BUTTON, Position(86, 88), Size(37, 10), ID(IDC_CENTER)
   - Number of colors: EDITTEXT, Position(53, 107), Size(19, 12), ID(IDC_NUMCOL)
-  - Color selection: COLOR_BUTTON, Position(6, 122), Size(127, 11), ID(IDC_DEFCOL)
+  - Color selection: COLOR_ARRAY, Position(6, 122), Size(127, 11), ID(IDC_DEFCOL)
 
 3. ### SuperScope
 - **Purpose**: Advanced oscilloscope with multi-phase scripting
@@ -130,8 +130,8 @@ Effects that generate new visual content from audio data or clear the screen.
   - Left Channel: RADIO_BUTTON, Position(5, 189), Size(28, 10), ID(IDC_LEFTCH)
   - Center Channel: RADIO_BUTTON, Position(36, 189), Size(37, 10), ID(IDC_MIDCH)
   - Right Channel: RADIO_BUTTON, Position(76, 189), Size(33, 10), ID(IDC_RIGHTCH)
-  - Number of points (N): EDITTEXT, Position(47, 202), Size(19, 12), ID(IDC_NUMCOL)
-  - Color selection: COLOR_BUTTON, Position(125, 202), Size(108, 11), ID(IDC_DEFCOL)
+  - Number of colors: EDITTEXT, Position(47, 202), Size(19, 12), ID(IDC_NUMCOL)
+  - Color selection: COLOR_ARRAY, Position(125, 202), Size(108, 11), ID(IDC_DEFCOL)
   - Load example...: PUSHBUTTON, Position(176, 170), Size(57, 14), ID(IDC_BUTTON1)
   - Expression help: PUSHBUTTON, Position(107, 170), Size(67, 14), ID(IDC_BUTTON2)
   - Draw as Dots: RADIO_BUTTON, Position(166, 188), Size(31, 10), ID(IDC_DOT)
@@ -147,7 +147,7 @@ Effects that generate new visual content from audio data or clear the screen.
 - **Blend Modes**: Additive or replace
 - **Controls**:
   - Number of colors: EDITTEXT, Position(53, 6), Size(19, 12), ID(IDC_NUMCOL)
-  - Color selection: COLOR_BUTTON, Position(6, 21), Size(127, 11), ID(IDC_DEFCOL)
+  - Color selection: COLOR_ARRAY, Position(6, 21), Size(127, 11), ID(IDC_DEFCOL)
   - X movement: SLIDER, Position(16, 47), Size(85, 13), ID(IDC_SLIDER1)
   - Zero X movement: BUTTON, Position(103, 50), Size(28, 10), ID(IDC_BUTTON1)
   - Y movement: SLIDER, Position(16, 65), Size(85, 13), ID(IDC_SLIDER2)
@@ -265,7 +265,7 @@ Effects that generate new visual content from audio data or clear the screen.
   - Position Right: RADIO_BUTTON, Position(86, 78), Size(33, 10), ID(IDC_BOTTOM)
   - Position Center: RADIO_BUTTON, Position(86, 88), Size(37, 10), ID(IDC_CENTER)
   - Number of colors: EDITTEXT, Position(53, 107), Size(19, 12), ID(IDC_NUMCOL)
-  - Color selection: COLOR_BUTTON, Position(6, 122), Size(127, 11), ID(IDC_DEFCOL)
+  - Color selection: COLOR_ARRAY, Position(6, 122), Size(127, 11), ID(IDC_DEFCOL)
 
 10. ### Ring
 - **Purpose**: Renders expanding rings from audio
@@ -286,7 +286,7 @@ Effects that generate new visual content from audio data or clear the screen.
   - Position Right: RADIO_BUTTON, Position(86, 78), Size(33, 10), ID(IDC_BOTTOM)
   - Position Center: RADIO_BUTTON, Position(86, 88), Size(37, 10), ID(IDC_CENTER)
   - Number of colors: EDITTEXT, Position(53, 107), Size(19, 12), ID(IDC_NUMCOL)
-  - Color selection: COLOR_BUTTON, Position(6, 122), Size(127, 11), ID(IDC_DEFCOL)
+  - Color selection: COLOR_ARRAY, Position(6, 122), Size(127, 11), ID(IDC_DEFCOL)
 
 11. ### Starfield
 - **Purpose**: Creates a starfield effect with configurable speed, density, and beat-driven changes.
