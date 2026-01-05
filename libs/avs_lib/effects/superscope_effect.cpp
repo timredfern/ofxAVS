@@ -170,20 +170,43 @@ int SuperScopeEffect::render(AudioData visdata, int isBeat,
     int source_mode = parameters().get_int("source_mode");  // 0=wave, 1=spectrum
     int channel = parameters().get_int("channel");  // 0=left, 1=center, 2=right
     int draw_mode = parameters().get_int("draw_mode");  // 0=dots, 1=lines
-    int num_colors = parameters().get_int("num_colors");
-    uint32_t color = parameters().get_color("color");
 
+    // Color cycling - matches original AVS behavior
+    int num_colors = parameters().get_int("num_colors", 1);
     if (num_colors < 1) num_colors = 1;
+    if (num_colors > 16) num_colors = 16;
+
+    uint32_t current_color;
+    if (num_colors == 1) {
+        // Single color - no cycling
+        current_color = parameters().get_color("color_0", 0xFFFFFF);
+    } else {
+        // Multi-color cycling with interpolation
+        // Each color gets 64 frames, then interpolates to next
+        color_pos_++;
+        if (color_pos_ >= num_colors * 64) color_pos_ = 0;
+
+        int p = color_pos_ / 64;      // Current color index
+        int r = color_pos_ & 63;      // Interpolation factor (0-63)
+
+        std::string c1_param = "color_" + std::to_string(p);
+        std::string c2_param = "color_" + std::to_string((p + 1 < num_colors) ? p + 1 : 0);
+        uint32_t c1 = parameters().get_color(c1_param, 0xFFFFFF);
+        uint32_t c2 = parameters().get_color(c2_param, 0xFFFFFF);
+
+        // Linear interpolation: blend = ((c1 * (63-r)) + (c2 * r)) / 64
+        int blue = (((c1 & 0xFF) * (63 - r)) + ((c2 & 0xFF) * r)) / 64;
+        int green = ((((c1 >> 8) & 0xFF) * (63 - r)) + (((c2 >> 8) & 0xFF) * r)) / 64;
+        int red = ((((c1 >> 16) & 0xFF) * (63 - r)) + (((c2 >> 16) & 0xFF) * r)) / 64;
+
+        current_color = 0xFF000000 | (red << 16) | (green << 8) | blue;
+    }
 
     // Check if init script changed and needs re-running
     if (init_script != last_init_script_) {
         last_init_script_ = init_script;
         inited_ = false;
     }
-
-    // Color cycling (simplified - single color for now)
-    color_pos_++;
-    int current_color = color & 0xFFFFFF;
 
     // Prepare audio data
     // visdata[0] = waveform, visdata[1] = spectrum
@@ -399,13 +422,14 @@ const PluginInfo SuperScopeEffect::effect_info {
                 .range = {1, 16},
                 .default_val = 1
             },
-            // Color - IDC_DEFCOL
+            // Color array - IDC_DEFCOL
             {
-                .id = "color",
-                .text = "Color",
-                .type = ControlType::COLOR_BUTTON,
+                .id = "colors",
+                .text = "",
+                .type = ControlType::COLOR_ARRAY,
                 .x = 125, .y = 202, .w = 108, .h = 11,
-                .default_val = static_cast<int>(0xFFFFFFFF)
+                .default_val = static_cast<int>(0xFFFFFFFF),
+                .max_items = 16
             }
         }
     }
