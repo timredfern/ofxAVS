@@ -83,7 +83,7 @@ void ofApp::update(){
 
 //--------------------------------------------------------------
 void ofApp::draw(){
-    ofBackground(20);
+    ofBackground(0);
     avs.draw(880, 20, 600, 600);
 
     gui.begin();
