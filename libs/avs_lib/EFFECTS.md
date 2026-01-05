@@ -61,21 +61,6 @@ For reference when examining original AVS implementation:
 - **Color Replace**: `r_colorreplace.cpp`
 - **Stars**: `r_stars.cpp`
 
-## Implementation Notes
-
-### Script Color Variables (red/green/blue)
-
-**IMPORTANT:** Original AVS has red/blue swapped in script variables due to Windows COLORREF format.
-
-Windows COLORREF stores colors as `0x00BBGGRR` (byte 0 = red, byte 2 = blue), but the original AVS code extracts them with misleading variable names:
-```cpp
-*var_blue = (current_color & 0xff) / 255.0;        // Actually RED (byte 0)
-*var_green = ((current_color >> 8) & 0xff) / 255.0;
-*var_red = ((current_color >> 16) & 0xff) / 255.0; // Actually BLUE (byte 2)
-```
-
-Scripts were written expecting this quirk. For compatibility, effects with scripting (SuperScope, etc.) must match this behavior - the "red" variable contains blue and "blue" contains red.
-
 ## Render Effects
 Effects that generate new visual content from audio data or clear the screen.
 
