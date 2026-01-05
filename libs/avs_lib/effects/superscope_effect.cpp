@@ -230,9 +230,11 @@ int SuperScopeEffect::render(AudioData visdata, int isBeat,
     engine_.set_variable("w", static_cast<double>(w));
     engine_.set_variable("h", static_cast<double>(h));
     engine_.set_variable("b", isBeat ? 1.0 : 0.0);
-    engine_.set_variable("red", ((current_color >> 16) & 0xFF) / 255.0);
+    // Note: Original AVS has red/blue swapped due to COLORREF format (0x00BBGGRR)
+    // We match this for script compatibility - "red" var gets blue byte, "blue" var gets red byte
+    engine_.set_variable("red", (current_color & 0xFF) / 255.0);
     engine_.set_variable("green", ((current_color >> 8) & 0xFF) / 255.0);
-    engine_.set_variable("blue", (current_color & 0xFF) / 255.0);
+    engine_.set_variable("blue", ((current_color >> 16) & 0xFF) / 255.0);
     engine_.set_variable("skip", 0.0);
     engine_.set_variable("linesize", 1.0);
     engine_.set_variable("drawmode", draw_mode ? 1.0 : 0.0);
@@ -289,10 +291,10 @@ int SuperScopeEffect::render(AudioData visdata, int isBeat,
 
             // Check skip
             if (engine_.get_variable("skip") < 0.00001) {
-                // Get per-point color
-                int point_color = (make_color_component(engine_.get_variable("red")) << 16) |
+                // Get per-point color (red/blue swapped to match original AVS COLORREF quirk)
+                int point_color = (make_color_component(engine_.get_variable("blue")) << 16) |
                                   (make_color_component(engine_.get_variable("green")) << 8) |
-                                  make_color_component(engine_.get_variable("blue"));
+                                  make_color_component(engine_.get_variable("red"));
                 point_color |= 0xFF000000;  // Alpha
 
                 double current_drawmode = engine_.get_variable("drawmode");
