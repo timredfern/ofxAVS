@@ -53,7 +53,8 @@ void renderImGui(const avs::EffectUILayout& layout, avs::Configurable* configura
     if (!configurable) return;
 
     std::string child_id = "ConfigDialog##" + std::to_string(reinterpret_cast<uintptr_t>(configurable));
-    ImGui::BeginChild(child_id.c_str(), ImVec2(420, 440), true);
+    // Size to fit largest dialog (SuperScope: 233x214 at 2x scale = 466x428)
+    ImGui::BeginChild(child_id.c_str(), ImVec2(480, 440), true);
 
     auto& params = configurable->parameters();
 

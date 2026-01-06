@@ -341,31 +341,56 @@ const PluginInfo SuperScopeEffect::effect_info {
     },
     .ui_layout = {
         {
+            // Labels for script boxes
+            {
+                .id = "init_label",
+                .text = "Init:",
+                .type = ControlType::LABEL,
+                .x = 0, .y = 9, .w = 20, .h = 8
+            },
+            {
+                .id = "frame_label",
+                .text = "Frame:",
+                .type = ControlType::LABEL,
+                .x = 0, .y = 41, .w = 24, .h = 8
+            },
+            {
+                .id = "beat_label",
+                .text = "Beat:",
+                .type = ControlType::LABEL,
+                .x = 0, .y = 87, .w = 20, .h = 8
+            },
+            {
+                .id = "point_label",
+                .text = "Point:",
+                .type = ControlType::LABEL,
+                .x = 0, .y = 131, .w = 20, .h = 8
+            },
             // Init script - IDC_EDIT4
             {
                 .id = "init_script",
-                .text = "Init",
+                .text = "",
                 .type = ControlType::EDITTEXT,
                 .x = 25, .y = 0, .w = 208, .h = 26
             },
             // Frame script - IDC_EDIT2
             {
                 .id = "frame_script",
-                .text = "Frame",
+                .text = "",
                 .type = ControlType::EDITTEXT,
                 .x = 25, .y = 26, .w = 208, .h = 46
             },
             // Beat script - IDC_EDIT3
             {
                 .id = "beat_script",
-                .text = "Beat",
+                .text = "",
                 .type = ControlType::EDITTEXT,
                 .x = 25, .y = 72, .w = 208, .h = 38
             },
             // Point/Pixel script - IDC_EDIT1
             {
                 .id = "point_script",
-                .text = "Point",
+                .text = "",
                 .type = ControlType::EDITTEXT,
                 .x = 25, .y = 110, .w = 208, .h = 56
             },
@@ -381,6 +406,13 @@ const PluginInfo SuperScopeEffect::effect_info {
                             "Alternating Diagonal Scope", "Vibrating Worm",
                             "Wandering Simple", "Flitterbug", "Spirostar",
                             "Exploding Daisy", "Swirlie Dots", "Sweep", "Whiplash Spiral"}
+            },
+            // Source data label
+            {
+                .id = "source_label",
+                .text = "Source data:",
+                .type = ControlType::LABEL,
+                .x = 0, .y = 168, .w = 44, .h = 8
             },
             // Source mode: Waveform vs Spectrum - IDC_WAVE, IDC_SPEC
             {
@@ -403,6 +435,13 @@ const PluginInfo SuperScopeEffect::effect_info {
                 },
                 .default_val = 1  // Center
             },
+            // Draw as label
+            {
+                .id = "drawas_label",
+                .text = "Draw as:",
+                .type = ControlType::LABEL,
+                .x = 132, .y = 188, .w = 29, .h = 8
+            },
             // Draw mode: Dots vs Lines - IDC_DOT, IDC_LINES
             {
                 .id = "draw_mode",
@@ -413,14 +452,27 @@ const PluginInfo SuperScopeEffect::effect_info {
                 },
                 .default_val = 1  // Lines
             },
+            // Colors labels
+            {
+                .id = "cycle_label",
+                .text = "Cycle through",
+                .type = ControlType::LABEL,
+                .x = 0, .y = 204, .w = 46, .h = 8
+            },
             // Number of colors - IDC_NUMCOL
             {
                 .id = "num_colors",
-                .text = "Colors",
+                .text = "",
                 .type = ControlType::TEXT_INPUT,
                 .x = 47, .y = 202, .w = 19, .h = 12,
                 .range = {1, 16},
                 .default_val = 1
+            },
+            {
+                .id = "colors_label",
+                .text = "colors (max 16)",
+                .type = ControlType::LABEL,
+                .x = 71, .y = 204, .w = 48, .h = 8
             },
             // Color array - IDC_DEFCOL
             {
