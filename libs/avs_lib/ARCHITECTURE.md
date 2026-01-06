@@ -15,9 +15,13 @@ Each AVS effect is implemented as a separate class that exactly matches the orig
 - `MovementEffect` → `r_trans.cpp` (Trans/Movement)
 - `DynamicMovementEffect` → `r_dmove.cpp` (Trans/Dynamic Movement)
 - `OscilloscopeEffect` → `r_simple.cpp` (Render/Simple)
+- `SuperScopeEffect` → `r_sscope.cpp` (Render/SuperScope)
 - `BlurEffect` → `r_blur.cpp` (Trans/Blur)
 - `BrightnessEffect` → `r_bright.cpp` (Trans/Brightness)
 - `ClearEffect` → `r_clear.cpp` (Render/Clear Screen)
+- `OnBeatClearEffect` → `r_onetone.cpp` (Render/OnBeat Clear)
+- `DotGridEffect` → `r_dotgrid.cpp` (Render/Dot Grid)
+- `EffectList` → `r_list.cpp` (Container/Effect List)
 
 ### 2. Script Infrastructure
 
@@ -85,9 +89,13 @@ libs/avs_lib/
 │   ├── movement_effect.cpp         # Trans/Movement (r_trans.cpp)
 │   ├── dynamic_movement_effect.cpp # Trans/Dynamic Movement (r_dmove.cpp)
 │   ├── oscilloscope_effect.cpp     # Render/Simple (r_simple.cpp)
+│   ├── superscope_effect.cpp       # Render/SuperScope (r_sscope.cpp)
 │   ├── blur_effect.cpp             # Trans/Blur (r_blur.cpp)
 │   ├── brightness_effect.cpp       # Trans/Brightness (r_bright.cpp)
-│   └── clear_effect.cpp            # Render/Clear Screen (r_clear.cpp)
+│   ├── clear_effect.cpp            # Render/Clear Screen (r_clear.cpp)
+│   ├── onbeat_clear_effect.cpp     # Render/OnBeat Clear (r_onetone.cpp)
+│   ├── dot_grid_effect.cpp         # Render/Dot Grid (r_dotgrid.cpp)
+│   └── effect_list.cpp             # Container/Effect List (r_list.cpp)
 ├── example/                     # Standalone example (no OpenFrameworks)
 └── tests/                       # Catch2 unit tests
 ```
@@ -114,8 +122,34 @@ This separation allows avs_lib to be embedded in any host application (DAW plugi
 
 Each effect defines its UI through `PluginInfo::ui_layout`, containing:
 - Control positions and sizes from original AVS dialogs (all 137x137 pixels)
-- Control types: CHECKBOX, SLIDER, BUTTON, RADIO_GROUP, TEXT_INPUT, EDITTEXT, COLOR_BUTTON, DROPDOWN
+- Control types: CHECKBOX, SLIDER, BUTTON, RADIO_GROUP, TEXT_INPUT, EDITTEXT, COLOR_BUTTON, COLOR_ARRAY, DROPDOWN, LABEL, GROUPBOX
 - Parameter binding via matching control ID to parameter name
+
+### Windows-to-ImGui Translation
+
+The UI system translates original Windows dialog coordinates to ImGui using absolute positioning:
+
+**Key principles:**
+- `SetCursorPos()` positions each control at exact Windows coordinates (with 2x scale)
+- Sliders use hidden labels (`##` prefix) with `SetNextItemWidth()` for exact track width
+- Labels are separate LABEL controls matching Windows LTEXT (not part of slider widget)
+- GROUPBOX provides visual grouping with title (matches Windows GROUPBOX)
+
+**Why hidden slider labels:**
+Windows trackbar controls and their labels (LTEXT) are separate controls at explicit positions. ImGui sliders include their label in the widget width. Using `##hidden_label` and separate LABEL controls preserves the original layout.
+
+```cpp
+// Windows: separate LTEXT + trackbar
+{.id = "red_label", .type = ControlType::LABEL, .x = 0, .y = 15, .text = "Red"},
+{.id = "red_adjust", .type = ControlType::SLIDER, .x = 25, .y = 13, .w = 97, ...}
+
+// ImGui rendering:
+ImGui::SetCursorPos({0 * 2, 15 * 2});
+ImGui::Text("Red");
+ImGui::SetCursorPos({25 * 2, 13 * 2});
+ImGui::SetNextItemWidth(97 * 2);
+ImGui::SliderInt("##red_adjust", &value, min, max);
+```
 
 ### RADIO_GROUP Control
 Radio button groups use explicit coordinates per option rather than computed layouts:
@@ -138,8 +172,10 @@ Common radio group values use typed enums for clarity:
 - `BlendMode` - REPLACE, ADDITIVE, BLEND_5050, DEFAULT
 - `DrawStyle` - LINES, SOLID, DOTS
 - `AudioChannel` - LEFT, RIGHT, CENTER
-- `BlurLevel` - NONE, LIGHT, MEDIUM, HEAVY
-- `RoundMode` - DOWN, UP
+- `VerticalPosition` - TOP, BOTTOM, CENTER
+- `RenderMode` - SPECTRUM, OSCILLOSCOPE
+- `BlurLevel` - NONE, LIGHT, MEDIUM, HEAVY (effect-specific)
+- `RoundMode` - DOWN, UP (effect-specific)
 
 ## Script Execution System
 
@@ -170,7 +206,7 @@ The `ScriptPhase` enum was not extracted as a shared abstraction. Each effect ma
 - **DynamicMovementEffect**: INIT + FRAME + BEAT + PIXEL (full multi-phase)
 - **OscilloscopeEffect**: No scripting (hardcoded rendering)
 
-**Note:** SuperScopeEffect (with POINT phase for audio sample processing) is not yet implemented. OscilloscopeEffect is a simpler non-scriptable version.
+**Note:** SuperScopeEffect implements POINT-phase scripting for per-sample audio processing. OscilloscopeEffect is a simpler non-scriptable version.
 
 ## Effect Implementation Patterns
 
@@ -236,7 +272,7 @@ class OscilloscopeEffect : public EffectBase {
 };
 ```
 
-**Note:** The planned `SuperScopeEffect` with full POINT-phase scripting is not yet implemented.
+**Note:** `SuperScopeEffect` with full POINT-phase scripting is implemented in `superscope_effect.cpp`.
 
 ## Compatibility Strategy
 
@@ -269,18 +305,21 @@ The `CoordinateGrid` class uses a two-stage transformation matching original AVS
 ### Completed
 - Core parameter system with typed values
 - Plugin registration and factory pattern
-- UI layout system with data-driven controls
+- UI layout system with data-driven controls (Windows-to-ImGui translation)
 - RADIO_GROUP with typed enums
 - BlurEffect (bit-shift optimized, matches original r_blur.cpp)
 - BrightnessEffect (lookup table based, matches r_bright.cpp)
 - ClearEffect (with blend modes)
+- OnBeatClearEffect (beat-triggered clear with blend)
+- DotGridEffect (animated color-cycling dot grid)
 - OscilloscopeEffect (basic non-scriptable version)
+- SuperScopeEffect (with POINT-phase scripting)
 - CoordinateGrid with two-stage transformation
 - MovementEffect (23 presets + custom scripting)
 - DynamicMovementEffect (multi-phase scripting)
+- EffectList (container for nested effects)
 
 ### Planned / Not Yet Implemented
-- SuperScopeEffect with POINT-phase scripting
 - Preset file loading (.avs format)
 - Full NS-EEL compatibility (current parser covers common subset)
 - Remaining ~40 AVS effects
