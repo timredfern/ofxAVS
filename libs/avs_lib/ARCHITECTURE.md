@@ -125,9 +125,9 @@ Each effect defines its UI through `PluginInfo::ui_layout`, containing:
 - Control types: CHECKBOX, SLIDER, BUTTON, RADIO_GROUP, TEXT_INPUT, EDITTEXT, COLOR_BUTTON, COLOR_ARRAY, DROPDOWN, LABEL, GROUPBOX
 - Parameter binding via matching control ID to parameter name
 
-### Windows-to-ImGui Translation
+### Capturing Original Windows Dialog Layouts
 
-The original AVS used Windows dialog resources (`.rc` files) with absolute pixel positioning. Each effect had a 137×137 pixel dialog with controls at explicit x,y coordinates. To faithfully recreate these UIs in ImGui:
+The original AVS used Windows dialog resources (`.rc` files) with absolute pixel positioning. Each effect had a 137×137 pixel dialog with controls at explicit x,y coordinates. avs_lib preserves these layouts exactly so any renderer can faithfully recreate the original UI.
 
 **Documentation Process:**
 1. Examine original AVS source in `../vis_avs/avs/vis_avs/` (e.g., `r_bright.cpp`)
@@ -147,27 +147,15 @@ The original AVS used Windows dialog resources (`.rc` files) with absolute pixel
 | PUSHBUTTON | BUTTON | Clickable button |
 | EDITTEXT | TEXT_INPUT / EDITTEXT | Single/multi-line text |
 
-**ImGui Rendering Approach:**
-- `SetCursorPos()` positions each control at exact Windows coordinates (with 2× scale)
-- Sliders use hidden labels (`##` prefix) with `SetNextItemWidth()` for exact track width
-- Labels are separate LABEL controls matching Windows LTEXT (not embedded in slider)
-- GROUPBOX provides visual grouping with title
-
-**Why separate LABEL controls for sliders:**
-Windows trackbar controls (sliders) and their text labels (LTEXT) are independent controls at explicit positions. ImGui's `SliderInt()` combines the track and label into one widget, making the total width unpredictable. Using `##hidden_label` suppresses ImGui's label, and a separate LABEL control at the original LTEXT position preserves the exact Windows layout.
+**Key design principle:** Windows separates controls that some UI frameworks combine. For example, a slider label (LTEXT) and the slider track (msctls_trackbar32) are independent controls at explicit positions. avs_lib stores them as separate LABEL and SLIDER controls so renderers can position them correctly.
 
 ```cpp
-// Effect layout (from EFFECTS.md documentation of Windows dialog)
+// Effect layout preserves Windows dialog structure
 {.id = "red_label", .type = ControlType::LABEL, .x = 0, .y = 15, .text = "Red"},
 {.id = "red_adjust", .type = ControlType::SLIDER, .x = 25, .y = 13, .w = 97, ...}
-
-// ImGui rendering (in AVSui.cpp)
-ImGui::SetCursorPos({0 * 2, 15 * 2});
-ImGui::Text("Red");
-ImGui::SetCursorPos({25 * 2, 13 * 2});
-ImGui::SetNextItemWidth(97 * 2);
-ImGui::SliderInt("##red_adjust", &value, min, max);
 ```
+
+See `src/ARCHITECTURE.md` in ofxAVS for the reference ImGui renderer implementation.
 
 ### RADIO_GROUP Control
 Radio button groups use explicit coordinates per option rather than computed layouts:
