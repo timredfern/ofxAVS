@@ -72,31 +72,15 @@ void renderImGui(const avs::EffectUILayout& layout, avs::Configurable* configura
         is_standard_mode = (mode_param->as_int() == 0);
     }
 
-    avs::ControlType prev_type = avs::ControlType::LABEL;
-    int prev_y = -100;
-
     for (const auto& control : layout.getControls()) {
 
-        // Positions and input boxes scaled from original AVS dialogs
-
+        // Absolute positioning from original Windows dialog coordinates
         float scale=2.0f;
 
-        // If a button follows a slider at similar Y position, put it on the same line
-        bool same_line = (control.type == avs::ControlType::BUTTON &&
-                          prev_type == avs::ControlType::SLIDER &&
-                          std::abs(control.y - prev_y) < 5);
-
-        if (same_line) {
-            ImGui::SameLine();
-        } else {
-            ImGui::SetCursorPos(ImVec2(control.x * scale, control.y * scale));
-        }
+        ImGui::SetCursorPos(ImVec2(control.x * scale, control.y * scale));
 
         int controlwidth=control.w*scale;
         int controlheight=(control.h*scale)-12; //only used for edit boxes
-
-        prev_type = control.type;
-        prev_y = control.y;
 
         // Disable Advanced-only controls when in Standard mode
         bool disable_control = is_standard_mode && (
@@ -133,7 +117,13 @@ void renderImGui(const avs::EffectUILayout& layout, avs::Configurable* configura
                 int value = param->as_int();
                 int min_val = std::get<int>(param->min_value());
                 int max_val = std::get<int>(param->max_value());
-                std::string unique_label = control.text + "##" + control.id + "_" + std::to_string(reinterpret_cast<uintptr_t>(configurable));
+
+                // Always use hidden label (##) - labels come from separate LABEL controls
+                // This matches Windows dialogs where trackbars and LTEXT are separate
+                std::string unique_label = "##" + control.id + "_" + std::to_string(reinterpret_cast<uintptr_t>(configurable));
+
+                // Set exact width to match Windows trackbar dimensions
+                ImGui::SetNextItemWidth(controlwidth);
 
                 if (is_brightness_rgb) {
                     // Convert parameter to slider position (non-linear for fine control near 1.0x)

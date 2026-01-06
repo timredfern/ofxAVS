@@ -159,9 +159,11 @@ Effects that generate new visual content from audio data or clear the screen.
   - Color selection: COLOR_ARRAY, Position(6, 21), Size(127, 11), ID(IDC_DEFCOL)
   - X movement: SLIDER, Position(16, 47), Size(85, 13), ID(IDC_SLIDER1), Range(-512, 544), Default(128)
     - Note: Slider pos 0-33, value = (pos-16)*32
-  - Zero X movement: BUTTON, Position(103, 50), Size(28, 10), ID(IDC_BUTTON1), Text("zero")
+  - Zero X movement: BUTTON, Position(103, 47), Size(28, 13), ID(IDC_BUTTON1), Text("zero")
+  - X Speed label: LTEXT, Position(133, 49), Size(40, 10), Text("X Speed")
   - Y movement: SLIDER, Position(16, 65), Size(85, 13), ID(IDC_SLIDER2), Range(-512, 544), Default(128)
-  - Zero Y movement: BUTTON, Position(103, 68), Size(28, 10), ID(IDC_BUTTON3), Text("zero")
+  - Zero Y movement: BUTTON, Position(103, 65), Size(28, 13), ID(IDC_BUTTON3), Text("zero")
+  - Y Speed label: LTEXT, Position(133, 67), Size(40, 10), Text("Y Speed")
   - Replace blend mode: RADIO_BUTTON, Position(5, 99), Size(43, 10), ID(IDC_RADIO1), Value(0)
   - Additive blend mode: RADIO_BUTTON, Position(51, 99), Size(41, 10), ID(IDC_RADIO2), Value(1)
   - 50/50 blend mode: RADIO_BUTTON, Position(93, 99), Size(35, 10), ID(IDC_RADIO3), Value(2)
@@ -238,7 +240,10 @@ Effects that generate new visual content from audio data or clear the screen.
 - **Outputs**: Cleared framebuffer on beats
 - **Blend Modes**: Replace or 50/50 blend
 - **Controls**:
-  - Clear every N beats: SLIDER, Position(4, 9), Size(128, 13), ID(IDC_SLIDER1), Range(0, 100), Default(1)
+  - Beats groupbox: GROUPBOX, Position(0, 0), Size(137, 36), Text("Clear every N beats")
+  - N beats slider: SLIDER, Position(4, 9), Size(128, 13), ID(IDC_SLIDER1), Range(0, 100), Default(1)
+  - Min label: LTEXT, Position(7, 24), Size(8, 8), Text("0")
+  - Max label: LTEXT, Position(115, 24), Size(13, 8), Text("100")
   - Color: COLOR_BUTTON, Position(0, 40), Size(46, 10), ID(IDC_BUTTON1), Default(0xFFFFFF)
   - Blend to color: CHECKBOX, Position(49, 40), Size(59, 10), ID(IDC_BLEND), Default(false)
 
@@ -600,15 +605,18 @@ Effects that modify pixel colors or apply filters.
 - **Inputs**:
   - Framebuffer
 - **Outputs**: Brightness-adjusted pixels
-- **Blend Modes**: None
+- **Blend Modes**: Replace, Additive, 50/50
 - **Controls**:
   - Enable Brightness filter: CHECKBOX, Position(0, 0), Size(87, 10), ID(IDC_CHECK1)
+  - Red label: LTEXT, Position(0, 15), Size(14, 8), Text("Red")
   - Red adjustment: SLIDER, Position(25, 13), Size(97, 13), ID(IDC_RED), Range(0, 8192), Default(4096), TickFreq(256)
-  - Red reset: BUTTON, Position(125, 12), Size(12, 14), ID(IDC_BRED)
+  - Red reset: BUTTON, Position(125, 12), Size(12, 14), ID(IDC_BRED), Text("><")
+  - Green label: LTEXT, Position(0, 30), Size(20, 8), Text("Green")
   - Green adjustment: SLIDER, Position(25, 28), Size(97, 13), ID(IDC_GREEN), Range(0, 8192), Default(4096), TickFreq(256)
-  - Green reset: BUTTON, Position(125, 28), Size(12, 14), ID(IDC_BGREEN)
+  - Green reset: BUTTON, Position(125, 28), Size(12, 14), ID(IDC_BGREEN), Text("><")
+  - Blue label: LTEXT, Position(0, 47), Size(15, 8), Text("Blue")
   - Blue adjustment: SLIDER, Position(25, 44), Size(97, 13), ID(IDC_BLUE), Range(0, 8192), Default(4096), TickFreq(256)
-  - Blue reset: BUTTON, Position(125, 44), Size(12, 14), ID(IDC_BBLUE)
+  - Blue reset: BUTTON, Position(125, 44), Size(12, 14), ID(IDC_BBLUE), Text("><")
   - Dissociate RGB values: CHECKBOX, Position(0, 60), Size(89, 10), ID(IDC_DISSOC)
   - Replace blend mode: RADIO_BUTTON, Position(0, 71), Size(43, 10), ID(IDC_REPLACE)
   - Additive blend mode: RADIO_BUTTON, Position(0, 81), Size(61, 10), ID(IDC_ADDITIVE)
@@ -616,6 +624,10 @@ Effects that modify pixel colors or apply filters.
   - Exclude color range: CHECKBOX, Position(0, 103), Size(79, 10), ID(IDC_EXCLUDE)
   - Exclude color: COLOR_BUTTON, Position(0, 114), Size(29, 13), ID(IDC_DEFCOL)
   - Exclude distance: SLIDER, Position(31, 114), Size(106, 13), ID(IDC_DISTANCE), Range(0, 255), Default(16)
+- **Notes**:
+  - Slider value 4096 = 1.0x multiplier (no change)
+  - Slider range 0-8192 maps to 0x-17x brightness
+  - Labels are separate LTEXT controls positioned to the left of sliders
 
 28. ### Channel Shift
 - **Purpose**: Shift color channels independently

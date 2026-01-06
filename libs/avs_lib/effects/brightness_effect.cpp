@@ -142,8 +142,14 @@ const PluginInfo BrightnessEffect::effect_info {
                 .default_val = 1
             },
             {
-                .id = "red_adjust",
+                .id = "red_label",
                 .text = "Red",
+                .type = ControlType::LABEL,
+                .x = 0, .y = 15, .w = 14, .h = 8
+            },
+            {
+                .id = "red_adjust",
+                .text = "",
                 .type = ControlType::SLIDER,
                 .x = 25, .y = 13, .w = 97, .h = 13,
                 .range = {0, 8192, 256},
@@ -156,8 +162,14 @@ const PluginInfo BrightnessEffect::effect_info {
                 .x = 125, .y = 12, .w = 12, .h = 14
             },
             {
-                .id = "green_adjust",
+                .id = "green_label",
                 .text = "Green",
+                .type = ControlType::LABEL,
+                .x = 0, .y = 30, .w = 20, .h = 8
+            },
+            {
+                .id = "green_adjust",
+                .text = "",
                 .type = ControlType::SLIDER,
                 .x = 25, .y = 28, .w = 97, .h = 13,
                 .range = {0, 8192, 256},
@@ -170,8 +182,14 @@ const PluginInfo BrightnessEffect::effect_info {
                 .x = 125, .y = 28, .w = 12, .h = 14
             },
             {
-                .id = "blue_adjust",
+                .id = "blue_label",
                 .text = "Blue",
+                .type = ControlType::LABEL,
+                .x = 0, .y = 47, .w = 15, .h = 8
+            },
+            {
+                .id = "blue_adjust",
+                .text = "",
                 .type = ControlType::SLIDER,
                 .x = 25, .y = 44, .w = 97, .h = 13,
                 .range = {0, 8192, 256},
@@ -216,7 +234,7 @@ const PluginInfo BrightnessEffect::effect_info {
             },
             {
                 .id = "distance",
-                .text = "Distance",
+                .text = "",
                 .type = ControlType::SLIDER,
                 .x = 31, .y = 114, .w = 106, .h = 13,
                 .range = {0, 255, 16},

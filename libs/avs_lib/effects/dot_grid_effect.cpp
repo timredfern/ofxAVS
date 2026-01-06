@@ -119,7 +119,7 @@ const PluginInfo DotGridEffect::effect_info {
             },
             {
                 .id = "x_move",
-                .text = "X Speed",
+                .text = "",
                 .type = ControlType::SLIDER,
                 .x = 16, .y = 47, .w = 85, .h = 13,
                 .range = {-512, 512, 32},
@@ -129,11 +129,17 @@ const PluginInfo DotGridEffect::effect_info {
                 .id = "x_reset",
                 .text = "zero",
                 .type = ControlType::BUTTON,
-                .x = 103, .y = 50, .w = 28, .h = 10
+                .x = 103, .y = 47, .w = 28, .h = 13
+            },
+            {
+                .id = "x_speed_label",
+                .text = "X Speed",
+                .type = ControlType::LABEL,
+                .x = 133, .y = 49, .w = 40, .h = 10
             },
             {
                 .id = "y_move",
-                .text = "Y Speed",
+                .text = "",
                 .type = ControlType::SLIDER,
                 .x = 16, .y = 65, .w = 85, .h = 13,
                 .range = {-512, 512, 32},
@@ -143,7 +149,13 @@ const PluginInfo DotGridEffect::effect_info {
                 .id = "y_reset",
                 .text = "zero",
                 .type = ControlType::BUTTON,
-                .x = 103, .y = 68, .w = 28, .h = 10
+                .x = 103, .y = 65, .w = 28, .h = 13
+            },
+            {
+                .id = "y_speed_label",
+                .text = "Y Speed",
+                .type = ControlType::LABEL,
+                .x = 133, .y = 67, .w = 40, .h = 10
             },
             {
                 .id = "blend_mode",

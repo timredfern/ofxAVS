@@ -55,12 +55,30 @@ const PluginInfo OnBeatClearEffect::effect_info {
     .ui_layout = {
         {
             {
-                .id = "every_n_beats",
+                .id = "beats_group",
                 .text = "Clear every N beats",
+                .type = ControlType::GROUPBOX,
+                .x = 0, .y = 0, .w = 137, .h = 36
+            },
+            {
+                .id = "every_n_beats",
+                .text = "",
                 .type = ControlType::SLIDER,
                 .x = 4, .y = 9, .w = 128, .h = 13,
                 .range = {0, 100},
                 .default_val = 1
+            },
+            {
+                .id = "min_label",
+                .text = "0",
+                .type = ControlType::LABEL,
+                .x = 7, .y = 24, .w = 8, .h = 8
+            },
+            {
+                .id = "max_label",
+                .text = "100",
+                .type = ControlType::LABEL,
+                .x = 115, .y = 24, .w = 13, .h = 8
             },
             {
                 .id = "color",
