@@ -127,23 +127,41 @@ Each effect defines its UI through `PluginInfo::ui_layout`, containing:
 
 ### Windows-to-ImGui Translation
 
-The UI system translates original Windows dialog coordinates to ImGui using absolute positioning:
+The original AVS used Windows dialog resources (`.rc` files) with absolute pixel positioning. Each effect had a 137×137 pixel dialog with controls at explicit x,y coordinates. To faithfully recreate these UIs in ImGui:
 
-**Key principles:**
-- `SetCursorPos()` positions each control at exact Windows coordinates (with 2x scale)
+**Documentation Process:**
+1. Examine original AVS source in `../vis_avs/avs/vis_avs/` (e.g., `r_bright.cpp`)
+2. Find the `g_DlgProc` function which handles the Windows dialog
+3. Cross-reference with `res.rc` for exact control coordinates and types
+4. Document findings in `EFFECTS.md` with control IDs, positions, sizes, and types
+5. Implement effect UI using the documented layout in `PluginInfo::ui_layout`
+
+**Windows Control Types → avs_lib Types:**
+| Windows Control | avs_lib ControlType | Notes |
+|-----------------|---------------------|-------|
+| LTEXT | LABEL | Static text at position |
+| GROUPBOX | GROUPBOX | Visual frame with title |
+| AUTOCHECKBOX | CHECKBOX | Toggle checkbox |
+| AUTORADIOBUTTON | RADIO_GROUP | Mutually exclusive options |
+| CONTROL "msctls_trackbar32" | SLIDER | Horizontal slider |
+| PUSHBUTTON | BUTTON | Clickable button |
+| EDITTEXT | TEXT_INPUT / EDITTEXT | Single/multi-line text |
+
+**ImGui Rendering Approach:**
+- `SetCursorPos()` positions each control at exact Windows coordinates (with 2× scale)
 - Sliders use hidden labels (`##` prefix) with `SetNextItemWidth()` for exact track width
-- Labels are separate LABEL controls matching Windows LTEXT (not part of slider widget)
-- GROUPBOX provides visual grouping with title (matches Windows GROUPBOX)
+- Labels are separate LABEL controls matching Windows LTEXT (not embedded in slider)
+- GROUPBOX provides visual grouping with title
 
-**Why hidden slider labels:**
-Windows trackbar controls and their labels (LTEXT) are separate controls at explicit positions. ImGui sliders include their label in the widget width. Using `##hidden_label` and separate LABEL controls preserves the original layout.
+**Why separate LABEL controls for sliders:**
+Windows trackbar controls (sliders) and their text labels (LTEXT) are independent controls at explicit positions. ImGui's `SliderInt()` combines the track and label into one widget, making the total width unpredictable. Using `##hidden_label` suppresses ImGui's label, and a separate LABEL control at the original LTEXT position preserves the exact Windows layout.
 
 ```cpp
-// Windows: separate LTEXT + trackbar
+// Effect layout (from EFFECTS.md documentation of Windows dialog)
 {.id = "red_label", .type = ControlType::LABEL, .x = 0, .y = 15, .text = "Red"},
 {.id = "red_adjust", .type = ControlType::SLIDER, .x = 25, .y = 13, .w = 97, ...}
 
-// ImGui rendering:
+// ImGui rendering (in AVSui.cpp)
 ImGui::SetCursorPos({0 * 2, 15 * 2});
 ImGui::Text("Red");
 ImGui::SetCursorPos({25 * 2, 13 * 2});
