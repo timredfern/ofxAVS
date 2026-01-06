@@ -94,7 +94,7 @@ private:
     // UI panel dimensions
     int chain_panel_width = 280;
     int chain_panel_height = 480;
-    int parameters_panel_width = 440;
+    int parameters_panel_width = 500;  // Fits 480-wide child + padding
     int parameters_panel_height = 480;
 
     // Internal methods

@@ -7,7 +7,7 @@
 //--------------------------------------------------------------
 void ofApp::setup(){
     ofSetWindowTitle("AVS Chain Example");
-    ofSetWindowShape(1500, 640);
+    ofSetWindowShape(1520, 640);  // Wider to fit SuperScope UI (233x214)
 
     gui.setup();
     avs.setup();
@@ -84,7 +84,7 @@ void ofApp::update(){
 //--------------------------------------------------------------
 void ofApp::draw(){
     ofBackground(0);
-    avs.draw(880, 20, 600, 600);
+    avs.draw(900, 20, 600, 600);  // Moved right to fit wider parameters panel
 
     gui.begin();
     avs.drawUI();
