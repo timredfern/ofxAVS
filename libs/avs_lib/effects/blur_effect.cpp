@@ -5,8 +5,8 @@
 // Licensed under MIT License
 
 #include "blur_effect.h"
-#include "../core/plugin_manager.h"
-#include "../core/ui.h"
+#include "core/plugin_manager.h"
+#include "core/ui.h"
 
 namespace avs {
 

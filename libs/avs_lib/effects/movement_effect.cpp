@@ -5,9 +5,9 @@
 // Licensed under MIT License
 
 #include "movement_effect.h"
-#include "../core/parameter.h"
-#include "../core/plugin_manager.h"
-#include "../core/script/script_engine.h"
+#include "core/parameter.h"
+#include "core/plugin_manager.h"
+#include "core/script/script_engine.h"
 #include <cmath>
 #include <algorithm>
 #include <cstring>

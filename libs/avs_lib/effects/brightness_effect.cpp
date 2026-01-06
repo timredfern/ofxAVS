@@ -5,9 +5,10 @@
 // Licensed under MIT License
 
 #include "brightness_effect.h"
-#include "../core/plugin_manager.h"
-#include "../core/ui.h"
+#include "core/plugin_manager.h"
+#include "core/blend.h"
 #include <algorithm>
+#include <cmath>
 
 namespace avs {
 
@@ -24,23 +25,6 @@ static inline bool inRange(uint32_t color, uint32_t ref, int distance) {
     int dr = std::abs((int)((color >> 16) & 0xFF) - (int)((ref >> 16) & 0xFF));
     if (dr > distance) return false;
     return true;
-}
-
-// Blend macros matching original AVS
-static inline uint32_t BLEND(uint32_t a, uint32_t b) {
-    // Additive blend with saturation
-    uint32_t r = std::min(255u, ((a >> 16) & 0xFF) + ((b >> 16) & 0xFF));
-    uint32_t g = std::min(255u, ((a >> 8) & 0xFF) + ((b >> 8) & 0xFF));
-    uint32_t bl = std::min(255u, (a & 0xFF) + (b & 0xFF));
-    return (r << 16) | (g << 8) | bl;
-}
-
-static inline uint32_t BLEND_AVG(uint32_t a, uint32_t b) {
-    // 50/50 average blend
-    uint32_t r = (((a >> 16) & 0xFF) + ((b >> 16) & 0xFF)) >> 1;
-    uint32_t g = (((a >> 8) & 0xFF) + ((b >> 8) & 0xFF)) >> 1;
-    uint32_t bl = ((a & 0xFF) + (b & 0xFF)) >> 1;
-    return (r << 16) | (g << 8) | bl;
 }
 
 int BrightnessEffect::render(AudioData visdata, int isBeat,
@@ -60,20 +44,22 @@ int BrightnessEffect::render(AudioData visdata, int isBeat,
     int gm = (int)((1 + (greenp < 0 ? 1 : 16) * ((float)greenp / 4096)) * 65536.0);
     int bm = (int)((1 + (bluep < 0 ? 1 : 16) * ((float)bluep / 4096)) * 65536.0);
 
-    // Build lookup tables
+    // Build lookup tables for 0xAABBGGRR format (R bits 0-7, G bits 8-15, B bits 16-23)
     int red_tab[256], green_tab[256], blue_tab[256];
     for (int n = 0; n < 256; n++) {
-        red_tab[n] = (n * rm) & 0xffff0000;
-        if (red_tab[n] > 0xff0000) red_tab[n] = 0xff0000;
+        red_tab[n] = (n * rm) >> 16;
+        if (red_tab[n] > 0xff) red_tab[n] = 0xff;
         if (red_tab[n] < 0) red_tab[n] = 0;
 
-        green_tab[n] = ((n * gm) >> 8) & 0xffff00;
+        green_tab[n] = (n * gm) >> 8;
         if (green_tab[n] > 0xff00) green_tab[n] = 0xff00;
         if (green_tab[n] < 0) green_tab[n] = 0;
+        green_tab[n] &= 0xff00;
 
-        blue_tab[n] = ((n * bm) >> 16) & 0xffff;
-        if (blue_tab[n] > 0xff) blue_tab[n] = 0xff;
+        blue_tab[n] = n * bm;
+        if (blue_tab[n] > 0xff0000) blue_tab[n] = 0xff0000;
         if (blue_tab[n] < 0) blue_tab[n] = 0;
+        blue_tab[n] &= 0xff0000;
     }
 
     auto blend_mode = static_cast<BlendMode>(parameters().get_int("blend_mode"));
@@ -91,13 +77,13 @@ int BrightnessEffect::render(AudioData visdata, int isBeat,
         if (!exclude) {
             for (int i = 0; i < pixel_count; i++) {
                 uint32_t pix = p[i];
-                p[i] = BLEND(pix, red_tab[(pix >> 16) & 0xff] | green_tab[(pix >> 8) & 0xff] | blue_tab[pix & 0xff]);
+                p[i] = BLEND(pix, red_tab[pix & 0xff] | green_tab[(pix >> 8) & 0xff] | blue_tab[(pix >> 16) & 0xff]);
             }
         } else {
             for (int i = 0; i < pixel_count; i++) {
                 uint32_t pix = p[i];
                 if (!inRange(pix, exc_color, distance)) {
-                    p[i] = BLEND(pix, red_tab[(pix >> 16) & 0xff] | green_tab[(pix >> 8) & 0xff] | blue_tab[pix & 0xff]);
+                    p[i] = BLEND(pix, red_tab[pix & 0xff] | green_tab[(pix >> 8) & 0xff] | blue_tab[(pix >> 16) & 0xff]);
                 }
             }
         }
@@ -106,13 +92,13 @@ int BrightnessEffect::render(AudioData visdata, int isBeat,
         if (!exclude) {
             for (int i = 0; i < pixel_count; i++) {
                 uint32_t pix = p[i];
-                p[i] = BLEND_AVG(pix, red_tab[(pix >> 16) & 0xff] | green_tab[(pix >> 8) & 0xff] | blue_tab[pix & 0xff]);
+                p[i] = BLEND_AVG(pix, red_tab[pix & 0xff] | green_tab[(pix >> 8) & 0xff] | blue_tab[(pix >> 16) & 0xff]);
             }
         } else {
             for (int i = 0; i < pixel_count; i++) {
                 uint32_t pix = p[i];
                 if (!inRange(pix, exc_color, distance)) {
-                    p[i] = BLEND_AVG(pix, red_tab[(pix >> 16) & 0xff] | green_tab[(pix >> 8) & 0xff] | blue_tab[pix & 0xff]);
+                    p[i] = BLEND_AVG(pix, red_tab[pix & 0xff] | green_tab[(pix >> 8) & 0xff] | blue_tab[(pix >> 16) & 0xff]);
                 }
             }
         }
@@ -121,13 +107,13 @@ int BrightnessEffect::render(AudioData visdata, int isBeat,
         if (!exclude) {
             for (int i = 0; i < pixel_count; i++) {
                 uint32_t pix = p[i];
-                p[i] = (pix & 0xFF000000) | red_tab[(pix >> 16) & 0xff] | green_tab[(pix >> 8) & 0xff] | blue_tab[pix & 0xff];
+                p[i] = (pix & 0xFF000000) | red_tab[pix & 0xff] | green_tab[(pix >> 8) & 0xff] | blue_tab[(pix >> 16) & 0xff];
             }
         } else {
             for (int i = 0; i < pixel_count; i++) {
                 uint32_t pix = p[i];
                 if (!inRange(pix, exc_color, distance)) {
-                    p[i] = (pix & 0xFF000000) | red_tab[(pix >> 16) & 0xff] | green_tab[(pix >> 8) & 0xff] | blue_tab[pix & 0xff];
+                    p[i] = (pix & 0xFF000000) | red_tab[pix & 0xff] | green_tab[(pix >> 8) & 0xff] | blue_tab[(pix >> 16) & 0xff];
                 }
             }
         }

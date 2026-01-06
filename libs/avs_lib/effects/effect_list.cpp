@@ -5,8 +5,8 @@
 // Licensed under MIT License - see LICENSE file in repository root
 
 #include "effect_list.h"
-#include "../core/plugin_manager.h"
-#include "../core/ui.h"
+#include "core/plugin_manager.h"
+#include "core/ui.h"
 #include <memory>
 #include <cstring>
 

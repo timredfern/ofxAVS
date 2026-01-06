@@ -8,11 +8,11 @@
 
 using namespace avs;
 
-// Helper to extract RGB components
+// Helper to extract RGB components (0xAABBGGRR: R in bits 0-7, G in bits 8-15, B in bits 16-23)
 static void extractRGB(uint32_t color, int& r, int& g, int& b) {
-    r = (color >> 16) & 0xFF;
+    r = color & 0xFF;
     g = (color >> 8) & 0xFF;
-    b = color & 0xFF;
+    b = (color >> 16) & 0xFF;
 }
 
 TEST_CASE("Brightness Effect", "[brightness]") {
@@ -69,9 +69,10 @@ TEST_CASE("Brightness Effect", "[brightness]") {
         params.set_int("blue_adjust", 4096);  // Normal for blue
 
         const int w = 2, h = 2;
+        // 0xAABBGGRR: R in bits 0-7, G in bits 8-15, B in bits 16-23
         std::vector<uint32_t> framebuffer = {
-            0x00800000, 0x00008000,  // Mid red, mid green
-            0x00000080, 0x00808080   // Mid blue, mid gray
+            0x00000080, 0x00008000,  // Mid red, mid green
+            0x00800000, 0x00808080   // Mid blue, mid gray
         };
         std::vector<uint32_t> original = framebuffer;
         std::vector<uint32_t> fbout(w * h, 0);
@@ -180,10 +181,11 @@ TEST_CASE("Brightness Lookup Table Calculations", "[brightness][lookup]") {
         REQUIRE(rm == Catch::Approx(65536.0f));  // 1.0 * 65536
 
         // At multiplier 1.0, lookup table should preserve values
-        int red_tab_128 = (128 * (int)rm) & 0xffff0000;
-        red_tab_128 = std::min(red_tab_128, 0xff0000);
+        // red_tab outputs to bits 0-7 in 0xAABBGGRR format
+        int red_tab_128 = (128 * (int)rm) >> 16;
+        if (red_tab_128 > 0xff) red_tab_128 = 0xff;
         INFO("red_tab[128] = 0x" << std::hex << red_tab_128);
-        REQUIRE((red_tab_128 >> 16) == 128);
+        REQUIRE(red_tab_128 == 128);
     }
 
     SECTION("Maximum position (8192) gives 17x multiplier") {

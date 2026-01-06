@@ -5,57 +5,14 @@
 // Licensed under MIT License
 
 #include "clear_effect.h"
-#include "../core/plugin_manager.h"
-#include "../core/ui.h"
+#include "core/plugin_manager.h"
+#include "core/blend.h"
 #include <memory>
 
 namespace avs {
 
 ClearEffect::ClearEffect() {
     init_parameters_from_layout(effect_info.ui_layout);
-}
-
-// Blend functions for different modes
-static uint32_t blend_replace(uint32_t dest, uint32_t src) { 
-    return src; 
-}
-
-static uint32_t blend_add(uint32_t dest, uint32_t src) {
-    int r = ((dest >> 16) & 0xFF) + ((src >> 16) & 0xFF);
-    int g = ((dest >> 8) & 0xFF) + ((src >> 8) & 0xFF);
-    int b = (dest & 0xFF) + (src & 0xFF);
-    int a = ((dest >> 24) & 0xFF);
-    if (r > 255) r = 255;
-    if (g > 255) g = 255;
-    if (b > 255) b = 255;
-    return (a << 24) | (r << 16) | (g << 8) | b;
-}
-
-static uint32_t blend_max(uint32_t dest, uint32_t src) {
-    int r = std::max((dest >> 16) & 0xFF, (src >> 16) & 0xFF);
-    int g = std::max((dest >> 8) & 0xFF, (src >> 8) & 0xFF);
-    int b = std::max(dest & 0xFF, src & 0xFF);
-    int a = ((dest >> 24) & 0xFF);
-    return (a << 24) | (r << 16) | (g << 8) | b;
-}
-
-static uint32_t blend_avg(uint32_t dest, uint32_t src) {
-    int r = (((dest >> 16) & 0xFF) + ((src >> 16) & 0xFF)) / 2;
-    int g = (((dest >> 8) & 0xFF) + ((src >> 8) & 0xFF)) / 2;
-    int b = ((dest & 0xFF) + (src & 0xFF)) / 2;
-    int a = ((dest >> 24) & 0xFF);
-    return (a << 24) | (r << 16) | (g << 8) | b;
-}
-
-static uint32_t blend_sub(uint32_t dest, uint32_t src) {
-    int r = ((dest >> 16) & 0xFF) - ((src >> 16) & 0xFF);
-    int g = ((dest >> 8) & 0xFF) - ((src >> 8) & 0xFF);
-    int b = (dest & 0xFF) - (src & 0xFF);
-    int a = ((dest >> 24) & 0xFF);
-    if (r < 0) r = 0;
-    if (g < 0) g = 0;
-    if (b < 0) b = 0;
-    return (a << 24) | (r << 16) | (g << 8) | b;
 }
 
 int ClearEffect::render(AudioData visdata, int isBeat,
@@ -80,11 +37,11 @@ int ClearEffect::render(AudioData visdata, int isBeat,
     // Apply clearing operation based on blend mode
     if (blend_mode == BlendMode::ADDITIVE) {
         for (int i = 0; i < pixel_count; i++) {
-            p[i] = blend_add(p[i], color);
+            p[i] = BLEND(p[i], color);
         }
     } else if (blend_mode == BlendMode::BLEND_5050) {
         for (int i = 0; i < pixel_count; i++) {
-            p[i] = blend_avg(p[i], color);
+            p[i] = BLEND_AVG(p[i], color);
         }
     } else {  // REPLACE or DEFAULT
         for (int i = 0; i < pixel_count; i++) {

@@ -11,24 +11,24 @@
 
 namespace avs_ui {
 
-// Color format conversion between ImGui (RGBA floats) and parameter storage (framebuffer format)
-// Parameters store colors in framebuffer format: 0xAABBGGRR on little-endian
+// Color format conversion between ImGui (RGBA floats) and AVS framebuffer format
+// Framebuffer uses 0xAABBGGRR (matches OF_PIXELS_BGRA on little-endian)
 // ImGui expects col[0]=R, col[1]=G, col[2]=B, col[3]=A as floats 0-1
 
-// Extract ImGui float array from stored color
+// Extract ImGui float array from framebuffer color
 inline void color_to_imgui(uint32_t color, float* col) {
-    col[0] = (color & 0xFF) / 255.0f;          // R from byte 0
-    col[1] = ((color >> 8) & 0xFF) / 255.0f;   // G from byte 1
-    col[2] = ((color >> 16) & 0xFF) / 255.0f;  // B from byte 2
-    col[3] = ((color >> 24) & 0xFF) / 255.0f;  // A from byte 3
+    col[0] = (color & 0xFF) / 255.0f;          // R from bits 0-7
+    col[1] = ((color >> 8) & 0xFF) / 255.0f;   // G from bits 8-15
+    col[2] = ((color >> 16) & 0xFF) / 255.0f;  // B from bits 16-23
+    col[3] = ((color >> 24) & 0xFF) / 255.0f;  // A from bits 24-31
 }
 
-// Build stored color from ImGui float array
+// Build framebuffer color from ImGui float array
 inline uint32_t imgui_to_color(const float* col) {
-    return ((uint32_t)(col[3] * 255) << 24) |  // A to byte 3
-           ((uint32_t)(col[2] * 255) << 16) |  // B to byte 2
-           ((uint32_t)(col[1] * 255) << 8) |   // G to byte 1
-           ((uint32_t)(col[0] * 255));         // R to byte 0
+    return ((uint32_t)(col[3] * 255) << 24) |  // A to bits 24-31
+           ((uint32_t)(col[2] * 255) << 16) |  // B to bits 16-23
+           ((uint32_t)(col[1] * 255) << 8) |   // G to bits 8-15
+           ((uint32_t)(col[0] * 255));         // R to bits 0-7
 }
 
 // Non-linear slider mapping for brightness RGB controls
@@ -109,17 +109,16 @@ void renderImGui(const avs::EffectUILayout& layout, avs::Configurable* configura
             }
 
             case avs::ControlType::SLIDER: {
+                bool is_brightness_rgb = (control.id == "red_adjust" ||
+                                          control.id == "green_adjust" ||
+                                          control.id == "blue_adjust");
+
                 auto param = params.get_parameter(control.id);
                 if (!param) break;
                 int value = param->as_int();
                 int min_val = std::get<int>(param->min_value());
                 int max_val = std::get<int>(param->max_value());
                 std::string unique_label = control.text + "##" + control.id + "_" + std::to_string(reinterpret_cast<uintptr_t>(configurable));
-
-                // Check if this is a brightness RGB slider
-                bool is_brightness_rgb = (control.id == "red_adjust" ||
-                                          control.id == "green_adjust" ||
-                                          control.id == "blue_adjust");
 
                 if (is_brightness_rgb) {
                     // Convert parameter to slider position (non-linear for fine control near 1.0x)
@@ -168,9 +167,8 @@ void renderImGui(const avs::EffectUILayout& layout, avs::Configurable* configura
                             params.set_int("blue_adjust", default_val);
                         } else {
                             // Reset just the corresponding slider
-                            if (control.id == "red_reset") params.set_int("red_adjust", default_val);
-                            if (control.id == "green_reset") params.set_int("green_adjust", default_val);
-                            if (control.id == "blue_reset") params.set_int("blue_adjust", default_val);
+                            std::string adjust_param = control.id.substr(0, control.id.find('_')) + "_adjust";
+                            params.set_int(adjust_param, default_val);
                         }
                     }
                 }

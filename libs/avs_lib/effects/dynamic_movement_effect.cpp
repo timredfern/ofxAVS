@@ -5,9 +5,9 @@
 // Licensed under MIT License
 
 #include "dynamic_movement_effect.h"
-#include "../core/parameter.h"
-#include "../core/plugin_manager.h"
-#include "../core/ui.h"
+#include "core/parameter.h"
+#include "core/plugin_manager.h"
+#include "core/ui.h"
 #include <cmath>
 #include <cstring>
 
