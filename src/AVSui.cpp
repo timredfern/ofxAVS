@@ -142,8 +142,9 @@ void renderImGui(const avs::EffectUILayout& layout, avs::Configurable* configura
                             params.set_int("blue_adjust", new_param);
                         }
                     }
-                    // Display multiplier value (calculated from actual parameter, not slider)
-                    ImGui::SameLine();
+                    // Display multiplier value to the right of the reset button
+                    // Button ends at x=137 (edge of original dialog), so place value at x=140
+                    ImGui::SetCursorPos(ImVec2(140 * scale, control.y * scale));
                     int p = value - 4096;
                     float mult = 1.0f + (p < 0 ? 1 : 16) * (p / 4096.0f);
                     ImGui::Text("%.3fx", mult);
