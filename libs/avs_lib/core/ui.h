@@ -19,7 +19,9 @@ enum class ControlType {
     EDITTEXT,        // Multi-line text edit (for scripts)
     COLOR_BUTTON,
     COLOR_ARRAY,     // Multi-color bar with clickable segments (uses color_0..color_N params)
-    DROPDOWN
+    DROPDOWN,
+    LABEL,           // Static text label (LTEXT in Windows)
+    GROUPBOX         // Visual grouping box with title
 };
 
 // Common enums for radio group values

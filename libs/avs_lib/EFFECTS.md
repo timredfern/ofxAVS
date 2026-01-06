@@ -138,25 +138,40 @@ Effects that generate new visual content from audio data or clear the screen.
   - Draw as Lines: RADIO_BUTTON, Position(200, 188), Size(33, 10), ID(IDC_LINES)
 
 4. ### Dot Grid
-- **Purpose**: Renders a grid of dots modulated by audio
+- **Purpose**: Renders a grid of dots with color cycling and movement (no audio reactivity)
 - **Source File**: `r_dotgrid.cpp`
 - **Inputs**:
-  - Audio spectrum
-  - Beat signal
+  - None (purely visual effect, no audio)
 - **Outputs**: Framebuffer (dots rendered)
-- **Blend Modes**: Additive or replace
+- **Blend Modes**: Replace (0), Additive (1), 50/50 (2), Default/BLEND_LINE (3)
+- **Defaults**:
+  - num_colors: 1
+  - colors[0]: white (0xFFFFFF)
+  - x_move: 128
+  - y_move: 128
+  - spacing: 8
+  - blend: 3 (Default render blend mode)
 - **Controls**:
-  - Number of colors: EDITTEXT, Position(53, 6), Size(19, 12), ID(IDC_NUMCOL)
+  - Colors groupbox: GROUPBOX, Position(0, 0), Size(137, 36)
+  - "Cycle through" label: LTEXT, Position(7, 8), Size(46, 8)
+  - Number of colors: EDITTEXT, Position(53, 6), Size(19, 12), ID(IDC_NUMCOL), Range(1, 16), Default(1)
+  - "colors (max 16)" label: LTEXT, Position(77, 8), Size(48, 8)
   - Color selection: COLOR_ARRAY, Position(6, 21), Size(127, 11), ID(IDC_DEFCOL)
-  - X movement: SLIDER, Position(16, 47), Size(85, 13), ID(IDC_SLIDER1)
-  - Zero X movement: BUTTON, Position(103, 50), Size(28, 10), ID(IDC_BUTTON1)
-  - Y movement: SLIDER, Position(16, 65), Size(85, 13), ID(IDC_SLIDER2)
-  - Zero Y movement: BUTTON, Position(103, 68), Size(28, 10), ID(IDC_BUTTON3)
-  - Replace blend mode: RADIO_BUTTON, Position(5, 99), Size(43, 10), ID(IDC_RADIO1)
-  - Additive blend mode: RADIO_BUTTON, Position(51, 99), Size(41, 10), ID(IDC_RADIO2)
-  - 50/50 blend mode: RADIO_BUTTON, Position(93, 99), Size(35, 10), ID(IDC_RADIO3)
-  - Default render blend mode: RADIO_BUTTON, Position(5, 109), Size(99, 10), ID(IDC_RADIO4)
-  - Dot spacing: EDITTEXT, Position(44, 125), Size(20, 12), ID(IDC_EDIT1)
+  - X movement: SLIDER, Position(16, 47), Size(85, 13), ID(IDC_SLIDER1), Range(-512, 544), Default(128)
+    - Note: Slider pos 0-33, value = (pos-16)*32
+  - Zero X movement: BUTTON, Position(103, 50), Size(28, 10), ID(IDC_BUTTON1), Text("zero")
+  - Y movement: SLIDER, Position(16, 65), Size(85, 13), ID(IDC_SLIDER2), Range(-512, 544), Default(128)
+  - Zero Y movement: BUTTON, Position(103, 68), Size(28, 10), ID(IDC_BUTTON3), Text("zero")
+  - Replace blend mode: RADIO_BUTTON, Position(5, 99), Size(43, 10), ID(IDC_RADIO1), Value(0)
+  - Additive blend mode: RADIO_BUTTON, Position(51, 99), Size(41, 10), ID(IDC_RADIO2), Value(1)
+  - 50/50 blend mode: RADIO_BUTTON, Position(93, 99), Size(35, 10), ID(IDC_RADIO3), Value(2)
+  - Default render blend mode: RADIO_BUTTON, Position(5, 109), Size(99, 10), ID(IDC_RADIO4), Value(3)
+  - "Dot spacing:" label: LTEXT, Position(0, 127), Size(43, 8)
+  - Dot spacing: EDITTEXT, Position(44, 125), Size(20, 12), ID(IDC_EDIT1), Range(2, ∞), Default(8)
+- **Notes**:
+  - Color cycling: Smoothly interpolates between colors, 64 frames per color
+  - BLEND_LINE (mode 3) is additive blend, same as mode 1
+  - Movement uses fixed-point (>>8) for sub-pixel precision
 
 5. ### Dot Plane
 - **Purpose**: 3D plane of dots with perspective

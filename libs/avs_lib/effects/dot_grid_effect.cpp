@@ -1,0 +1,176 @@
+// avs_lib - Portable Advanced Visualization Studio library
+// Based on Advanced Visualization Studio by Nullsoft, Inc.
+// Original AVS Copyright (C) 2005 Nullsoft, Inc.
+// Modern C++ port Copyright (C) 2025 Tim Redfern
+// Licensed under MIT License
+
+#include "dot_grid_effect.h"
+#include "core/plugin_manager.h"
+#include "core/blend.h"
+
+namespace avs {
+
+DotGridEffect::DotGridEffect() {
+    init_parameters_from_layout(effect_info.ui_layout);
+}
+
+int DotGridEffect::render(AudioData visdata, int isBeat,
+                          uint32_t* framebuffer, uint32_t* fbout,
+                          int w, int h) {
+    if (isBeat & 0x80000000) return 0;
+
+    int num_colors = parameters().get_int("num_colors", 1);
+    if (num_colors < 1) return 0;
+    if (num_colors > 16) num_colors = 16;
+
+    // Color cycling
+    color_pos_++;
+    if (color_pos_ >= num_colors * 64) color_pos_ = 0;
+
+    uint32_t current_color;
+    if (num_colors == 1) {
+        current_color = parameters().get_color("color_0", 0xFFFFFF) | 0xFF000000;
+    } else {
+        int p = color_pos_ / 64;
+        int r = color_pos_ & 63;
+
+        std::string c1_param = "color_" + std::to_string(p);
+        std::string c2_param = "color_" + std::to_string((p + 1 < num_colors) ? p + 1 : 0);
+        uint32_t c1 = parameters().get_color(c1_param, 0xFFFFFF);
+        uint32_t c2 = parameters().get_color(c2_param, 0xFFFFFF);
+
+        // Interpolate RGB channels
+        int r1 = (((c1 & 0xff) * (63 - r)) + ((c2 & 0xff) * r)) / 64;
+        int r2 = ((((c1 >> 8) & 0xff) * (63 - r)) + (((c2 >> 8) & 0xff) * r)) / 64;
+        int r3 = ((((c1 >> 16) & 0xff) * (63 - r)) + (((c2 >> 16) & 0xff) * r)) / 64;
+        current_color = r1 | (r2 << 8) | (r3 << 16) | 0xFF000000;  // Set alpha to opaque
+    }
+
+    int spacing = parameters().get_int("spacing", 8);
+    if (spacing < 2) spacing = 2;
+
+    int x_move = parameters().get_int("x_move", 0);
+    int y_move = parameters().get_int("y_move", 0);
+    int blend = parameters().get_int("blend_mode", 3);
+
+    // Wrap position
+    while (yp_ < 0) yp_ += spacing * 256;
+    while (xp_ < 0) xp_ += spacing * 256;
+
+    int sy = (yp_ >> 8) % spacing;
+    int sx = (xp_ >> 8) % spacing;
+
+    uint32_t* p = framebuffer + sy * w;
+    for (int y = sy; y < h; y += spacing) {
+        if (blend == 1) {
+            for (int x = sx; x < w; x += spacing)
+                p[x] = BLEND(p[x], current_color);
+        } else if (blend == 2) {
+            for (int x = sx; x < w; x += spacing)
+                p[x] = BLEND_AVG(p[x], current_color);
+        } else if (blend == 3) {
+            for (int x = sx; x < w; x += spacing)
+                p[x] = BLEND(p[x], current_color);  // BLEND_LINE is additive
+        } else {
+            for (int x = sx; x < w; x += spacing)
+                p[x] = current_color;
+        }
+        p += w * spacing;
+    }
+
+    xp_ += x_move;
+    yp_ += y_move;
+
+    return 0;
+}
+
+const PluginInfo DotGridEffect::effect_info {
+    .name = "Dot Grid",
+    .category = "Render",
+    .description = "",
+    .author = "",
+    .version = 1,
+    .factory = []() -> std::unique_ptr<EffectBase> {
+        return std::make_unique<DotGridEffect>();
+    },
+    .ui_layout = {
+        {
+            {
+                .id = "colors_group",
+                .text = "Colors",
+                .type = ControlType::GROUPBOX,
+                .x = 0, .y = 0, .w = 137, .h = 36
+            },
+            {
+                .id = "num_colors",
+                .text = "Num colors (1-16)",
+                .type = ControlType::TEXT_INPUT,
+                .x = 53, .y = 6, .w = 19, .h = 12,
+                .range = {1, 16},
+                .default_val = 1
+            },
+            {
+                .id = "colors",
+                .text = "",
+                .type = ControlType::COLOR_ARRAY,
+                .x = 6, .y = 21, .w = 127, .h = 11,
+                .default_val = static_cast<int>(0xFFFFFF),
+                .max_items = 16
+            },
+            {
+                .id = "x_move",
+                .text = "X Speed",
+                .type = ControlType::SLIDER,
+                .x = 16, .y = 47, .w = 85, .h = 13,
+                .range = {-512, 512, 32},
+                .default_val = 128
+            },
+            {
+                .id = "x_reset",
+                .text = "zero",
+                .type = ControlType::BUTTON,
+                .x = 103, .y = 50, .w = 28, .h = 10
+            },
+            {
+                .id = "y_move",
+                .text = "Y Speed",
+                .type = ControlType::SLIDER,
+                .x = 16, .y = 65, .w = 85, .h = 13,
+                .range = {-512, 512, 32},
+                .default_val = 128
+            },
+            {
+                .id = "y_reset",
+                .text = "zero",
+                .type = ControlType::BUTTON,
+                .x = 103, .y = 68, .w = 28, .h = 10
+            },
+            {
+                .id = "blend_mode",
+                .type = ControlType::RADIO_GROUP,
+                .radio_options = {
+                    {"Replace", 5, 99, 43, 10},
+                    {"Additive", 51, 99, 41, 10},
+                    {"50/50", 93, 99, 35, 10},
+                    {"Default render blend mode", 5, 109, 99, 10}
+                },
+                .default_val = 3
+            },
+            {
+                .id = "spacing",
+                .text = "Dot spacing",
+                .type = ControlType::TEXT_INPUT,
+                .x = 44, .y = 125, .w = 20, .h = 12,
+                .range = {2, 100},
+                .default_val = 8
+            }
+        }
+    }
+};
+
+static bool register_dot_grid = []() {
+    PluginManager::instance().register_effect(DotGridEffect::effect_info);
+    return true;
+}();
+
+} // namespace avs

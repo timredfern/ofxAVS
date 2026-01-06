@@ -23,16 +23,30 @@ Each contains the `g_DlgProc` function with the original Windows dialog control 
 
 This matches OF_PIXELS_BGRA on little-endian systems.
 
-**CRITICAL: Effects MUST preserve the alpha channel when modifying pixels.**
+**CRITICAL: Alpha MUST always be 0xFF (opaque). Forgetting alpha = invisible pixels.**
 
-When writing effects that modify pixel colors:
-- **Always preserve alpha**: Use `(pix & 0xFF000000) |` when outputting RGB values
-- **Forgetting alpha causes transparent/black output** - effects will appear to "do nothing"
+### Rule: ALWAYS set or preserve alpha
 
-Example (correct for 0xAABBGGRR):
-```cpp
-p[i] = (pix & 0xFF000000) | blue_tab[(pix >> 16) & 0xff] | green_tab[(pix >> 8) & 0xff] | red_tab[pix & 0xff];
-```
+1. **When modifying existing pixels** - preserve alpha from original:
+   ```cpp
+   p[i] = (pix & 0xFF000000) | new_rgb_value;
+   ```
+
+2. **When creating new colors** (interpolation, calculations, constants) - SET alpha to 0xFF:
+   ```cpp
+   // Color interpolation - MUST add alpha
+   current_color = r | (g << 8) | (b << 16) | 0xFF000000;
+
+   // Color constants - MUST include alpha
+   uint32_t white = 0xFFFFFFFF;  // NOT 0x00FFFFFF
+   ```
+
+3. **When writing directly to framebuffer** (replace mode) - ensure color has alpha:
+   ```cpp
+   p[x] = current_color;  // current_color MUST have 0xFF in high byte
+   ```
+
+**Symptom of missing alpha**: Effect "does nothing" or pixels are invisible/transparent.
 
 ## Color Format Conversion Rules
 

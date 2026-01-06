@@ -72,16 +72,31 @@ void renderImGui(const avs::EffectUILayout& layout, avs::Configurable* configura
         is_standard_mode = (mode_param->as_int() == 0);
     }
 
+    avs::ControlType prev_type = avs::ControlType::LABEL;
+    int prev_y = -100;
+
     for (const auto& control : layout.getControls()) {
 
         // Positions and input boxes scaled from original AVS dialogs
 
         float scale=2.0f;
 
-        ImGui::SetCursorPos(ImVec2(control.x * scale, control.y * scale));
+        // If a button follows a slider at similar Y position, put it on the same line
+        bool same_line = (control.type == avs::ControlType::BUTTON &&
+                          prev_type == avs::ControlType::SLIDER &&
+                          std::abs(control.y - prev_y) < 5);
+
+        if (same_line) {
+            ImGui::SameLine();
+        } else {
+            ImGui::SetCursorPos(ImVec2(control.x * scale, control.y * scale));
+        }
 
         int controlwidth=control.w*scale;
         int controlheight=(control.h*scale)-12; //only used for edit boxes
+
+        prev_type = control.type;
+        prev_y = control.y;
 
         // Disable Advanced-only controls when in Standard mode
         bool disable_control = is_standard_mode && (
@@ -170,6 +185,14 @@ void renderImGui(const avs::EffectUILayout& layout, avs::Configurable* configura
                             std::string adjust_param = control.id.substr(0, control.id.find('_')) + "_adjust";
                             params.set_int(adjust_param, default_val);
                         }
+                    }
+
+                    // Handle dot grid zero buttons
+                    if (control.id == "x_reset") {
+                        params.set_int("x_move", 0);
+                    }
+                    if (control.id == "y_reset") {
+                        params.set_int("y_move", 0);
                     }
                 }
                 break;
@@ -379,6 +402,21 @@ void renderImGui(const avs::EffectUILayout& layout, avs::Configurable* configura
                         }
                     }
                     ImGui::EndCombo();
+                }
+                break;
+            }
+
+            case avs::ControlType::LABEL: {
+                // Static text label
+                ImGui::Text("%s", control.text.c_str());
+                break;
+            }
+
+            case avs::ControlType::GROUPBOX: {
+                // Visual section header - ImGui flow layout doesn't support true groupboxes
+                // Just show the title as a section separator
+                if (!control.text.empty()) {
+                    ImGui::SeparatorText(control.text.c_str());
                 }
                 break;
             }
