@@ -17,25 +17,47 @@ It contains the original Windows dialog procedures and UI layout data from the W
 The original source files use naming like `r_bright.cpp` for brightness effect, `r_dmove.cpp` for movement, etc.
 Each contains the `g_DlgProc` function with the original Windows dialog control layouts and IDs.
 
-## Alpha Channel Handling
+## Pixel Format
+
+**Framebuffer format is 0xAABBGGRR** (R in bits 0-7, G in bits 8-15, B in bits 16-23, A in bits 24-31).
+
+This matches OF_PIXELS_BGRA on little-endian systems.
 
 **CRITICAL: Effects MUST preserve the alpha channel when modifying pixels.**
 
-The original AVS BLEND macro (in `r_defs.h` lines 100-111) explicitly handles alpha:
-```cpp
-r=(a&0xff000000)+(b&0xff000000);
-return t|min(r,0xff000000);
-```
-
 When writing effects that modify pixel colors:
 - **Always preserve alpha**: Use `(pix & 0xFF000000) |` when outputting RGB values
-- **Pixels are ARGB format**: `0xAARRGGBB` - alpha in high byte
 - **Forgetting alpha causes transparent/black output** - effects will appear to "do nothing"
 
-Example (correct):
+Example (correct for 0xAABBGGRR):
 ```cpp
-p[i] = (pix & 0xFF000000) | red_tab[(pix >> 16) & 0xff] | green_tab[(pix >> 8) & 0xff] | blue_tab[pix & 0xff];
+p[i] = (pix & 0xFF000000) | blue_tab[(pix >> 16) & 0xff] | green_tab[(pix >> 8) & 0xff] | red_tab[pix & 0xff];
 ```
+
+## Color Format Conversion Rules
+
+**ONE conversion at the UI boundary. NO conversions inside avs_lib.**
+
+- All color values in avs_lib use 0xAABBGGRR format consistently
+- The ONLY place format conversion happens is in `src/AVSui.cpp` when converting between ImGui RGBA floats and parameter storage
+- NEVER add per-pixel conversions in render loops
+- NEVER add swap functions or label swapping as workarounds
+- If colors appear wrong, fix the actual lookup table or algorithm, not the UI labels
+
+### Common Mistakes to AVOID:
+1. **Per-pixel conversion in framebuffer** - WRONG. Conversion is only at UI boundary when picking colors
+2. **Swapping UI labels** - WRONG. Fix the underlying code, not the labels
+3. **Adding swap helper functions** - WRONG. The format should be correct throughout
+4. **Masking before clamping in lookup tables** - WRONG. Clamp first, then mask if needed:
+   ```cpp
+   // WRONG - mask truncates before clamp can work
+   red_tab[n] = ((n * rm) >> 16) & 0xff;
+   if (red_tab[n] > 0xff) red_tab[n] = 0xff;  // Never triggers!
+
+   // CORRECT - clamp first, then mask if needed
+   red_tab[n] = (n * rm) >> 16;
+   if (red_tab[n] > 0xff) red_tab[n] = 0xff;
+   ```
 
 ## UI Layout Rules
 
@@ -126,7 +148,15 @@ Key components:
 
 **Before implementing a new effect, READ at least one existing effect file to understand current patterns.** Check constructor pattern, PluginInfo structure, include style, and how parameters are set up.
 
-Use flat includes: `"core/blend.h"` not `"../core/blend.h"`
+### Include Style
+Use flat includes from the avs_lib root:
+- CORRECT: `#include "core/blend.h"`
+- WRONG: `#include "../core/blend.h"`
+
+### Use Shared Code
+- Use `core/blend.h` for BLEND, BLEND_AVG, BLEND_MAX, BLEND_MIN, BLEND_SUB
+- NEVER duplicate blend functions locally in effect files
+- If you need a blend operation, include the shared header
 
 ## Copyright Headers for Source Files
 
