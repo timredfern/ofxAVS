@@ -26,9 +26,12 @@ static JsonValue param_to_json(const Parameter& param) {
             return param.as_int();
         case ParameterType::BOOL:
             return param.as_bool();
-        case ParameterType::COLOR:
-            // Store as double to preserve full uint32_t range (int would make 0xFFFFFFFF into -1)
-            return static_cast<double>(param.as_color());
+        case ParameterType::COLOR: {
+            // Store as hex string for readability (e.g., "#FF0000FF")
+            char hex[10];
+            snprintf(hex, sizeof(hex), "#%08X", param.as_color());
+            return std::string(hex);
+        }
         case ParameterType::STRING:
             return param.as_string();
         default:
@@ -49,7 +52,13 @@ static void json_to_param(const JsonValue& json, Parameter& param) {
             if (json.is_bool()) param.set_value(json.as_bool());
             break;
         case ParameterType::COLOR:
-            if (json.is_number()) param.set_value(static_cast<uint32_t>(json.as_int()));
+            if (json.is_string()) {
+                // Parse hex string like "#FF0000FF"
+                std::string s = json.as_string();
+                if (!s.empty() && s[0] == '#') {
+                    param.set_value(static_cast<uint32_t>(std::stoul(s.substr(1), nullptr, 16)));
+                }
+            }
             break;
         case ParameterType::STRING:
             if (json.is_string()) param.set_value(json.as_string());

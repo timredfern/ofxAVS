@@ -12,10 +12,11 @@
 namespace avs_ui {
 
 // Color format conversion between ImGui (RGBA floats) and AVS framebuffer format
-// Framebuffer uses 0xAABBGGRR (matches OF_PIXELS_BGRA on little-endian)
+// AVS framebuffer format: 0xAABBGGRR (R in bits 0-7, G in bits 8-15, B in bits 16-23, A in bits 24-31)
+// This matches OF_PIXELS_BGRA on little-endian systems.
 // ImGui expects col[0]=R, col[1]=G, col[2]=B, col[3]=A as floats 0-1
 
-// Extract ImGui float array from framebuffer color
+// Extract ImGui float array from 0xAABBGGRR color
 inline void color_to_imgui(uint32_t color, float* col) {
     col[0] = (color & 0xFF) / 255.0f;          // R from bits 0-7
     col[1] = ((color >> 8) & 0xFF) / 255.0f;   // G from bits 8-15
@@ -23,7 +24,7 @@ inline void color_to_imgui(uint32_t color, float* col) {
     col[3] = ((color >> 24) & 0xFF) / 255.0f;  // A from bits 24-31
 }
 
-// Build framebuffer color from ImGui float array
+// Build 0xAABBGGRR color from ImGui float array
 inline uint32_t imgui_to_color(const float* col) {
     return ((uint32_t)(col[3] * 255) << 24) |  // A to bits 24-31
            ((uint32_t)(col[2] * 255) << 16) |  // B to bits 16-23

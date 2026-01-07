@@ -107,8 +107,8 @@ protected:
                     int max_colors = control.max_items > 0 ? control.max_items : 16;
                     for (int i = 0; i < max_colors; i++) {
                         std::string color_param = "color_" + std::to_string(i);
-                        // Use default_val for first color, white for rest
-                        uint32_t default_color = (i == 0) ? static_cast<uint32_t>(control.default_val) : 0xFFFFFF;
+                        // Use default_val for first color, opaque white for rest
+                        uint32_t default_color = (i == 0) ? static_cast<uint32_t>(control.default_val) : 0xFFFFFFFF;
                         parameters_.add_parameter(std::make_shared<Parameter>(
                             color_param, ParameterType::COLOR, default_color));
                     }

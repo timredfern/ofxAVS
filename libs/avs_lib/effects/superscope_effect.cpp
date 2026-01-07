@@ -195,11 +195,12 @@ int SuperScopeEffect::render(AudioData visdata, int isBeat,
         uint32_t c2 = parameters().get_color(c2_param, 0xFFFFFF);
 
         // Linear interpolation: blend = ((c1 * (63-r)) + (c2 * r)) / 64
-        int blue = (((c1 & 0xFF) * (63 - r)) + ((c2 & 0xFF) * r)) / 64;
+        // Color format is 0xAABBGGRR (R in bits 0-7, G in bits 8-15, B in bits 16-23)
+        int red = (((c1 & 0xFF) * (63 - r)) + ((c2 & 0xFF) * r)) / 64;
         int green = ((((c1 >> 8) & 0xFF) * (63 - r)) + (((c2 >> 8) & 0xFF) * r)) / 64;
-        int red = ((((c1 >> 16) & 0xFF) * (63 - r)) + (((c2 >> 16) & 0xFF) * r)) / 64;
+        int blue = ((((c1 >> 16) & 0xFF) * (63 - r)) + (((c2 >> 16) & 0xFF) * r)) / 64;
 
-        current_color = 0xFF000000 | (red << 16) | (green << 8) | blue;
+        current_color = 0xFF000000 | (blue << 16) | (green << 8) | red;
     }
 
     // Check if init script changed and needs re-running
@@ -230,9 +231,10 @@ int SuperScopeEffect::render(AudioData visdata, int isBeat,
     engine_.set_variable("w", static_cast<double>(w));
     engine_.set_variable("h", static_cast<double>(h));
     engine_.set_variable("b", isBeat ? 1.0 : 0.0);
-    engine_.set_variable("red", ((current_color >> 16) & 0xFF) / 255.0);
+    // Color format is 0xAABBGGRR (R in bits 0-7, G in bits 8-15, B in bits 16-23)
+    engine_.set_variable("red", (current_color & 0xFF) / 255.0);
     engine_.set_variable("green", ((current_color >> 8) & 0xFF) / 255.0);
-    engine_.set_variable("blue", (current_color & 0xFF) / 255.0);
+    engine_.set_variable("blue", ((current_color >> 16) & 0xFF) / 255.0);
     engine_.set_variable("skip", 0.0);
     engine_.set_variable("linesize", 1.0);
     engine_.set_variable("drawmode", draw_mode ? 1.0 : 0.0);
@@ -289,10 +291,10 @@ int SuperScopeEffect::render(AudioData visdata, int isBeat,
 
             // Check skip
             if (engine_.get_variable("skip") < 0.00001) {
-                // Get per-point color
-                int point_color = (make_color_component(engine_.get_variable("red")) << 16) |
+                // Get per-point color (0xAABBGGRR format)
+                int point_color = make_color_component(engine_.get_variable("red")) |
                                   (make_color_component(engine_.get_variable("green")) << 8) |
-                                  make_color_component(engine_.get_variable("blue"));
+                                  (make_color_component(engine_.get_variable("blue")) << 16);
                 point_color |= 0xFF000000;  // Alpha
 
                 double current_drawmode = engine_.get_variable("drawmode");

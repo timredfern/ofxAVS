@@ -81,20 +81,20 @@ for (const auto& control : layout.getControls()) {
 
 ### Color Format Conversion
 
-AVS framebuffer uses `0xAABBGGRR` (little-endian BGRA). ImGui uses float arrays `[R, G, B, A]` with values 0.0-1.0.
+AVS framebuffer uses `0xAABBGGRR` format (R in bits 0-7, G in bits 8-15, B in bits 16-23, A in bits 24-31). This matches OF_PIXELS_BGRA on little-endian systems. ImGui uses float arrays `[R, G, B, A]` with values 0.0-1.0.
 
 ```cpp
-// AVS color → ImGui
-col[0] = (color & 0xFF) / 255.0f;          // R
-col[1] = ((color >> 8) & 0xFF) / 255.0f;   // G
-col[2] = ((color >> 16) & 0xFF) / 255.0f;  // B
-col[3] = ((color >> 24) & 0xFF) / 255.0f;  // A
+// 0xAABBGGRR color → ImGui
+col[0] = (color & 0xFF) / 255.0f;          // R from bits 0-7
+col[1] = ((color >> 8) & 0xFF) / 255.0f;   // G from bits 8-15
+col[2] = ((color >> 16) & 0xFF) / 255.0f;  // B from bits 16-23
+col[3] = ((color >> 24) & 0xFF) / 255.0f;  // A from bits 24-31
 
-// ImGui → AVS color
-color = ((uint32_t)(col[3] * 255) << 24) |  // A
-        ((uint32_t)(col[2] * 255) << 16) |  // B
-        ((uint32_t)(col[1] * 255) << 8) |   // G
-        ((uint32_t)(col[0] * 255));         // R
+// ImGui → 0xAABBGGRR color
+color = ((uint32_t)(col[3] * 255) << 24) |  // A to bits 24-31
+        ((uint32_t)(col[2] * 255) << 16) |  // B to bits 16-23
+        ((uint32_t)(col[1] * 255) << 8) |   // G to bits 8-15
+        ((uint32_t)(col[0] * 255));         // R to bits 0-7
 ```
 
 ## Audio Processing

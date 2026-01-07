@@ -57,6 +57,7 @@ add_executable(avs_tests
     test_complete_script_engine.cpp
     test_multi_phase_scripts.cpp
     test_semicolon_check.cpp
+    test_color_format.cpp
 )
 
 target_link_libraries(avs_tests PRIVATE 
