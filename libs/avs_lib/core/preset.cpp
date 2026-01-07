@@ -8,8 +8,86 @@
 #include "effect_container.h"
 #include <fstream>
 #include <sstream>
+#include <cstring>
+#include <vector>
 
 namespace avs {
+
+// ============================================================================
+// Binary format constants and helpers
+// ============================================================================
+
+static const char AVS_HEADER[] = "Nullsoft AVS Preset 0.";
+static const size_t AVS_HEADER_LEN = 25;
+static const uint32_t EFFECT_LIST_INDEX = 0xFFFFFFFE;
+static const uint32_t DLLRENDERBASE = 16384;
+
+// Binary reader helper
+class BinaryReader {
+public:
+    BinaryReader(const std::vector<uint8_t>& data) : data_(data), pos_(0) {}
+
+    bool eof() const { return pos_ >= data_.size(); }
+    size_t pos() const { return pos_; }
+    size_t remaining() const { return data_.size() - pos_; }
+
+    uint8_t read_u8() {
+        if (pos_ >= data_.size()) return 0;
+        return data_[pos_++];
+    }
+
+    uint32_t read_u32() {
+        if (pos_ + 4 > data_.size()) return 0;
+        uint32_t val = data_[pos_] |
+                       (data_[pos_ + 1] << 8) |
+                       (data_[pos_ + 2] << 16) |
+                       (data_[pos_ + 3] << 24);
+        pos_ += 4;
+        return val;
+    }
+
+    int32_t read_i32() {
+        return static_cast<int32_t>(read_u32());
+    }
+
+    std::string read_string_fixed(size_t len) {
+        if (pos_ + len > data_.size()) return "";
+        std::string s(reinterpret_cast<const char*>(&data_[pos_]), len);
+        pos_ += len;
+        // Trim at null terminator
+        size_t null_pos = s.find('\0');
+        if (null_pos != std::string::npos) {
+            s.resize(null_pos);
+        }
+        return s;
+    }
+
+    std::string read_length_prefixed_string() {
+        uint32_t len = read_u32();
+        if (len == 0) return "";
+        if (pos_ + len > data_.size()) return "";
+        std::string s(reinterpret_cast<const char*>(&data_[pos_]), len);
+        pos_ += len;
+        // Trim at null terminator (length includes null)
+        size_t null_pos = s.find('\0');
+        if (null_pos != std::string::npos) {
+            s.resize(null_pos);
+        }
+        return s;
+    }
+
+    void skip(size_t bytes) {
+        pos_ = std::min(pos_ + bytes, data_.size());
+    }
+
+    const uint8_t* ptr() const {
+        return &data_[pos_];
+    }
+
+private:
+    const std::vector<uint8_t>& data_;
+    size_t pos_;
+};
 
 std::string Preset::last_error_;
 
@@ -254,6 +332,177 @@ bool Preset::load_json(const std::string& path, EffectContainer& root) {
     }
 }
 
+// ============================================================================
+// Legacy binary format loading
+// ============================================================================
+
+// Forward declaration for recursive Effect List loading
+static bool load_effect_list_children(BinaryReader& reader, EffectContainer* container);
+
+static std::unique_ptr<EffectBase> load_legacy_effect(BinaryReader& reader) {
+    if (reader.remaining() < 8) return nullptr;
+
+    uint32_t effect_index = reader.read_u32();
+    std::string plugin_id;
+
+    // Check for plugin effect (has string ID)
+    if (effect_index >= DLLRENDERBASE && effect_index != EFFECT_LIST_INDEX) {
+        plugin_id = reader.read_string_fixed(32);
+    }
+
+    uint32_t config_length = reader.read_u32();
+
+    // Create effect instance
+    std::unique_ptr<EffectBase> effect;
+
+    if (effect_index == EFFECT_LIST_INDEX) {
+        // Effect List - special handling
+        effect = PluginManager::instance().create_effect("Effect List");
+
+        if (effect && config_length > 0) {
+            // Read mode byte
+            uint8_t mode = reader.read_u8();
+            size_t consumed = 1;
+
+            // Extended data if high bit set
+            if (mode & 0x80) {
+                reader.skip(4 + 4 + 4 + 4 + 4 + 4 + 4 + 4 + 4); // mode, blend vals, buffers, etc
+                consumed += 36;
+            }
+
+            // For non-root Effect Lists, there's additional config
+            // Check for "AVS 2.8+ Effect List Config" marker
+            if (config_length > consumed + 36) {
+                size_t remaining_config = config_length - consumed;
+                // Just skip the Effect List's own config for now
+                // Child effects follow after config_length bytes total
+            }
+
+            // Skip rest of Effect List config
+            if (config_length > consumed) {
+                reader.skip(config_length - consumed);
+            }
+
+            // Load children recursively
+            auto* container = dynamic_cast<EffectContainer*>(effect.get());
+            if (container) {
+                load_effect_list_children(reader, container);
+            }
+        }
+    } else if (effect_index < DLLRENDERBASE) {
+        // Built-in effect by index
+        effect = PluginManager::instance().create_by_legacy_index(static_cast<int>(effect_index));
+
+        // Skip config data (effect gets defaults)
+        // TODO: Implement per-effect binary config parsing
+        reader.skip(config_length);
+    } else {
+        // Plugin effect by string ID - not supported yet
+        reader.skip(config_length);
+    }
+
+    return effect;
+}
+
+static bool load_effect_list_children(BinaryReader& reader, EffectContainer* container) {
+    // Load effects until we hit end of data or another Effect List end marker
+    while (!reader.eof()) {
+        // Peek at next effect index
+        if (reader.remaining() < 4) break;
+
+        auto effect = load_legacy_effect(reader);
+        if (effect) {
+            container->add_child(std::move(effect));
+        } else {
+            // Unknown effect or parse error - stop
+            break;
+        }
+    }
+    return true;
+}
+
+bool Preset::load_legacy(const std::string& path, EffectContainer& root) {
+    try {
+        // Read entire file
+        std::ifstream file(path, std::ios::binary | std::ios::ate);
+        if (!file.is_open()) {
+            last_error_ = "Failed to open file: " + path;
+            return false;
+        }
+
+        std::streamsize size = file.tellg();
+        file.seekg(0, std::ios::beg);
+
+        std::vector<uint8_t> data(size);
+        if (!file.read(reinterpret_cast<char*>(data.data()), size)) {
+            last_error_ = "Failed to read file: " + path;
+            return false;
+        }
+
+        return from_legacy(data, root);
+
+    } catch (const std::exception& e) {
+        last_error_ = std::string("Load error: ") + e.what();
+        return false;
+    }
+}
+
+bool Preset::from_legacy(const std::vector<uint8_t>& data, EffectContainer& root) {
+    if (data.size() < AVS_HEADER_LEN) {
+        last_error_ = "File too small for AVS header";
+        return false;
+    }
+
+    BinaryReader reader(data);
+
+    // Validate header
+    std::string header = reader.read_string_fixed(22);
+    if (header != AVS_HEADER) {
+        last_error_ = "Invalid AVS header";
+        return false;
+    }
+
+    // Version byte (position 22)
+    uint8_t version = reader.read_u8();
+    if (version != '1' && version != '2') {
+        last_error_ = "Unsupported AVS version";
+        return false;
+    }
+
+    // Skip rest of header (position 23-24)
+    reader.skip(2);
+
+    // Root mode byte
+    reader.read_u8();
+
+    // Clear existing effects
+    while (root.child_count() > 0) {
+        root.remove_child(0);
+    }
+
+    // Load effects
+    int loaded = 0;
+    int skipped = 0;
+
+    while (!reader.eof() && reader.remaining() >= 8) {
+        auto effect = load_legacy_effect(reader);
+        if (effect) {
+            root.add_child(std::move(effect));
+            loaded++;
+        } else {
+            skipped++;
+        }
+    }
+
+    if (loaded == 0 && skipped > 0) {
+        last_error_ = "No supported effects found in preset";
+        return false;
+    }
+
+    last_error_.clear();
+    return true;
+}
+
 PresetFormat Preset::detect_format(const std::string& path) {
     // Check extension
     size_t dot = path.rfind('.');
@@ -305,8 +554,7 @@ bool Preset::load(const std::string& path, EffectContainer& root, PresetFormat f
         case PresetFormat::JSON:
             return load_json(path, root);
         case PresetFormat::LEGACY:
-            last_error_ = "Legacy AVS format loading not yet implemented";
-            return false;
+            return load_legacy(path, root);
         default:
             return load_json(path, root);
     }

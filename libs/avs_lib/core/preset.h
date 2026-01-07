@@ -6,6 +6,8 @@
 
 #include "effect_container.h"
 #include <string>
+#include <vector>
+#include <cstdint>
 
 namespace avs {
 
@@ -33,6 +35,9 @@ public:
     static std::string to_json(const EffectContainer& root);
     static bool from_json(const std::string& json, EffectContainer& root);
 
+    // Load from binary data (legacy AVS format)
+    static bool from_legacy(const std::vector<uint8_t>& data, EffectContainer& root);
+
     // Detect format from file
     static PresetFormat detect_format(const std::string& path);
 
@@ -42,6 +47,7 @@ public:
 private:
     static bool save_json(const std::string& path, const EffectContainer& root);
     static bool load_json(const std::string& path, EffectContainer& root);
+    static bool load_legacy(const std::string& path, EffectContainer& root);
 
     static std::string last_error_;
 };

@@ -326,6 +326,45 @@ void ofxAVS::moveEffectDown(avs::EffectBase* effect) {
     parent->move_child_down(static_cast<size_t>(parent->find_child_index(effect)));
 }
 
+bool ofxAVS::loadPreset(const std::string& path) {
+    if (!renderer || !renderer->root()) {
+        last_error_ = "Renderer not initialized";
+        return false;
+    }
+
+    // Clear selection since effects will be replaced
+    selected_ = nullptr;
+
+    bool success = renderer->root()->load_preset(path);
+    if (!success) {
+        last_error_ = avs::Preset::last_error();
+    } else {
+        last_error_.clear();
+        ofLogNotice("ofxAVS") << "Loaded preset: " << path;
+    }
+    return success;
+}
+
+bool ofxAVS::savePreset(const std::string& path) {
+    if (!renderer || !renderer->root()) {
+        last_error_ = "Renderer not initialized";
+        return false;
+    }
+
+    bool success = renderer->root()->save_preset(path);
+    if (!success) {
+        last_error_ = avs::Preset::last_error();
+    } else {
+        last_error_.clear();
+        ofLogNotice("ofxAVS") << "Saved preset: " << path;
+    }
+    return success;
+}
+
+const std::string& ofxAVS::getLastError() const {
+    return last_error_;
+}
+
 avs::EffectContainer* ofxAVS::findParentContainer(avs::EffectBase* effect, avs::EffectContainer* searchIn) {
     if (!effect) return nullptr;
 

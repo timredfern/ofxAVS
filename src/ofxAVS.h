@@ -53,6 +53,11 @@ public:
     void moveEffectUp(avs::EffectBase* effect);
     void moveEffectDown(avs::EffectBase* effect);
 
+    // Preset loading/saving (supports .avs binary and .json formats)
+    bool loadPreset(const std::string& path);
+    bool savePreset(const std::string& path);
+    const std::string& getLastError() const;
+
     // UI panel management - now uses Configurable interface for effects and settings
     void setSelected(avs::Configurable* item) { selected_ = item; }
     avs::Configurable* getSelected() const { return selected_; }
@@ -90,6 +95,9 @@ private:
 
     // Track collapsed containers for tree view
     std::unordered_set<avs::EffectContainer*> collapsed_containers_;
+
+    // Last error message for preset operations
+    std::string last_error_;
 
     // UI panel dimensions
     int chain_panel_width = 280;

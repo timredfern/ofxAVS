@@ -24,6 +24,7 @@ add_library(avs_core_test STATIC
     ${AVS_LIB_ROOT}/core/plugin_manager.cpp
     ${AVS_LIB_ROOT}/core/json.cpp
     ${AVS_LIB_ROOT}/core/preset.cpp
+    ${AVS_LIB_ROOT}/core/builtin_effects.cpp
     ${AVS_LIB_ROOT}/core/script/script_engine.cpp
     ${AVS_LIB_ROOT}/core/script/lexer.cpp
     ${AVS_LIB_ROOT}/core/script/parser.cpp
@@ -31,6 +32,13 @@ add_library(avs_core_test STATIC
     ${AVS_LIB_ROOT}/effects/movement_effect.cpp
     ${AVS_LIB_ROOT}/effects/dynamic_movement_effect.cpp
     ${AVS_LIB_ROOT}/effects/brightness_effect.cpp
+    ${AVS_LIB_ROOT}/effects/blur_effect.cpp
+    ${AVS_LIB_ROOT}/effects/clear_effect.cpp
+    ${AVS_LIB_ROOT}/effects/onbeat_clear_effect.cpp
+    ${AVS_LIB_ROOT}/effects/dot_grid_effect.cpp
+    ${AVS_LIB_ROOT}/effects/superscope_effect.cpp
+    ${AVS_LIB_ROOT}/effects/oscilloscope_effect.cpp
+    ${AVS_LIB_ROOT}/effects/effect_list.cpp
 )
 
 target_include_directories(avs_core_test PUBLIC 
@@ -58,6 +66,7 @@ add_executable(avs_tests
     test_multi_phase_scripts.cpp
     test_semicolon_check.cpp
     test_color_format.cpp
+    test_preset_binary.cpp
 )
 
 target_link_libraries(avs_tests PRIVATE 
