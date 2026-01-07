@@ -27,6 +27,10 @@ public:
     // Parameter storage for reading/writing values
     virtual ParameterGroup& parameters() = 0;
     virtual const ParameterGroup& parameters() const = 0;
+
+    // Called when a parameter is changed via UI
+    // Override to respond to parameter changes (e.g., sync dependent parameters)
+    virtual void on_parameter_changed(const std::string& /*param_name*/) {}
 };
 
 } // namespace avs

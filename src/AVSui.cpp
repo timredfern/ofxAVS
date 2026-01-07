@@ -76,6 +76,9 @@ void renderImGui(const avs::EffectUILayout& layout, avs::Configurable* configura
 
     for (const auto& control : layout.getControls()) {
 
+        // Skip "enabled" control - it's handled by the chain view toggle
+        if (control.id == "enabled") continue;
+
         // Absolute positioning from original Windows dialog coordinates
         float scale=2.0f;
 
@@ -264,9 +267,10 @@ void renderImGui(const avs::EffectUILayout& layout, avs::Configurable* configura
                 std::string buffer_key = control.id + "_" + std::to_string(reinterpret_cast<uintptr_t>(configurable));
 
                 // Initialize or sync buffer when parameter changes externally
-                bool needs_sync = (edit_buffers.find(buffer_key) == edit_buffers.end()) ||
-                                  (last_param_values[buffer_key] != value &&
-                                   std::string(edit_buffers[buffer_key].data()) == last_param_values[buffer_key]);
+                bool buffer_exists = edit_buffers.find(buffer_key) != edit_buffers.end();
+                bool param_changed = buffer_exists && (last_param_values[buffer_key] != value);
+                bool buffer_unedited = buffer_exists && (std::string(edit_buffers[buffer_key].data()) == last_param_values[buffer_key]);
+                bool needs_sync = !buffer_exists || (param_changed && buffer_unedited);
 
                 if (needs_sync) {
                     strncpy(edit_buffers[buffer_key].data(), value.c_str(), 4095);
@@ -393,6 +397,27 @@ void renderImGui(const avs::EffectUILayout& layout, avs::Configurable* configura
                         }
                     }
                     ImGui::EndCombo();
+                }
+                break;
+            }
+
+            case avs::ControlType::LISTBOX: {
+                int current_value = params.get_int(control.id);
+                std::string unique_label = "##" + control.id + "_" + std::to_string(reinterpret_cast<uintptr_t>(configurable));
+
+                // Scrollable list box showing multiple items
+                if (ImGui::BeginListBox(unique_label.c_str(), ImVec2(controlwidth, control.h * scale))) {
+                    for (int i = 0; i < static_cast<int>(control.options.size()); i++) {
+                        bool is_selected = (current_value == i);
+                        if (ImGui::Selectable(control.options[i].c_str(), is_selected)) {
+                            params.set_int(control.id, i);
+                            configurable->on_parameter_changed(control.id);
+                        }
+                        if (is_selected) {
+                            ImGui::SetItemDefaultFocus();
+                        }
+                    }
+                    ImGui::EndListBox();
                 }
                 break;
             }

@@ -102,6 +102,12 @@ protected:
                         control.id, ParameterType::INT, control.default_val,
                         0, static_cast<int>(control.options.size()) - 1));
                     break;
+                case ControlType::LISTBOX:
+                    // Listbox is like dropdown - integer index into options
+                    parameters_.add_parameter(std::make_shared<Parameter>(
+                        control.id, ParameterType::INT, control.default_val,
+                        0, static_cast<int>(control.options.size()) - 1));
+                    break;
                 case ControlType::COLOR_ARRAY: {
                     // Create color_0, color_1, ... color_N parameters
                     int max_colors = control.max_items > 0 ? control.max_items : 16;

@@ -40,24 +40,34 @@ public:
     // Binary config loading from legacy AVS presets
     void load_parameters(const std::vector<uint8_t>& data) override;
 
+    // Respond to UI parameter changes (sync custom_expr with preset script)
+    void on_parameter_changed(const std::string& param_name) override;
+
     static const PluginInfo effect_info;
 
     // Public for testing
     std::string get_preset_script(int preset_index) const;
 
 private:
-    void setup_parameters();
     bool needs_table_regeneration(int w, int h, AudioData visdata) const;
     void generate_lookup_table(int w, int h, AudioData visdata);
     void apply_transformation(uint32_t* input, uint32_t* output, int w, int h);
     
     // Script execution for both presets and custom expressions
-    void evaluate_movement_script(const std::string& script, double& x, double& y, double& r, double& d, 
+    void evaluate_movement_script(const std::string& script, double& x, double& y, double& r, double& d,
                                  AudioData visdata, int w, int h);
-    
+
+    // Helper functions for preset behavior
+    bool uses_eval(int preset_index) const;
+    bool uses_rect(int preset_index) const;
+    void apply_radial_effect(int preset_index, double& r, double& d, double max_d, int& xo, int& yo);
+
     // Full-resolution lookup table
+    // When subpixel is enabled, high bits store fractional coordinates:
+    // bits 0-21: base pixel index, bits 22-26: y frac (0-31), bits 27-31: x frac (0-31)
     std::vector<int> lookup_table_;
     bool table_valid_;
+    bool subpixel_enabled_;  // Track if current table has subpixel data
     
     // State tracking for regeneration
     int last_width_, last_height_;

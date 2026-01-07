@@ -9,7 +9,8 @@ TEST_CASE("Movement Effect Script Presets", "[movement]") {
     
     SECTION("Preset script extraction") {
         // Test that preset scripts are correctly retrieved
-        REQUIRE(effect.get_preset_script(0) == ""); // none
+        // Native effects (0, 1, 7) return comment descriptions
+        REQUIRE(effect.get_preset_script(0) == "// none - identity transform (native)");
         REQUIRE(effect.get_preset_script(3) == "r = r + (0.1 - (0.2 * d)); d = d * 0.96"); // big swirl out
         REQUIRE(effect.get_preset_script(12) == "r = r + 0.04; d = d * (0.96 + cos(d * $PI) * 0.05)"); // tunneling
     }

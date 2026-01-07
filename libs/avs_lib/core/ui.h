@@ -20,6 +20,7 @@ enum class ControlType {
     COLOR_BUTTON,
     COLOR_ARRAY,     // Multi-color bar with clickable segments (uses color_0..color_N params)
     DROPDOWN,
+    LISTBOX,         // Multi-row selection list (like DROPDOWN but shows multiple items)
     LABEL,           // Static text label (LTEXT in Windows)
     GROUPBOX         // Visual grouping box with title
 };
