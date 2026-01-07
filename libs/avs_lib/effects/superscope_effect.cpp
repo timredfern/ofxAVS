@@ -341,30 +341,30 @@ const PluginInfo SuperScopeEffect::effect_info {
     },
     .ui_layout = {
         {
-            // Labels for script boxes
+            // Labels for script boxes (match original: no colons, exact positions)
             {
                 .id = "init_label",
-                .text = "Init:",
+                .text = "init",
                 .type = ControlType::LABEL,
-                .x = 0, .y = 9, .w = 20, .h = 8
+                .x = 0, .y = 9, .w = 10, .h = 8
             },
             {
                 .id = "frame_label",
-                .text = "Frame:",
+                .text = "frame",
                 .type = ControlType::LABEL,
-                .x = 0, .y = 41, .w = 24, .h = 8
+                .x = 1, .y = 41, .w = 18, .h = 8
             },
             {
                 .id = "beat_label",
-                .text = "Beat:",
+                .text = "beat",
                 .type = ControlType::LABEL,
-                .x = 0, .y = 87, .w = 20, .h = 8
+                .x = 0, .y = 87, .w = 15, .h = 8
             },
             {
                 .id = "point_label",
-                .text = "Point:",
+                .text = "point",
                 .type = ControlType::LABEL,
-                .x = 0, .y = 131, .w = 20, .h = 8
+                .x = 0, .y = 131, .w = 16, .h = 8
             },
             // Init script - IDC_EDIT4
             {

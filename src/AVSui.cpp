@@ -273,10 +273,7 @@ void renderImGui(const avs::EffectUILayout& layout, avs::Configurable* configura
                     last_param_values[buffer_key] = value;
                 }
 
-                // Label above the edit box
-                ImGui::Text("%s:", control.text.c_str());
-                ImGui::SetCursorPos(ImVec2(control.x , ImGui::GetCursorPosY())); //* 2.0f
-
+                // Labels are now separate LABEL controls (matching Windows LTEXT)
                 std::string unique_label = "##" + control.id + "_" + std::to_string(reinterpret_cast<uintptr_t>(configurable));
 
                 // Multiline input (sizes scaled 2x)
