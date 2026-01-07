@@ -202,9 +202,19 @@ TEST_CASE("Load real AVS preset file", "[preset][binary][file]") {
         REQUIRE(result == true);
     }
 
-    SECTION("Contains at least one effect") {
+    SECTION("Contains expected effects") {
         avs::Preset::load(preset_path, root);
-        INFO("Loaded " << root.child_count() << " effects");
+
+        // Print what we loaded for debugging
+        std::string loaded_effects;
+        for (size_t i = 0; i < root.child_count(); i++) {
+            if (i > 0) loaded_effects += ", ";
+            loaded_effects += root.get_child(i)->get_plugin_info().name;
+        }
+        INFO("Loaded effects: " << loaded_effects);
+        INFO("Effect count: " << root.child_count());
+
+        // The preset should contain SuperScope effects
         REQUIRE(root.child_count() > 0);
     }
 }

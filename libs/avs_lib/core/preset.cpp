@@ -3,6 +3,7 @@
 // Licensed under MIT License
 
 #include "preset.h"
+#include "binary_reader.h"
 #include "json.h"
 #include "plugin_manager.h"
 #include "effect_container.h"
@@ -21,73 +22,6 @@ static const char AVS_HEADER[] = "Nullsoft AVS Preset 0.";
 static const size_t AVS_HEADER_LEN = 25;  // 22 (prefix) + 1 (version) + 1 (0x1a) + 1 (root mode)
 static const uint32_t EFFECT_LIST_INDEX = 0xFFFFFFFE;
 static const uint32_t DLLRENDERBASE = 16384;
-
-// Binary reader helper
-class BinaryReader {
-public:
-    BinaryReader(const std::vector<uint8_t>& data) : data_(data), pos_(0) {}
-
-    bool eof() const { return pos_ >= data_.size(); }
-    size_t pos() const { return pos_; }
-    size_t remaining() const { return data_.size() - pos_; }
-
-    uint8_t read_u8() {
-        if (pos_ >= data_.size()) return 0;
-        return data_[pos_++];
-    }
-
-    uint32_t read_u32() {
-        if (pos_ + 4 > data_.size()) return 0;
-        uint32_t val = data_[pos_] |
-                       (data_[pos_ + 1] << 8) |
-                       (data_[pos_ + 2] << 16) |
-                       (data_[pos_ + 3] << 24);
-        pos_ += 4;
-        return val;
-    }
-
-    int32_t read_i32() {
-        return static_cast<int32_t>(read_u32());
-    }
-
-    std::string read_string_fixed(size_t len) {
-        if (pos_ + len > data_.size()) return "";
-        std::string s(reinterpret_cast<const char*>(&data_[pos_]), len);
-        pos_ += len;
-        // Trim at null terminator
-        size_t null_pos = s.find('\0');
-        if (null_pos != std::string::npos) {
-            s.resize(null_pos);
-        }
-        return s;
-    }
-
-    std::string read_length_prefixed_string() {
-        uint32_t len = read_u32();
-        if (len == 0) return "";
-        if (pos_ + len > data_.size()) return "";
-        std::string s(reinterpret_cast<const char*>(&data_[pos_]), len);
-        pos_ += len;
-        // Trim at null terminator (length includes null)
-        size_t null_pos = s.find('\0');
-        if (null_pos != std::string::npos) {
-            s.resize(null_pos);
-        }
-        return s;
-    }
-
-    void skip(size_t bytes) {
-        pos_ = std::min(pos_ + bytes, data_.size());
-    }
-
-    const uint8_t* ptr() const {
-        return &data_[pos_];
-    }
-
-private:
-    const std::vector<uint8_t>& data_;
-    size_t pos_;
-};
 
 std::string Preset::last_error_;
 
@@ -393,8 +327,11 @@ static std::unique_ptr<EffectBase> load_legacy_effect(BinaryReader& reader) {
         // Built-in effect by index
         effect = PluginManager::instance().create_by_legacy_index(static_cast<int>(effect_index));
 
-        // Skip config data (effect gets defaults)
-        // TODO: Implement per-effect binary config parsing
+        // Pass config data to effect for parsing
+        if (effect && config_length > 0 && reader.remaining() >= config_length) {
+            std::vector<uint8_t> config_data(reader.ptr(), reader.ptr() + config_length);
+            effect->load_parameters(config_data);
+        }
         reader.skip(config_length);
     } else {
         // Plugin effect by string ID - not supported yet

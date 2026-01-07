@@ -5,6 +5,7 @@
 // Licensed under MIT License
 
 #include "movement_effect.h"
+#include "core/binary_reader.h"
 #include "core/parameter.h"
 #include "core/plugin_manager.h"
 #include "core/script/script_engine.h"
@@ -73,8 +74,6 @@ void MovementEffect::generate_lookup_table(int w, int h, AudioData visdata) {
     int preset_index = parameters().get_int("preset", 0);
     bool rectangular = parameters().get_bool("rectangular", false);
     
-    printf("MovementEffect: Generating full-resolution lookup table %dx%d, preset=%d, rect=%s\n", 
-           w, h, preset_index, rectangular ? "true" : "false");
     
     double max_d = sqrt(w*w + h*h) / 2.0; // Maximum distance from center
     
@@ -246,6 +245,85 @@ int MovementEffect::render(AudioData visdata, int isBeat,
     apply_transformation(framebuffer, fbout, w, h);
     
     return 1; // Use fbout
+}
+
+// Binary config loading from legacy AVS presets
+void MovementEffect::load_parameters(const std::vector<uint8_t>& data) {
+    if (data.empty()) return;
+
+    BinaryReader reader(data);
+
+    // Read effect index (preset 0-23, or 32767 for custom)
+    int effect = 0;
+    if (reader.remaining() >= 4) {
+        effect = reader.read_i32();
+    }
+
+    std::string custom_expr;
+    bool rectangular = false;
+
+    // Handle custom expression (effect == 32767)
+    if (effect == 32767) {
+        // Check for "!rect " prefix (sets rectangular mode)
+        if (reader.peek_match("!rect ", 6)) {
+            reader.skip(6);
+            rectangular = true;
+        }
+
+        // Check format: 1 = new format with length-prefixed string
+        if (reader.remaining() > 0 && reader.read_u8() == 1) {
+            // New format: length-prefixed string
+            custom_expr = reader.read_length_prefixed_string();
+        } else {
+            // Old format: fixed 256-byte buffer (minus "!rect " if present)
+            int buf_len = 256 - (rectangular ? 6 : 0);
+            if (reader.remaining() >= static_cast<size_t>(buf_len)) {
+                // Go back one byte since we consumed the format byte
+                BinaryReader old_reader(data);
+                old_reader.skip(4);  // Skip effect int
+                if (rectangular) old_reader.skip(6);  // Skip "!rect "
+                custom_expr = old_reader.read_string_fixed(buf_len);
+                reader.skip(buf_len - 1);  // We already read 1 byte
+            }
+        }
+    }
+
+    // Read remaining config
+    int blend = 0, sourcemapped = 0, subpixel = 1, wrap = 0;
+
+    if (reader.remaining() >= 4) blend = reader.read_i32();
+    if (reader.remaining() >= 4) sourcemapped = reader.read_i32();
+    if (reader.remaining() >= 4) rectangular = reader.read_i32() != 0;
+    if (reader.remaining() >= 4) subpixel = reader.read_i32();
+    if (reader.remaining() >= 4) wrap = reader.read_i32();
+
+    // If effect was stored as 0 (for backwards compatibility), read real value at end
+    if (effect == 0 && reader.remaining() >= 4) {
+        effect = reader.read_i32();
+    }
+
+    // Validate effect range
+    if (effect != 32767 && (effect < 0 || effect > 23)) {
+        effect = 0;
+    }
+
+    // Set parameters
+    if (effect == 32767) {
+        // Custom expression mode (preset index 24 in our UI)
+        parameters().set_int("preset", 24);
+        parameters().set_string("custom_expr", custom_expr);
+    } else {
+        parameters().set_int("preset", effect);
+    }
+
+    parameters().set_bool("rectangular", rectangular);
+    parameters().set_bool("blend", blend != 0);
+    parameters().set_bool("source_mapped", (sourcemapped & 1) != 0);
+    parameters().set_bool("subpixel", subpixel != 0);
+    parameters().set_bool("wrap", wrap != 0);
+
+    // Invalidate lookup table so it regenerates
+    table_valid_ = false;
 }
 
 // Static member definition

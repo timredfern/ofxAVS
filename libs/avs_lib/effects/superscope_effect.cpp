@@ -5,6 +5,7 @@
 // Licensed under MIT License
 
 #include "superscope_effect.h"
+#include "core/binary_reader.h"
 #include "core/plugin_manager.h"
 #include "core/ui.h"
 #include <algorithm>
@@ -489,6 +490,73 @@ const PluginInfo SuperScopeEffect::effect_info {
         }
     }
 };
+
+// Binary config loading from legacy AVS presets
+void SuperScopeEffect::load_parameters(const std::vector<uint8_t>& data) {
+    if (data.empty()) return;
+
+    BinaryReader reader(data);
+
+    std::string point_script, frame_script, beat_script, init_script;
+
+    // Check format: new format starts with 1, old format is raw data
+    if (data[0] == 1) {
+        // New format with length-prefixed strings
+        reader.skip(1);  // Skip the format marker
+        point_script = reader.read_length_prefixed_string();  // effect_exp[0]
+        frame_script = reader.read_length_prefixed_string();  // effect_exp[1]
+        beat_script = reader.read_length_prefixed_string();   // effect_exp[2]
+        init_script = reader.read_length_prefixed_string();   // effect_exp[3]
+    } else {
+        // Old format: 4 x 256-byte fixed buffers
+        if (data.size() >= 1024) {
+            point_script = reader.read_string_fixed(256);
+            frame_script = reader.read_string_fixed(256);
+            beat_script = reader.read_string_fixed(256);
+            init_script = reader.read_string_fixed(256);
+        }
+    }
+
+    // Set scripts
+    parameters().set_string("point_script", point_script);
+    parameters().set_string("frame_script", frame_script);
+    parameters().set_string("beat_script", beat_script);
+    parameters().set_string("init_script", init_script);
+
+    // which_ch: bits 0-1 = channel (0=left, 1=right, 2=center), bit 2 = spectrum (1) vs waveform (0)
+    if (reader.remaining() >= 4) {
+        uint32_t which_ch = reader.read_u32();
+        int channel = which_ch & 3;  // 0=left, 1=right, 2=center
+        int source_mode = (which_ch & 4) ? 1 : 0;  // 0=waveform, 1=spectrum
+        parameters().set_int("channel", channel);
+        parameters().set_int("source_mode", source_mode);
+    }
+
+    // num_colors
+    int num_colors = 1;
+    if (reader.remaining() >= 4) {
+        num_colors = static_cast<int>(reader.read_u32());
+        if (num_colors < 1) num_colors = 1;
+        if (num_colors > 16) num_colors = 16;
+        parameters().set_int("num_colors", num_colors);
+    }
+
+    // colors array
+    for (int i = 0; i < num_colors && reader.remaining() >= 4; i++) {
+        uint32_t color = reader.read_u32();
+        std::string color_param = "color_" + std::to_string(i);
+        parameters().set_color(color_param, BinaryReader::bgr_to_argb(color));
+    }
+
+    // mode (0=dots, 1=lines)
+    if (reader.remaining() >= 4) {
+        int mode = static_cast<int>(reader.read_u32());
+        parameters().set_int("draw_mode", mode ? 1 : 0);
+    }
+
+    // Reset init state so init script runs
+    inited_ = false;
+}
 
 // Register effect at startup
 static bool register_superscope = []() {
