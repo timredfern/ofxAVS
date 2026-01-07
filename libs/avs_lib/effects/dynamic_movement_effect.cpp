@@ -148,6 +148,7 @@ const PluginInfo DynamicMovementEffect::effect_info {
     .description = "Grid-based transformations with scripting",
     .author = "",
     .version = 1,
+    .legacy_index = 43,  // R_DMove
     .factory = []() -> std::unique_ptr<avs::EffectBase> {
         return std::make_unique<DynamicMovementEffect>();
     },

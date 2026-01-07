@@ -255,6 +255,7 @@ const PluginInfo MovementEffect::effect_info {
     .description = "Coordinate transformations with presets",
     .author = "",
     .version = 1,
+    .legacy_index = 15,  // R_Trans
     .factory = []() -> std::unique_ptr<avs::EffectBase> {
         return std::make_unique<MovementEffect>();
     }

@@ -59,6 +59,7 @@ const PluginInfo ClearEffect::effect_info {
     .description = "",
     .author = "",
     .version = 1,
+    .legacy_index = 25,  // R_Clear
     .factory = []() -> std::unique_ptr<EffectBase> {
         return std::make_unique<ClearEffect>();
     },

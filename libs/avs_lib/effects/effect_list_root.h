@@ -8,6 +8,7 @@
 
 #include "../core/effect_container.h"
 #include "../core/plugin_manager.h"
+#include "../core/preset.h"
 #include <cstring>
 
 namespace avs {
@@ -55,6 +56,23 @@ public:
     }
 
     const PluginInfo& get_plugin_info() const override { return effect_info; }
+
+    // Preset convenience methods
+    bool save_preset(const std::string& path) {
+        return Preset::save(path, *this);
+    }
+
+    bool load_preset(const std::string& path) {
+        return Preset::load(path, *this);
+    }
+
+    std::string to_json() const {
+        return Preset::to_json(*this);
+    }
+
+    bool from_json(const std::string& json) {
+        return Preset::from_json(json, *this);
+    }
 
     static const PluginInfo effect_info;
 };

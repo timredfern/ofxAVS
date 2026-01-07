@@ -49,6 +49,7 @@ const PluginInfo OnBeatClearEffect::effect_info {
     .description = "Clears screen on beat detection",
     .author = "",
     .version = 1,
+    .legacy_index = 5,  // R_NFClear
     .factory = []() -> std::unique_ptr<avs::EffectBase> {
         return std::make_unique<OnBeatClearEffect>();
     },

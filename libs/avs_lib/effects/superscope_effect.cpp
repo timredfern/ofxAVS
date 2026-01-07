@@ -336,6 +336,7 @@ const PluginInfo SuperScopeEffect::effect_info {
     .description = "Advanced oscilloscope with scripting",
     .author = "",
     .version = 1,
+    .legacy_index = 36,  // R_SScope
     .factory = []() -> std::unique_ptr<avs::EffectBase> {
         return std::make_unique<SuperScopeEffect>();
     },

@@ -64,6 +64,7 @@ const PluginInfo EffectList::effect_info {
     .description = "Container for grouping effects with optional scripted control",
     .author = "",
     .version = 1,
+    .legacy_index = LEGACY_INDEX_LIST,  // 0xFFFFFFFE in original
     .factory = []() -> std::unique_ptr<EffectBase> {
         return std::make_unique<EffectList>();
     },

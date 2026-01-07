@@ -6,8 +6,14 @@
 #include "AVSui.h"
 #include "core/plugin_manager.h"
 #include "core/builtin_effects.h"
+#include "core/preset.h"
 #include <cmath>
 #include <map>
+
+// Session file location (in app's data folder)
+static std::string getSessionPath() {
+    return ofToDataPath("session.json");
+}
 
 ofxAVS::ofxAVS() : fft(nullptr) {
 #ifdef AVS_ENHANCED_FFT
@@ -26,6 +32,18 @@ ofxAVS::ofxAVS() : fft(nullptr) {
 }
 
 ofxAVS::~ofxAVS() {
+    // Save session before cleanup
+    if (renderer && renderer->root()) {
+        std::string sessionPath = getSessionPath();
+        // Ensure data directory exists
+        ofDirectory::createDirectory(ofToDataPath(""), false, true);
+        if (renderer->root()->save_preset(sessionPath)) {
+            ofLogNotice("ofxAVS") << "Saved session to " << sessionPath;
+        } else {
+            ofLogWarning("ofxAVS") << "Failed to save session: " << avs::Preset::last_error();
+        }
+    }
+
     // Clear renderer to ensure proper cleanup
     renderer.reset();
 
@@ -64,9 +82,22 @@ void ofxAVS::setup() {
     // Initialize available effects list
     initializeAvailableEffects();
 
-    // Add default effects to see something
-    addEffect("Brightness");
-    addEffect("Oscilloscope");
+    // Try to load previous session, otherwise add default effects
+    std::string sessionPath = getSessionPath();
+    if (ofFile::doesFileExist(sessionPath)) {
+        if (renderer->root()->load_preset(sessionPath)) {
+            ofLogNotice("ofxAVS") << "Loaded session from " << sessionPath;
+        } else {
+            ofLogWarning("ofxAVS") << "Failed to load session: " << avs::Preset::last_error();
+            // Fall through to add defaults
+            addEffect("Brightness");
+            addEffect("Oscilloscope");
+        }
+    } else {
+        // No previous session - add default effects
+        addEffect("Brightness");
+        addEffect("Oscilloscope");
+    }
 }
 
 void ofxAVS::update() {

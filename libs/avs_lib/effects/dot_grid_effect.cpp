@@ -90,6 +90,7 @@ const PluginInfo DotGridEffect::effect_info {
     .description = "",
     .author = "",
     .version = 1,
+    .legacy_index = 17,  // R_DotGrid
     .factory = []() -> std::unique_ptr<EffectBase> {
         return std::make_unique<DotGridEffect>();
     },

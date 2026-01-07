@@ -22,6 +22,8 @@ add_library(avs_core_test STATIC
     ${AVS_LIB_ROOT}/core/effect_base.cpp
     ${AVS_LIB_ROOT}/core/parameter.cpp
     ${AVS_LIB_ROOT}/core/plugin_manager.cpp
+    ${AVS_LIB_ROOT}/core/json.cpp
+    ${AVS_LIB_ROOT}/core/preset.cpp
     ${AVS_LIB_ROOT}/core/script/script_engine.cpp
     ${AVS_LIB_ROOT}/core/script/lexer.cpp
     ${AVS_LIB_ROOT}/core/script/parser.cpp

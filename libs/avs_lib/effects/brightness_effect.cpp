@@ -129,6 +129,7 @@ const PluginInfo BrightnessEffect::effect_info {
     .description = "",
     .author = "",
     .version = 1,
+    .legacy_index = 22,  // R_Brightness
     .factory = []() -> std::unique_ptr<avs::EffectBase> {
         return std::make_unique<BrightnessEffect>();
     },

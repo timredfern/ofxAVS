@@ -287,6 +287,7 @@ const PluginInfo BlurEffect::effect_info {
     .description = "",
     .author = "",
     .version = 1,
+    .legacy_index = 6,  // R_Blur
     .factory = []() -> std::unique_ptr<avs::EffectBase> {
         return std::make_unique<BlurEffect>();
     },

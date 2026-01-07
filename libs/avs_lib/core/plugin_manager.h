@@ -19,6 +19,10 @@ namespace avs {
 // Plugin factory function type
 using EffectFactory = std::function<std::unique_ptr<EffectBase>()>;
 
+// Special legacy index values
+constexpr int LEGACY_INDEX_NONE = -1;       // Effect has no legacy equivalent
+constexpr int LEGACY_INDEX_LIST = -2;       // Effect List (0xFFFFFFFE in original)
+
 // Plugin registration info
 struct PluginInfo {
     std::string name;
@@ -26,6 +30,7 @@ struct PluginInfo {
     std::string description;
     std::string author;
     int version;
+    int legacy_index = LEGACY_INDEX_NONE;   // Original AVS effect index for preset loading
     EffectFactory factory;
     EffectUILayout ui_layout;
 };
@@ -46,9 +51,13 @@ public:
     // Query available effects
     std::vector<std::string> available_effects() const;
     PluginInfo get_effect_info(const std::string& id) const;
-    
+
     // Get UI layout for an effect
     const EffectUILayout* get_ui_layout(const std::string& id) const;
+
+    // Legacy index lookup (for preset loading)
+    const PluginInfo* get_by_legacy_index(int legacy_index) const;
+    std::unique_ptr<EffectBase> create_by_legacy_index(int legacy_index);
     
     // Future: dynamic plugin loading
     // bool load_plugin_library(const std::string& path);
@@ -56,6 +65,7 @@ public:
 
 private:
     std::map<std::string, PluginInfo> registered_effects_;
+    std::map<int, std::string> legacy_index_map_;  // legacy_index -> effect name
     
     PluginManager() = default;
     ~PluginManager() = default;
