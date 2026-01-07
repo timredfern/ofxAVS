@@ -264,7 +264,20 @@ void ofApp::windowResized(int w, int h){}
 //--------------------------------------------------------------
 void ofApp::dragEvent(ofDragInfo dragInfo){
     if (dragInfo.files.size() > 0) {
-        loadSoundFile(dragInfo.files[0]);
+        std::string path = dragInfo.files[0];
+        std::string ext = ofFilePath::getFileExt(path);
+
+        // Check if it's a preset file
+        if (ext == "avs" || ext == "json") {
+            if (avs.loadPreset(path)) {
+                ofLogNotice() << "Loaded preset: " << ofFilePath::getFileName(path);
+            } else {
+                ofLogError() << "Failed to load preset: " << avs.getLastError();
+            }
+        } else {
+            // Assume it's an audio file
+            loadSoundFile(path);
+        }
     }
 }
 
