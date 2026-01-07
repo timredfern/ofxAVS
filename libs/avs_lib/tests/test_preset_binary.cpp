@@ -10,6 +10,7 @@
 #include <cstdint>
 
 // Helper to create a minimal valid AVS preset header
+// Format: "Nullsoft AVS Preset 0." (22 bytes) + version (1 byte) + 0x1a (1 byte) + root_mode (1 byte)
 static std::vector<uint8_t> make_header(char version = '2') {
     std::vector<uint8_t> data;
     // "Nullsoft AVS Preset 0."
@@ -17,10 +18,9 @@ static std::vector<uint8_t> make_header(char version = '2') {
     for (const char* p = header; *p; ++p) {
         data.push_back(static_cast<uint8_t>(*p));
     }
-    data.push_back(static_cast<uint8_t>(version));  // Version character
-    data.push_back('.');
-    data.push_back(0x1a);  // EOF marker
-    data.push_back(0);     // Root mode byte
+    data.push_back(static_cast<uint8_t>(version));  // Version character (byte 22)
+    data.push_back(0x1a);  // EOF marker (byte 23)
+    data.push_back(0);     // Root mode byte (byte 24)
     return data;
 }
 
@@ -186,5 +186,25 @@ TEST_CASE("Binary preset format detection", "[preset][binary]") {
     SECTION("Detect from .AVS extension (case insensitive would be nice)") {
         // Currently case-sensitive, this tests current behavior
         REQUIRE(avs::Preset::detect_format("test.AVS") == avs::PresetFormat::JSON);  // Falls back to JSON
+    }
+}
+
+TEST_CASE("Load real AVS preset file", "[preset][binary][file]") {
+    ensure_effects_registered();
+    avs::EffectListRoot root;
+
+    // Load the actual "superscope love" preset
+    std::string preset_path = std::string(TEST_PRESETS_DIR) + "/justin - superscope love.avs";
+
+    SECTION("File loads without error") {
+        bool result = avs::Preset::load(preset_path, root);
+        INFO("Last error: " << avs::Preset::last_error());
+        REQUIRE(result == true);
+    }
+
+    SECTION("Contains at least one effect") {
+        avs::Preset::load(preset_path, root);
+        INFO("Loaded " << root.child_count() << " effects");
+        REQUIRE(root.child_count() > 0);
     }
 }

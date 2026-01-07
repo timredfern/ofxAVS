@@ -74,9 +74,14 @@ target_link_libraries(avs_tests PRIVATE
     avs_core_test
 )
 
-target_include_directories(avs_tests PRIVATE 
+target_include_directories(avs_tests PRIVATE
     ${AVS_LIB_ROOT}
     ${AVS_LIB_ROOT}/core
+)
+
+# Define path to test presets directory
+target_compile_definitions(avs_tests PRIVATE
+    TEST_PRESETS_DIR="${CMAKE_CURRENT_SOURCE_DIR}/presets"
 )
 
 # Compiler-specific options

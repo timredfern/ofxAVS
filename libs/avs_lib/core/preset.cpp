@@ -18,7 +18,7 @@ namespace avs {
 // ============================================================================
 
 static const char AVS_HEADER[] = "Nullsoft AVS Preset 0.";
-static const size_t AVS_HEADER_LEN = 25;
+static const size_t AVS_HEADER_LEN = 25;  // 22 (prefix) + 1 (version) + 1 (0x1a) + 1 (root mode)
 static const uint32_t EFFECT_LIST_INDEX = 0xFFFFFFFE;
 static const uint32_t DLLRENDERBASE = 16384;
 
@@ -469,10 +469,10 @@ bool Preset::from_legacy(const std::vector<uint8_t>& data, EffectContainer& root
         return false;
     }
 
-    // Skip rest of header (position 23-24)
-    reader.skip(2);
+    // Skip EOF marker (0x1a at position 23)
+    reader.skip(1);
 
-    // Root mode byte
+    // Root mode byte (position 24)
     reader.read_u8();
 
     // Clear existing effects
