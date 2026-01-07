@@ -457,8 +457,54 @@ void ofxAVS::drawChainPanel() {
     ImGui::PopStyleColor(3);
 }
 
+// Drag-drop payload for effect reordering
+struct EffectDragPayload {
+    avs::EffectBase* effect;
+    avs::EffectContainer* source_container;
+    size_t source_index;
+};
+
+// Draw a drop zone line between effects
+static void drawDropZone(avs::EffectContainer* container, size_t insert_index, float indent, float width) {
+    std::string zone_id = "##dropzone_" + std::to_string(reinterpret_cast<uintptr_t>(container)) + "_" + std::to_string(insert_index);
+
+    // Small invisible button as drop target
+    ImGui::Indent(indent);
+    ImGui::InvisibleButton(zone_id.c_str(), ImVec2(width, 4));
+
+    bool is_drop_target = ImGui::BeginDragDropTarget();
+    if (is_drop_target) {
+        // Draw visible line when hovering
+        ImVec2 min = ImGui::GetItemRectMin();
+        ImVec2 max = ImGui::GetItemRectMax();
+        ImGui::GetWindowDrawList()->AddLine(
+            ImVec2(min.x, (min.y + max.y) * 0.5f),
+            ImVec2(max.x, (min.y + max.y) * 0.5f),
+            IM_COL32(100, 150, 255, 255), 2.0f);
+
+        if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("EFFECT_DRAG")) {
+            EffectDragPayload* data = (EffectDragPayload*)payload->Data;
+            auto moved = data->source_container->take_child(data->source_index);
+            if (moved) {
+                // Adjust insert index if moving within same container and source was before target
+                size_t adjusted_index = insert_index;
+                if (data->source_container == container && data->source_index < insert_index) {
+                    adjusted_index--;
+                }
+                container->insert_child(adjusted_index, std::move(moved));
+            }
+        }
+        ImGui::EndDragDropTarget();
+    }
+    ImGui::Unindent(indent);
+}
+
 void ofxAVS::drawEffectTree(avs::EffectContainer* container, int depth) {
     float indent = depth * 20.0f;
+    float drop_width = chain_panel_width - indent - 30;
+
+    // Drop zone before first effect
+    drawDropZone(container, 0, indent, drop_width);
 
     for (size_t i = 0; i < container->child_count(); i++) {
         avs::EffectBase* effect = container->get_child(i);
@@ -497,6 +543,14 @@ void ofxAVS::drawEffectTree(avs::EffectContainer* container, int depth) {
                 ImGui::PopStyleColor();
             }
 
+            // Drag source
+            if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_None)) {
+                EffectDragPayload payload = {effect, container, i};
+                ImGui::SetDragDropPayload("EFFECT_DRAG", &payload, sizeof(payload));
+                ImGui::Text("%s", effect->get_plugin_info().name.c_str());
+                ImGui::EndDragDropSource();
+            }
+
             // Context menu
             if (ImGui::BeginPopupContextItem()) {
                 drawEffectContextMenu(effect);
@@ -522,6 +576,14 @@ void ofxAVS::drawEffectTree(avs::EffectContainer* container, int depth) {
                 ImGui::PopStyleColor();
             }
 
+            // Drag source
+            if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_None)) {
+                EffectDragPayload payload = {effect, container, i};
+                ImGui::SetDragDropPayload("EFFECT_DRAG", &payload, sizeof(payload));
+                ImGui::Text("%s", effect->get_plugin_info().name.c_str());
+                ImGui::EndDragDropSource();
+            }
+
             // Context menu
             if (ImGui::BeginPopupContextItem()) {
                 drawEffectContextMenu(effect);
@@ -530,6 +592,9 @@ void ofxAVS::drawEffectTree(avs::EffectContainer* container, int depth) {
         }
 
         ImGui::Unindent(indent);
+
+        // Drop zone after this effect
+        drawDropZone(container, i + 1, indent, drop_width);
     }
 }
 
