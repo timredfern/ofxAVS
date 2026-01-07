@@ -142,12 +142,6 @@ const PluginInfo BrightnessEffect::effect_info {
                 .default_val = 1
             },
             {
-                .id = "red_label",
-                .text = "Red",
-                .type = ControlType::LABEL,
-                .x = 0, .y = 15, .w = 14, .h = 8
-            },
-            {
                 .id = "red_adjust",
                 .text = "",
                 .type = ControlType::SLIDER,
@@ -162,12 +156,6 @@ const PluginInfo BrightnessEffect::effect_info {
                 .x = 125, .y = 12, .w = 12, .h = 14
             },
             {
-                .id = "green_label",
-                .text = "Green",
-                .type = ControlType::LABEL,
-                .x = 0, .y = 30, .w = 20, .h = 8
-            },
-            {
                 .id = "green_adjust",
                 .text = "",
                 .type = ControlType::SLIDER,
@@ -180,12 +168,6 @@ const PluginInfo BrightnessEffect::effect_info {
                 .text = "><",
                 .type = ControlType::BUTTON,
                 .x = 125, .y = 28, .w = 12, .h = 14
-            },
-            {
-                .id = "blue_label",
-                .text = "Blue",
-                .type = ControlType::LABEL,
-                .x = 0, .y = 47, .w = 15, .h = 8
             },
             {
                 .id = "blue_adjust",

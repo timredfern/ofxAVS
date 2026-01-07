@@ -394,10 +394,10 @@ const PluginInfo SuperScopeEffect::effect_info {
                 .type = ControlType::EDITTEXT,
                 .x = 25, .y = 110, .w = 208, .h = 56
             },
-            // Example preset dropdown - IDC_BUTTON1
+            // Example preset dropdown - IDC_BUTTON1 (was "Load example..." button)
             {
                 .id = "example_preset",
-                .text = "Example",
+                .text = "",
                 .type = ControlType::DROPDOWN,
                 .x = 176, .y = 170, .w = 57, .h = 14,
                 .default_val = 0,

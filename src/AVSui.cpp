@@ -372,7 +372,8 @@ void renderImGui(const avs::EffectUILayout& layout, avs::Configurable* configura
 
             case avs::ControlType::DROPDOWN: {
                 int current_value = params.get_int(control.id);
-                std::string unique_label = control.text + "##" + control.id + "_" + std::to_string(reinterpret_cast<uintptr_t>(configurable));
+                // Use hidden label (##) when .text is empty, matching Windows combo box behavior
+                std::string unique_label = (control.text.empty() ? "##" : control.text + "##") + control.id + "_" + std::to_string(reinterpret_cast<uintptr_t>(configurable));
 
                 // Get current item name for preview
                 const char* preview = (current_value >= 0 && current_value < static_cast<int>(control.options.size()))

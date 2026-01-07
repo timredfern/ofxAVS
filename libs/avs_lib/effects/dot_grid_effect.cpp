@@ -95,6 +95,7 @@ const PluginInfo DotGridEffect::effect_info {
     },
     .ui_layout = {
         {
+            // Match original res.rc IDD_CFG_DOTGRID
             {
                 .id = "colors_group",
                 .text = "Colors",
@@ -102,12 +103,24 @@ const PluginInfo DotGridEffect::effect_info {
                 .x = 0, .y = 0, .w = 137, .h = 36
             },
             {
+                .id = "cycle_label",
+                .text = "Cycle through ",
+                .type = ControlType::LABEL,
+                .x = 7, .y = 8, .w = 46, .h = 8
+            },
+            {
                 .id = "num_colors",
-                .text = "Num colors (1-16)",
+                .text = "",
                 .type = ControlType::TEXT_INPUT,
                 .x = 53, .y = 6, .w = 19, .h = 12,
                 .range = {1, 16},
                 .default_val = 1
+            },
+            {
+                .id = "colors_max_label",
+                .text = "colors (max 16)",
+                .type = ControlType::LABEL,
+                .x = 77, .y = 8, .w = 48, .h = 8
             },
             {
                 .id = "colors",
@@ -129,13 +142,7 @@ const PluginInfo DotGridEffect::effect_info {
                 .id = "x_reset",
                 .text = "zero",
                 .type = ControlType::BUTTON,
-                .x = 103, .y = 47, .w = 28, .h = 13
-            },
-            {
-                .id = "x_speed_label",
-                .text = "X Speed",
-                .type = ControlType::LABEL,
-                .x = 133, .y = 49, .w = 40, .h = 10
+                .x = 103, .y = 50, .w = 28, .h = 10
             },
             {
                 .id = "y_move",
@@ -149,13 +156,7 @@ const PluginInfo DotGridEffect::effect_info {
                 .id = "y_reset",
                 .text = "zero",
                 .type = ControlType::BUTTON,
-                .x = 103, .y = 65, .w = 28, .h = 13
-            },
-            {
-                .id = "y_speed_label",
-                .text = "Y Speed",
-                .type = ControlType::LABEL,
-                .x = 133, .y = 67, .w = 40, .h = 10
+                .x = 103, .y = 68, .w = 28, .h = 10
             },
             {
                 .id = "blend_mode",
@@ -169,8 +170,14 @@ const PluginInfo DotGridEffect::effect_info {
                 .default_val = 3
             },
             {
+                .id = "spacing_label",
+                .text = "Dot spacing: ",
+                .type = ControlType::LABEL,
+                .x = 0, .y = 127, .w = 43, .h = 8
+            },
+            {
                 .id = "spacing",
-                .text = "Dot spacing",
+                .text = "",
                 .type = ControlType::TEXT_INPUT,
                 .x = 44, .y = 125, .w = 20, .h = 12,
                 .range = {2, 100},
