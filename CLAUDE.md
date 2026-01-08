@@ -107,6 +107,8 @@ int render(...) {
 
    Generation uses PARAMETER dimensions. Rendering uses SCREEN dimensions. Don't mix them.
 
+   This mistake cascades: once you wrongly pass w,h to generate(), you then "need" to track `last_w_`, `last_h_` and regenerate when screen resizes. None of this is necessary if you separate concerns correctly from the start.
+
 3. **The `needs_regeneration()` function:**
    ```cpp
    // WRONG - if you have this function, you're doing it wrong
