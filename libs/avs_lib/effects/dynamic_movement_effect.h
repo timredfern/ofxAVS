@@ -43,8 +43,7 @@ public:
     static const PluginInfo effect_info;
 
 private:
-    bool needs_grid_regeneration() const;
-    void generate_grid(int w, int h, AudioData visdata, int isBeat);
+    void regenerate_grid();
 
     // Script execution phases
     void execute_init_script(AudioData visdata, int w, int h);
@@ -55,7 +54,6 @@ private:
 
     // Grid-based coordinate lookup with interpolation
     CoordinateGrid grid_;
-    bool grid_valid_;
 
     // Script variable storage (persistent across frames)
     double script_vars_[32]; // User variables

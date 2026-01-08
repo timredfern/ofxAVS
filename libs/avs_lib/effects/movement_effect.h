@@ -49,7 +49,6 @@ public:
     std::string get_preset_script(int preset_index) const;
 
 private:
-    bool needs_table_regeneration(int w, int h) const;
     void generate_lookup_table(int w, int h, AudioData visdata);
     void apply_transformation(uint32_t* input, uint32_t* output, int w, int h);
 

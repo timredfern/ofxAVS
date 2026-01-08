@@ -73,12 +73,6 @@ MovementEffect::MovementEffect()
 }
 
 
-bool MovementEffect::needs_table_regeneration(int w, int h) const {
-    // table_valid_ is set to false by on_parameter_changed when params change
-    // We only need to check dimensions here
-    return !table_valid_ || w != last_width_ || h != last_height_;
-}
-
 void MovementEffect::generate_lookup_table(int w, int h, AudioData visdata) {
     // Resize lookup table for full resolution
     lookup_table_.resize(w * h);
@@ -589,8 +583,7 @@ int MovementEffect::render(AudioData visdata, int isBeat,
                           int w, int h) {
     if (!is_enabled()) return 0;
 
-    // Check if we need to regenerate the lookup table
-    if (needs_table_regeneration(w, h)) {
+    if (!table_valid_ || w != last_width_ || h != last_height_) {
         generate_lookup_table(w, h, visdata);
     }
 

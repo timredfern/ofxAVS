@@ -14,7 +14,7 @@
 namespace avs {
 
 DynamicMovementEffect::DynamicMovementEffect()
-    : grid_valid_(false), script_initialized_(false)
+    : script_initialized_(false)
 {
     // Initialize script variables
     memset(script_vars_, 0, sizeof(script_vars_));
@@ -29,77 +29,55 @@ DynamicMovementEffect::DynamicMovementEffect()
         std::string("")));
     parameters().add_parameter(std::make_shared<Parameter>("pixel_script", ParameterType::STRING,
         std::string("d=d*0.9")));
+
+    regenerate_grid();
 }
 
-bool DynamicMovementEffect::needs_grid_regeneration() const {
-    // grid_valid_ is set to false by on_parameter_changed when params change
-    // Grid is resolution-independent (grid_width × grid_height), interpolated at apply time
-    return !grid_valid_;
-}
-
-void DynamicMovementEffect::generate_grid(int w, int h, AudioData visdata, int isBeat) {
+void DynamicMovementEffect::regenerate_grid() {
     int grid_width = parameters().get_int("grid_width", 16);
     int grid_height = parameters().get_int("grid_height", 16);
     bool rectangular = parameters().get_bool("rectangular", false);
-    // "bilinear" parameter controls subpixel sampling from source image
-    bool subpixel = parameters().get_bool("bilinear", true);
-    bool wrap = parameters().get_bool("wrap", false);
     std::string pixel_script = parameters().get_string("pixel_script");
 
-    // Execute script phases in order
-    execute_init_script(visdata, w, h);
-    execute_frame_script(visdata, w, h);
-    if (isBeat) {
-        execute_beat_script(visdata, w, h);
-    }
-
-    // Generate grid using CoordinateGrid
-    // The grid handles script evaluation internally
+    // Generate grid using normalized coordinates
+    // Use 256x256 as reference for script sw/sh variables (aspect ratio 1:1)
+    // The actual output dimensions are handled by apply()
+    static char dummy_audio[2][2][576] = {{{0}}};
     CoordMode mode = rectangular ? CoordMode::RECTANGULAR : CoordMode::POLAR;
-    grid_.generate(grid_width, grid_height, w, h, pixel_script, mode, visdata);
-
-    grid_valid_ = true;
+    grid_.generate(grid_width, grid_height, 256, 256, pixel_script, mode, dummy_audio);
 }
 
 void DynamicMovementEffect::on_parameter_changed(const std::string& param_name) {
-    // Invalidate grid when any grid-affecting parameter changes
+    // Regenerate grid when grid-affecting parameters change
     if (param_name == "grid_width" || param_name == "grid_height" ||
         param_name == "pixel_script" || param_name == "rectangular") {
-        grid_valid_ = false;
+        regenerate_grid();
     }
     // Re-run init script when it changes
     if (param_name == "init_script") {
         script_initialized_ = false;
-        grid_valid_ = false;
     }
 }
 
 int DynamicMovementEffect::render(AudioData visdata, int isBeat,
                                  uint32_t* framebuffer, uint32_t* fbout,
                                  int w, int h) {
+    (void)visdata; (void)isBeat;  // Grid is pre-generated, these are for future frame/beat scripts
+
     if (!is_enabled()) return 0;
 
-    bool no_movement = parameters().get_bool("no_movement", false);
-    if (no_movement) {
-        // Just copy input to output
+    if (parameters().get_bool("no_movement", false)) {
         memcpy(fbout, framebuffer, w * h * sizeof(uint32_t));
         return 1;
     }
 
-    // Check if we need to regenerate the grid
-    if (needs_grid_regeneration()) {
-        generate_grid(w, h, visdata, isBeat);
-    }
-
-    // Apply grid transformation
-    // subpixel controls bilinear sampling from source image
-    // Grid interpolation is always bilinear (matching original AVS)
+    // Apply pre-generated grid with runtime dimensions
     bool subpixel = parameters().get_bool("bilinear", true);
     bool wrap = parameters().get_bool("wrap", false);
     bool blend = parameters().get_bool("blend", false);
     grid_.apply(framebuffer, fbout, w, h, subpixel, wrap, blend);
 
-    return 1; // Use fbout
+    return 1;
 }
 
 void DynamicMovementEffect::execute_init_script(AudioData visdata, int w, int h) {

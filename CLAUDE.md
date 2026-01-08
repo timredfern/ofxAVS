@@ -6,6 +6,62 @@
 
 The user handles all building and testing. After making code changes, wait for the user to confirm whether the fix works before claiming success.
 
+## EVENTS vs RENDERING - OPTIMIZE THE RENDER LOOP
+
+**THIS IS CRITICAL. DO NOT POLLUTE THE RENDER LOOP WITH PARAMETER CHECKS.**
+
+### The Anti-Pattern (NEVER DO THIS):
+```cpp
+// WRONG - checking parameters every single frame
+int render(...) {
+    if (parameters().get_int("grid_width") != last_grid_width_ ||
+        parameters().get_int("grid_height") != last_grid_height_ ||
+        parameters().get_string("script") != last_script_ ||
+        ...) {  // COMPARING 8 PARAMETERS EVERY FRAME
+        regenerate_grid();
+        last_grid_width_ = parameters().get_int("grid_width");
+        // etc
+    }
+}
+```
+
+This pattern:
+- Wastes CPU on redundant string/int comparisons 60+ times per second
+- Requires tracking `last_*` variables for every parameter
+- Makes render() bloated with housekeeping code
+- Is fundamentally backwards - the UI TELLS you when parameters change!
+
+### The Correct Pattern (ALWAYS DO THIS):
+```cpp
+// RIGHT - event-driven: respond when parameters actually change
+void on_parameter_changed(const std::string& param_name) override {
+    if (param_name == "grid_width" || param_name == "grid_height" ||
+        param_name == "script") {
+        regenerate_grid();  // Only runs when something actually changes
+    }
+}
+
+int render(...) {
+    // render() is ONLY for rendering. No parameter checks.
+    grid_.apply(framebuffer, fbout, w, h, ...);
+    return 1;
+}
+```
+
+### Key Principles:
+1. **Initialize on construction** - Generate grids, lookup tables, etc. in the constructor
+2. **Regenerate on parameter change** - Use `on_parameter_changed()` callback
+3. **Render loop is sacred** - Only do actual rendering work there
+4. **No `last_*` tracking variables** - The event callback eliminates the need
+5. **No `needs_regeneration()` functions** - These are symptoms of the anti-pattern
+
+### Separate Concerns:
+- **Grid/table GENERATION**: Depends on parameters (grid_width, script, etc.) - do once on init, redo on param change
+- **Grid/table APPLICATION**: Depends on runtime dimensions (w, h) - do every frame in render()
+
+Example: DynamicMovement grid uses its own `grid_width × grid_height` resolution for script evaluation.
+The actual framebuffer dimensions (w, h) are only used at runtime to MAP the grid to pixels.
+
 # Project Context
 This is the ORIGINAL AVS (Advanced Visualization Studio) source code being ported to modern C++/OpenFrameworks.
 It contains the original Windows dialog procedures and UI layout data from the Winamp plugin.
