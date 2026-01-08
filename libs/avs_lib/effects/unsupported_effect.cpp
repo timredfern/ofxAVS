@@ -11,7 +11,7 @@ namespace avs {
 // Legacy effect index to name mapping
 // Based on initfx() order in original rlib.cpp
 static const char* legacy_effect_names[] = {
-    "Simple (Oscilloscope)",    // 0  - R_SimpleSpectrum
+    "Oscilloscope",             // 0  - R_SimpleSpectrum
     "Dot Plane",                // 1  - R_DotPlane
     "Oscilloscope Star",        // 2  - R_OscStars
     "Fadeout",                  // 3  - R_FadeOut

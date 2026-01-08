@@ -195,6 +195,7 @@ const PluginInfo OscilloscopeEffect::effect_info {
     .description = "",
     .author = "",
     .version = 1,
+    .legacy_index = 0,  // R_SimpleSpectrum ("Simple" in original AVS)
     .factory = []() -> std::unique_ptr<avs::EffectBase> {
         return std::make_unique<OscilloscopeEffect>();
     },
