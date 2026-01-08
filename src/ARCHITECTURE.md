@@ -74,7 +74,7 @@ for (const auto& control : layout.getControls()) {
 | SLIDER | `ImGui::SliderInt()` with `##` hidden label |
 | BUTTON | `ImGui::Button()` |
 | TEXT_INPUT | `ImGui::InputInt()` |
-| EDITTEXT | `ImGui::InputTextMultiline()` |
+| EDITTEXT | `ImGui::InputText()` (h≤20) or `InputTextMultiline()` (h>20) |
 | COLOR_BUTTON | `ImGui::ColorEdit3()` |
 | COLOR_ARRAY | Custom multi-color widget |
 | DROPDOWN | `ImGui::Combo()` |

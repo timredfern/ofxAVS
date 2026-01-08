@@ -259,7 +259,8 @@ void renderImGui(const avs::EffectUILayout& layout, avs::Configurable* configura
             }
 
             case avs::ControlType::EDITTEXT: {
-                // Multi-line text edit for scripts
+                // Text edit for scripts - single-line for small heights, multi-line otherwise
+                // Original AVS: h<=14 uses ES_AUTOHSCROLL (single-line), h>14 uses ES_MULTILINE
                 std::string value = params.get_string(control.id);
 
                 // Use static maps to store edit buffers and last known values
@@ -282,12 +283,25 @@ void renderImGui(const avs::EffectUILayout& layout, avs::Configurable* configura
                 // Labels are now separate LABEL controls (matching Windows LTEXT)
                 std::string unique_label = "##" + control.id + "_" + std::to_string(reinterpret_cast<uintptr_t>(configurable));
 
-                // Multiline input (sizes scaled 2x)
-                if (ImGui::InputTextMultiline(unique_label.c_str(),
-                    edit_buffers[buffer_key].data(),
-                    edit_buffers[buffer_key].size(),
-                    ImVec2(controlwidth , controlheight ),  //2.0f
-                    ImGuiInputTextFlags_AllowTabInput)) {
+                bool text_changed = false;
+                // Use single-line InputText for small heights (matching original AVS ES_AUTOHSCROLL)
+                // Use multi-line InputTextMultiline for larger heights (matching ES_MULTILINE)
+                if (control.h <= 20) {
+                    // Single-line text input
+                    ImGui::SetNextItemWidth(controlwidth);
+                    text_changed = ImGui::InputText(unique_label.c_str(),
+                        edit_buffers[buffer_key].data(),
+                        edit_buffers[buffer_key].size());
+                } else {
+                    // Multi-line text input
+                    text_changed = ImGui::InputTextMultiline(unique_label.c_str(),
+                        edit_buffers[buffer_key].data(),
+                        edit_buffers[buffer_key].size(),
+                        ImVec2(controlwidth, controlheight),
+                        ImGuiInputTextFlags_AllowTabInput);
+                }
+
+                if (text_changed) {
                     // Update parameter when text changes
                     std::string new_value(edit_buffers[buffer_key].data());
                     params.set_string(control.id, new_value);
