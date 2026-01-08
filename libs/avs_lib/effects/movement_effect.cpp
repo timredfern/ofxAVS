@@ -719,10 +719,17 @@ const PluginInfo MovementEffect::effect_info {
                     "(user defined)"
                 }
             },
+            // Custom expression label - from res.rc: IDC_LABEL1 at 0,134 61x8
+            {
+                .id = "custom_expr_label",
+                .text = "User defined code:",
+                .type = ControlType::LABEL,
+                .x = 0, .y = 134, .w = 61, .h = 8
+            },
             // Custom expression edit box - from res.rc: IDC_EDIT1 at 0,144 233x70
             {
                 .id = "custom_expr",
-                .text = "User defined code:",
+                .text = "",
                 .type = ControlType::EDITTEXT,
                 .x = 0, .y = 144, .w = 233, .h = 70
             },
