@@ -17,57 +17,127 @@ void ofApp::setup(){
 
     ofLogNotice() << "Available audio devices:";
     for (auto& device : devices) {
+        std::string rates;
+        for (auto r : device.sampleRates) rates += std::to_string(r) + " ";
         ofLogNotice() << "  " << device.deviceID << ": " << device.name
-                      << " (in:" << device.inputChannels << " out:" << device.outputChannels << ")";
+                      << " (in:" << device.inputChannels << " out:" << device.outputChannels << ")"
+                      << (rates.empty() ? "" : " rates: " + rates);
     }
+
+    // Find devices - prefer combo device, otherwise separate
+    ofSoundDevice* comboDevice = nullptr;
+    ofSoundDevice* outputOnlyDevice = nullptr;
+    ofSoundDevice* inputOnlyDevice = nullptr;
+
+    // First pass: find output device (prefer stereo, but accept mono)
+    for (auto& device : devices) {
+        if (device.inputChannels > 0 && device.outputChannels >= 1) {
+            if (!comboDevice) comboDevice = &device;
+        } else if (device.outputChannels >= 1) {
+            if (!outputOnlyDevice) outputOnlyDevice = &device;
+        }
+    }
+
+    // Helper to check if device supports standard sample rates
+    auto supportsStandardRates = [](const ofSoundDevice& device) {
+        if (device.sampleRates.empty()) return true;  // Assume yes if not reported
+        for (unsigned int rate : {44100u, 48000u, 96000u}) {
+            if (std::find(device.sampleRates.begin(), device.sampleRates.end(), rate)
+                != device.sampleRates.end()) {
+                return true;
+            }
+        }
+        return false;
+    };
+
+    // Second pass: find input device that works with our output
+    for (auto& device : devices) {
+        if (device.inputChannels > 0 && device.outputChannels == 0) {
+            // Skip if same name as output device (e.g., Sony XM4 mic when using Sony XM4 output)
+            if (outputOnlyDevice && device.name == outputOnlyDevice->name) {
+                continue;
+            }
+            // Skip if doesn't support standard sample rates (e.g., Bluetooth mics)
+            if (!supportsStandardRates(device)) {
+                ofLogNotice() << "  Skipping " << device.name << " (no standard sample rates)";
+                continue;
+            }
+            if (!inputOnlyDevice) inputOnlyDevice = &device;
+        }
+    }
+
+    // Helper to find a common sample rate between two devices
+    auto findCommonRate = [](const ofSoundDevice* dev1, const ofSoundDevice* dev2) -> unsigned int {
+        std::vector<unsigned int> commonRates = {44100, 48000, 96000, 22050, 16000, 8000};
+
+        for (unsigned int rate : commonRates) {
+            bool dev1Ok = !dev1 || dev1->sampleRates.empty() ||
+                std::find(dev1->sampleRates.begin(), dev1->sampleRates.end(), rate) != dev1->sampleRates.end();
+            bool dev2Ok = !dev2 || dev2->sampleRates.empty() ||
+                std::find(dev2->sampleRates.begin(), dev2->sampleRates.end(), rate) != dev2->sampleRates.end();
+            if (dev1Ok && dev2Ok) return rate;
+        }
+        return 44100;  // fallback
+    };
 
     ofSoundStreamSettings settings;
-    settings.sampleRate = 44100;
     settings.bufferSize = 576;
-    settings.setInListener(this);
     settings.setOutListener(this);
 
-    // Try to find a device with both input and output
-    for (auto& device : devices) {
-        if (device.inputChannels > 0 && device.outputChannels >= 2) {
-            settings.numInputChannels = 1;
-            settings.numOutputChannels = 2;
-            settings.setInDevice(device);
-            settings.setOutDevice(device);
-            try {
-                soundStream.setup(settings);
-                audioInitialized = true;
-                ofLogNotice() << "Audio setup (in+out) with: " << device.name;
-                break;
-            } catch (...) {
-                ofLogWarning() << "Failed: " << device.name;
-            }
+    // Strategy 1: Use combo device (same device for in+out)
+    if (comboDevice) {
+        settings.sampleRate = findCommonRate(comboDevice, nullptr);
+        settings.numOutputChannels = std::min(2u, comboDevice->outputChannels);
+        settings.numInputChannels = 1;
+        settings.setOutDevice(*comboDevice);
+        settings.setInDevice(*comboDevice);
+        settings.setInListener(this);
+        try {
+            soundStream.setup(settings);
+            audioInitialized = true;
+            hasAudioInput = true;
+            ofLogNotice() << "Audio setup (combo): " << comboDevice->name
+                          << " @ " << settings.sampleRate << "Hz, " << settings.numOutputChannels << "ch";
+        } catch (...) {
+            ofLogWarning() << "Failed with combo device: " << comboDevice->name;
         }
     }
 
-    // Fallback: separate input and output devices
-    if (!audioInitialized) {
-        ofSoundDevice* inputDevice = nullptr;
-        ofSoundDevice* outputDevice = nullptr;
+    // Strategy 2: Output + separate mic
+    if (!audioInitialized && outputOnlyDevice && inputOnlyDevice) {
+        settings.sampleRate = findCommonRate(outputOnlyDevice, inputOnlyDevice);
+        settings.numOutputChannels = std::min(2u, outputOnlyDevice->outputChannels);
+        settings.numInputChannels = 1;
+        settings.setOutDevice(*outputOnlyDevice);
+        settings.setInDevice(*inputOnlyDevice);
+        settings.setInListener(this);
 
-        for (auto& device : devices) {
-            if (!inputDevice && device.inputChannels > 0) inputDevice = &device;
-            if (!outputDevice && device.outputChannels >= 2) outputDevice = &device;
+        try {
+            soundStream.setup(settings);
+            audioInitialized = true;
+            hasAudioInput = true;
+            ofLogNotice() << "Audio setup @ " << settings.sampleRate << "Hz, " << settings.numOutputChannels << "ch out";
+            ofLogNotice() << "  out: " << outputOnlyDevice->name;
+            ofLogNotice() << "  in: " << inputOnlyDevice->name;
+        } catch (...) {
+            ofLogWarning() << "Failed with output + input";
         }
+    }
 
-        if (outputDevice) {
-            settings.numInputChannels = inputDevice ? 1 : 0;
-            settings.numOutputChannels = 2;
-            if (inputDevice) settings.setInDevice(*inputDevice);
-            settings.setOutDevice(*outputDevice);
-            try {
-                soundStream.setup(settings);
-                audioInitialized = true;
-                ofLogNotice() << "Audio setup with separate devices - out: " << outputDevice->name;
-                if (inputDevice) ofLogNotice() << "  in: " << inputDevice->name;
-            } catch (...) {
-                ofLogWarning() << "Failed to setup audio";
-            }
+    // Strategy 3: Output only
+    if (!audioInitialized && outputOnlyDevice) {
+        settings.sampleRate = findCommonRate(outputOnlyDevice, nullptr);
+        settings.numOutputChannels = std::min(2u, outputOnlyDevice->outputChannels);
+        settings.numInputChannels = 0;
+        settings.setOutDevice(*outputOnlyDevice);
+        try {
+            soundStream.setup(settings);
+            audioInitialized = true;
+            hasAudioInput = false;
+            ofLogNotice() << "Audio setup (output only): " << outputOnlyDevice->name
+                          << " @ " << settings.sampleRate << "Hz, " << settings.numOutputChannels << "ch";
+        } catch (...) {
+            ofLogWarning() << "Failed with output device";
         }
     }
 
@@ -103,14 +173,20 @@ void ofApp::drawAudioControls() {
     ImGui::Begin("Audio", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse);
 
     // Audio source toggle
-    if (ImGui::RadioButton("Microphone", !useFileInput)) {
-        if (useFileInput) {
-            isPlaying = false;
-            useFileInput = false;
+    if (hasAudioInput) {
+        if (ImGui::RadioButton("Microphone", !useFileInput)) {
+            if (useFileInput) {
+                isPlaying = false;
+                useFileInput = false;
+            }
         }
-    }
-    ImGui::SameLine();
-    if (ImGui::RadioButton("Sound File", useFileInput)) {
+        ImGui::SameLine();
+        if (ImGui::RadioButton("Sound File", useFileInput)) {
+            useFileInput = true;
+        }
+    } else {
+        // No mic available - file input only
+        ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Sound File (no mic)");
         useFileInput = true;
     }
 
@@ -186,6 +262,16 @@ void ofApp::loadSoundFile(const std::string& path) {
 
 //--------------------------------------------------------------
 void ofApp::audioIn(ofSoundBuffer& buffer) {
+    static bool firstCall = true;
+    if (firstCall) {
+        ofLogNotice() << "audioIn first call - frames:" << buffer.getNumFrames()
+                      << " channels:" << buffer.getNumChannels();
+        firstCall = false;
+    }
+    // Safety check
+    if (buffer.getNumFrames() == 0) {
+        return;
+    }
     // Use mic input when not playing file
     if (!useFileInput || !isPlaying) {
         avs.audioIn(buffer);
@@ -194,6 +280,18 @@ void ofApp::audioIn(ofSoundBuffer& buffer) {
 
 //--------------------------------------------------------------
 void ofApp::audioOut(ofSoundBuffer& buffer) {
+    static bool firstCall = true;
+    if (firstCall) {
+        ofLogNotice() << "audioOut first call - frames:" << buffer.getNumFrames()
+                      << " channels:" << buffer.getNumChannels()
+                      << " size:" << buffer.size();
+        firstCall = false;
+    }
+    // Safety check
+    if (buffer.getNumFrames() == 0 || buffer.getNumChannels() == 0) {
+        return;
+    }
+
     // Only output audio if playing a file
     if (!useFileInput || !isPlaying || audioFileBuffer.getNumFrames() == 0) {
         buffer.set(0);
@@ -201,8 +299,9 @@ void ofApp::audioOut(ofSoundBuffer& buffer) {
     }
 
     size_t numFrames = buffer.getNumFrames();
-    int outChannels = buffer.getNumChannels();
-    int fileChannels = audioFileBuffer.getNumChannels();
+    size_t outChannels = buffer.getNumChannels();
+    size_t fileChannels = audioFileBuffer.getNumChannels();
+    size_t bufferSize = buffer.size();
 
     for (size_t i = 0; i < numFrames; i++) {
         if (playbackPos >= audioFileBuffer.getNumFrames()) {
@@ -213,12 +312,14 @@ void ofApp::audioOut(ofSoundBuffer& buffer) {
         float left = audioFileBuffer.getSample(playbackPos, 0);
         float right = (fileChannels >= 2) ? audioFileBuffer.getSample(playbackPos, 1) : left;
 
-        // Write to output buffer
-        if (outChannels >= 2) {
-            buffer.getSample(i, 0) = left;
-            buffer.getSample(i, 1) = right;
-        } else if (outChannels == 1) {
-            buffer.getSample(i, 0) = (left + right) * 0.5f;
+        // Write to output buffer using array access with bounds check
+        size_t idx0 = i * outChannels;
+        size_t idx1 = idx0 + 1;
+        if (outChannels >= 2 && idx1 < bufferSize) {
+            buffer[idx0] = left;
+            buffer[idx1] = right;
+        } else if (outChannels == 1 && idx0 < bufferSize) {
+            buffer[idx0] = (left + right) * 0.5f;
         }
 
         playbackPos++;

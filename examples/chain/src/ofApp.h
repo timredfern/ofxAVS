@@ -37,6 +37,7 @@ private:
     ofxAVS avs;
     ofSoundStream soundStream;
     bool audioInitialized = false;
+    bool hasAudioInput = false;
     ofxImGui::Gui gui;
 
     // Sound file playback

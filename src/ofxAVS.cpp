@@ -111,6 +111,11 @@ void ofxAVS::update() {
 }
 
 void ofxAVS::audioIn(ofSoundBuffer& buffer) {
+    // Safety check - fft might not be initialized yet
+    if (!fft || buffer.getNumFrames() == 0 || buffer.getNumChannels() == 0) {
+        return;
+    }
+
     memset(current_audio_data, 0, sizeof(avs::AudioData));
 
     int numChannels = buffer.getNumChannels();
