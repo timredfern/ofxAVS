@@ -64,11 +64,16 @@ protected:
                     parameters_.add_parameter(std::make_shared<Parameter>(
                         control.id, ParameterType::BOOL, control.default_val != 0));
                     break;
-                case ControlType::RADIO_GROUP:
+                case ControlType::RADIO_GROUP: {
+                    // Extract labels from radio options for ENUM parameter
+                    std::vector<std::string> labels;
+                    for (const auto& opt : control.radio_options) {
+                        labels.push_back(opt.label);
+                    }
                     parameters_.add_parameter(std::make_shared<Parameter>(
-                        control.id, ParameterType::INT, control.default_val,
-                        0, static_cast<int>(control.radio_options.size()) - 1));
+                        control.id, ParameterType::ENUM, control.default_val, labels));
                     break;
+                }
                 case ControlType::SLIDER:
                     parameters_.add_parameter(std::make_shared<Parameter>(
                         control.id, ParameterType::INT, control.default_val,
@@ -101,14 +106,11 @@ protected:
                     break;
                 case ControlType::DROPDOWN:
                     parameters_.add_parameter(std::make_shared<Parameter>(
-                        control.id, ParameterType::INT, control.default_val,
-                        0, static_cast<int>(control.options.size()) - 1));
+                        control.id, ParameterType::ENUM, control.default_val, control.options));
                     break;
                 case ControlType::LISTBOX:
-                    // Listbox is like dropdown - integer index into options
                     parameters_.add_parameter(std::make_shared<Parameter>(
-                        control.id, ParameterType::INT, control.default_val,
-                        0, static_cast<int>(control.options.size()) - 1));
+                        control.id, ParameterType::ENUM, control.default_val, control.options));
                     break;
                 case ControlType::COLOR_ARRAY: {
                     // Create color_0, color_1, ... color_N parameters
