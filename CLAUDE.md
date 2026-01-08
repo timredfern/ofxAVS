@@ -33,8 +33,11 @@ Before implementing any effect, read `libs/avs_lib/EFFECTS.md`. It documents ori
 
 ## 3. Workflow
 
-**User Builds and Tests**
-You write code. The user compiles and runs it. After making changes, stop and wait for the user to report results. Never say "fixed", "should work", or "this will work" - you don't know until tested.
+**Never Claim "Fixed" Until User Confirms**
+You write code. The user builds and tests. After making changes, STOP and WAIT for the user to report results. Never say "fixed", "should work", or "this will work" - you don't know until tested.
+
+**User Builds the App**
+Do not run make/cmake for the main OpenFrameworks application. The user handles this.
 
 **Run Automated Tests Before Committing**
 ```bash
