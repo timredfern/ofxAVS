@@ -37,35 +37,26 @@ public:
     
     const PluginInfo& get_plugin_info() const override { return effect_info; }
 
+    // Respond to UI parameter changes
+    void on_parameter_changed(const std::string& param_name) override;
+
     static const PluginInfo effect_info;
 
 private:
-    bool needs_grid_regeneration(int w, int h, AudioData visdata) const;
+    bool needs_grid_regeneration() const;
     void generate_grid(int w, int h, AudioData visdata, int isBeat);
-    
+
     // Script execution phases
     void execute_init_script(AudioData visdata, int w, int h);
-    void execute_frame_script(AudioData visdata, int w, int h);  
+    void execute_frame_script(AudioData visdata, int w, int h);
     void execute_beat_script(AudioData visdata, int w, int h);
-    void execute_pixel_script(double& x, double& y, double& r, double& d, 
+    void execute_pixel_script(double& x, double& y, double& r, double& d,
                              AudioData visdata, int w, int h);
-    
+
     // Grid-based coordinate lookup with interpolation
     CoordinateGrid grid_;
+    bool grid_valid_;
 
-    // State tracking for regeneration
-    int last_width_, last_height_;
-    int last_grid_width_, last_grid_height_;
-    std::string last_init_script_;
-    std::string last_frame_script_;
-    std::string last_beat_script_;
-    std::string last_pixel_script_;
-    bool last_rectangular_;
-    bool last_subpixel_;  // renamed from bilinear - controls source image sampling
-    bool last_wrap_;
-    bool last_blend_;
-    int last_buffer_source_; 
-    
     // Script variable storage (persistent across frames)
     double script_vars_[32]; // User variables
     bool script_initialized_;

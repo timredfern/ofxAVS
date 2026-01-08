@@ -204,11 +204,6 @@ int SuperScopeEffect::render(AudioData visdata, int isBeat,
         current_color = 0xFF000000 | (blue << 16) | (green << 8) | red;
     }
 
-    // Check if init script changed and needs re-running
-    if (init_script != last_init_script_) {
-        last_init_script_ = init_script;
-        inited_ = false;
-    }
 
     // Prepare audio data
     // visdata[0] = waveform, visdata[1] = spectrum
@@ -490,6 +485,13 @@ const PluginInfo SuperScopeEffect::effect_info {
         }
     }
 };
+
+void SuperScopeEffect::on_parameter_changed(const std::string& param_name) {
+    // Re-run init script when it changes
+    if (param_name == "init") {
+        inited_ = false;
+    }
+}
 
 // Binary config loading from legacy AVS presets
 void SuperScopeEffect::load_parameters(const std::vector<uint8_t>& data) {

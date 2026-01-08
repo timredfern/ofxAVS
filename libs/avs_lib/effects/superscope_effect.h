@@ -30,18 +30,15 @@ public:
     // Binary config loading from legacy AVS presets
     void load_parameters(const std::vector<uint8_t>& data) override;
 
+    // Respond to UI parameter changes
+    void on_parameter_changed(const std::string& param_name) override;
+
     static const PluginInfo effect_info;
 
 private:
     ScriptEngine engine_;
     bool inited_ = false;
     int color_pos_ = 0;
-
-    // Cached script strings for change detection
-    std::string last_init_script_;
-    std::string last_point_script_;
-    std::string last_frame_script_;
-    std::string last_beat_script_;
 
     void draw_line(uint32_t* buffer, int w, int h,
                    int x1, int y1, int x2, int y2, uint32_t color);

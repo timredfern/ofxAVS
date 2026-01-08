@@ -14,9 +14,7 @@
 namespace avs {
 
 DynamicMovementEffect::DynamicMovementEffect()
-    : last_width_(0), last_height_(0), last_grid_width_(0), last_grid_height_(0),
-      last_rectangular_(false), last_subpixel_(true),
-      last_wrap_(false), last_blend_(false), last_buffer_source_(0), script_initialized_(false)
+    : grid_valid_(false), script_initialized_(false)
 {
     // Initialize script variables
     memset(script_vars_, 0, sizeof(script_vars_));
@@ -33,31 +31,10 @@ DynamicMovementEffect::DynamicMovementEffect()
         std::string("d=d*0.9")));
 }
 
-bool DynamicMovementEffect::needs_grid_regeneration(int w, int h, AudioData visdata) const {
-    int grid_width = parameters().get_int("grid_width", 16);
-    int grid_height = parameters().get_int("grid_height", 16);
-    std::string init_script = parameters().get_string("init_script");
-    std::string frame_script = parameters().get_string("frame_script");
-    std::string beat_script = parameters().get_string("beat_script");
-    std::string pixel_script = parameters().get_string("pixel_script");
-    bool rectangular = parameters().get_bool("rectangular", false);
-    // "bilinear" parameter controls subpixel sampling from source image
-    bool subpixel = parameters().get_bool("bilinear", true);
-    bool wrap = parameters().get_bool("wrap", false);
-    bool blend = parameters().get_bool("blend", false);
-
-    return w != last_width_ ||
-           h != last_height_ ||
-           grid_width != last_grid_width_ ||
-           grid_height != last_grid_height_ ||
-           init_script != last_init_script_ ||
-           frame_script != last_frame_script_ ||
-           beat_script != last_beat_script_ ||
-           pixel_script != last_pixel_script_ ||
-           rectangular != last_rectangular_ ||
-           subpixel != last_subpixel_ ||
-           wrap != last_wrap_ ||
-           blend != last_blend_;
+bool DynamicMovementEffect::needs_grid_regeneration() const {
+    // grid_valid_ is set to false by on_parameter_changed when params change
+    // Grid is resolution-independent (grid_width × grid_height), interpolated at apply time
+    return !grid_valid_;
 }
 
 void DynamicMovementEffect::generate_grid(int w, int h, AudioData visdata, int isBeat) {
@@ -81,22 +58,21 @@ void DynamicMovementEffect::generate_grid(int w, int h, AudioData visdata, int i
     CoordMode mode = rectangular ? CoordMode::RECTANGULAR : CoordMode::POLAR;
     grid_.generate(grid_width, grid_height, w, h, pixel_script, mode, visdata);
 
-    // Update state
-    last_width_ = w;
-    last_height_ = h;
-    last_grid_width_ = grid_width;
-    last_grid_height_ = grid_height;
-    last_init_script_ = parameters().get_string("init_script");
-    last_frame_script_ = parameters().get_string("frame_script");
-    last_beat_script_ = parameters().get_string("beat_script");
-    last_pixel_script_ = pixel_script;
-    last_rectangular_ = rectangular;
-    last_subpixel_ = subpixel;
-    last_wrap_ = wrap;
-    last_blend_ = parameters().get_bool("blend", false);
+    grid_valid_ = true;
 }
 
-
+void DynamicMovementEffect::on_parameter_changed(const std::string& param_name) {
+    // Invalidate grid when any grid-affecting parameter changes
+    if (param_name == "grid_width" || param_name == "grid_height" ||
+        param_name == "pixel_script" || param_name == "rectangular") {
+        grid_valid_ = false;
+    }
+    // Re-run init script when it changes
+    if (param_name == "init_script") {
+        script_initialized_ = false;
+        grid_valid_ = false;
+    }
+}
 
 int DynamicMovementEffect::render(AudioData visdata, int isBeat,
                                  uint32_t* framebuffer, uint32_t* fbout,
@@ -111,7 +87,7 @@ int DynamicMovementEffect::render(AudioData visdata, int isBeat,
     }
 
     // Check if we need to regenerate the grid
-    if (needs_grid_regeneration(w, h, visdata)) {
+    if (needs_grid_regeneration()) {
         generate_grid(w, h, visdata, isBeat);
     }
 
