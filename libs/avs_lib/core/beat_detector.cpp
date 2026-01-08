@@ -116,21 +116,38 @@ BeatDetector::BeatDetector() {
 
 void BeatDetector::initParameters() {
     for (const auto& control : ui_layout_.getControls()) {
+        // Helper to get int from variant (default 0)
+        auto get_int = [&]() -> int {
+            if (auto* v = std::get_if<int>(&control.default_val)) return *v;
+            if (auto* v = std::get_if<bool>(&control.default_val)) return *v ? 1 : 0;
+            return 0;
+        };
+        // Helper to get bool from variant (default false)
+        auto get_bool = [&]() -> bool {
+            if (auto* v = std::get_if<bool>(&control.default_val)) return *v;
+            if (auto* v = std::get_if<int>(&control.default_val)) return *v != 0;
+            return false;
+        };
+
         switch (control.type) {
             case ControlType::CHECKBOX:
                 parameters_.add_parameter(std::make_shared<Parameter>(
-                    control.id, ParameterType::BOOL, control.default_val != 0));
+                    control.id, ParameterType::BOOL, get_bool()));
                 break;
             case ControlType::SLIDER:
                 parameters_.add_parameter(std::make_shared<Parameter>(
-                    control.id, ParameterType::INT, control.default_val,
+                    control.id, ParameterType::INT, get_int(),
                     control.range.min, control.range.max));
                 break;
-            case ControlType::RADIO_GROUP:
+            case ControlType::RADIO_GROUP: {
+                std::vector<std::string> labels;
+                for (const auto& opt : control.radio_options) {
+                    labels.push_back(opt.label);
+                }
                 parameters_.add_parameter(std::make_shared<Parameter>(
-                    control.id, ParameterType::INT, control.default_val,
-                    0, static_cast<int>(control.radio_options.size()) - 1));
+                    control.id, ParameterType::ENUM, get_int(), labels));
                 break;
+            }
             case ControlType::BUTTON:
                 parameters_.add_parameter(std::make_shared<Parameter>(
                     control.id, ParameterType::BOOL, false));
@@ -183,24 +200,24 @@ void BeatDetector::reset() {
 
 bool BeatDetector::process(const AudioData& visdata) {
     // Handle button presses
-    if (parameters_.get_bool("double_beat", false)) {
+    if (parameters_.get_bool("double_beat")) {
         parameters_.set_bool("double_beat", false);
         doubleBeat();
     }
-    if (parameters_.get_bool("half_beat", false)) {
+    if (parameters_.get_bool("half_beat")) {
         parameters_.set_bool("half_beat", false);
         halfBeat();
     }
-    if (parameters_.get_bool("reset", false)) {
+    if (parameters_.get_bool("reset")) {
         parameters_.set_bool("reset", false);
         reset();
     }
-    if (parameters_.get_bool("stick", false)) {
+    if (parameters_.get_bool("stick")) {
         parameters_.set_bool("stick", false);
         sticked_ = true;
         sticky_confidence_count_ = 0;
     }
-    if (parameters_.get_bool("unstick", false)) {
+    if (parameters_.get_bool("unstick")) {
         parameters_.set_bool("unstick", false);
         sticked_ = false;
         sticky_confidence_count_ = 0;
@@ -223,7 +240,7 @@ bool BeatDetector::process(const AudioData& visdata) {
     }
 
     // Stage 2: BPM tracking and refinement (only in Advanced mode)
-    int mode = parameters_.get_int("mode", 1);
+    int mode = parameters_.get_int("mode");
     int refined_beat;
     if (mode == 1) {
         // Advanced mode: use BPM prediction
@@ -234,7 +251,7 @@ bool BeatDetector::process(const AudioData& visdata) {
     }
 
     // Check only_sticky option
-    bool only_sticky = parameters_.get_bool("only_sticky", false);
+    bool only_sticky = parameters_.get_bool("only_sticky");
     if (only_sticky && !sticked_) {
         return false;
     }
@@ -316,7 +333,7 @@ int BeatDetector::refineBeat(int raw_beat) {
     }
 
     // Update prediction BPM
-    bool sticky_enabled = parameters_.get_bool("sticky_beats", false);
+    bool sticky_enabled = parameters_.get_bool("sticky_beats");
 
     if ((accepted || predicted) && !sticked_) {
         if (confidence_ >= best_confidence_) {

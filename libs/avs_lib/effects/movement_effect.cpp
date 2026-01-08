@@ -78,13 +78,11 @@ void MovementEffect::generate_lookup_table(int w, int h, AudioData visdata) {
     lookup_table_.resize(w * h);
 
     int preset_index = parameters().get_int("preset");
-    bool rectangular = parameters().get_bool("rectangular");
     bool wrap = parameters().get_bool("wrap");
-    bool subpixel = parameters().get_bool("subpixel");
 
     // Subpixel only works for certain effects and if resolution isn't too large
     // (need to fit base index in 22 bits = 4M pixels max)
-    bool can_subpixel = subpixel && (w * h < (1 << 22)) &&
+    bool can_subpixel = parameters().get_bool("subpixel") && (w * h < (1 << 22)) &&
                         preset_index != 0 && preset_index != 1 &&
                         preset_index != 2 && preset_index != 7;
     subpixel_enabled_ = can_subpixel;
@@ -172,7 +170,7 @@ void MovementEffect::generate_lookup_table(int w, int h, AudioData visdata) {
             else {
                 // Use script evaluation
                 std::string script;
-                bool is_rect = rectangular;
+                bool is_rect = parameters().get_bool("rectangular");
 
                 if (preset_index >= 24) {
                     // Custom expression

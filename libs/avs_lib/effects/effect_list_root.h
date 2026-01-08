@@ -27,8 +27,7 @@ public:
                uint32_t* framebuffer, uint32_t* fbout,
                int w, int h) override {
         // Clear framebuffer if requested
-        bool clear_each_frame = parameters().get_bool("clear_each_frame");
-        if (clear_each_frame) {
+        if (parameters().get_bool("clear_each_frame")) {
             std::memset(framebuffer, 0, w * h * sizeof(uint32_t));
         }
 

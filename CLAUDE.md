@@ -94,8 +94,8 @@ int render(...) {
    ```cpp
    // RIGHT - grid uses its own parameters for generation
    void regenerate_grid() {
-       int gw = parameters().get_int("grid_width", 16);
-       int gh = parameters().get_int("grid_height", 16);
+       int gw = parameters().get_int("grid_width");
+       int gh = parameters().get_int("grid_height");
        grid_.generate(gw, gh, script);  // Grid's own resolution
    }
 
@@ -122,7 +122,7 @@ int render(...) {
 The UI layout defines control IDs. Your parameter names must be identical.
 ```cpp
 .id = "grid_width"  // in UI layout
-parameters().get_int("grid_width", 16)  // must match exactly
+parameters().get_int("grid_width")  // must match exactly
 ```
 Mismatch causes "unsupported control type" errors.
 

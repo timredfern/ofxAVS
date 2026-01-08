@@ -25,8 +25,7 @@ int EffectList::render(AudioData visdata, int isBeat,
     }
 
     // Clear framebuffer if requested
-    bool clear_each_frame = parameters().get_bool("clear_each_frame");
-    if (clear_each_frame) {
+    if (parameters().get_bool("clear_each_frame")) {
         std::memset(framebuffer, 0, w * h * sizeof(uint32_t));
     }
 

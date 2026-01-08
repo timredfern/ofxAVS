@@ -168,9 +168,7 @@ int SuperScopeEffect::render(AudioData visdata, int isBeat,
     std::string frame_script = parameters().get_string("frame_script");
     std::string beat_script = parameters().get_string("beat_script");
     std::string point_script = parameters().get_string("point_script");
-    int source_mode = parameters().get_int("source_mode");  // 0=wave, 1=spectrum
     int channel = parameters().get_int("channel");  // 0=left, 1=center, 2=right
-    int draw_mode = parameters().get_int("draw_mode");  // 0=dots, 1=lines
 
     // Color cycling - matches original AVS behavior
     int num_colors = parameters().get_int("num_colors");
@@ -209,7 +207,7 @@ int SuperScopeEffect::render(AudioData visdata, int isBeat,
     // visdata[0] = waveform, visdata[1] = spectrum
     char* audio_data;
     static char center_channel[576];
-    int ws = (source_mode == 1) ? 1 : 0;  // 0=waveform, 1=spectrum
+    int ws = (parameters().get_int("source_mode") == 1) ? 1 : 0;  // 0=waveform, 1=spectrum
     int xorv = (ws == 0) ? 128 : 0;  // Waveform is signed (needs XOR 128), spectrum is unsigned
 
     if (channel == 1) {  // Center
@@ -233,7 +231,7 @@ int SuperScopeEffect::render(AudioData visdata, int isBeat,
     engine_.set_variable("blue", ((current_color >> 16) & 0xFF) / 255.0);
     engine_.set_variable("skip", 0.0);
     engine_.set_variable("linesize", 1.0);
-    engine_.set_variable("drawmode", draw_mode ? 1.0 : 0.0);
+    engine_.set_variable("drawmode", parameters().get_int("draw_mode"));
 
     // Run init script (once)
     if (!inited_ && !init_script.empty()) {

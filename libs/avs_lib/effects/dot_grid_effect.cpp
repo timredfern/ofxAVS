@@ -49,9 +49,7 @@ int DotGridEffect::render(AudioData visdata, int isBeat,
     int spacing = parameters().get_int("spacing");
     if (spacing < 2) spacing = 2;
 
-    int x_move = parameters().get_int("x_move");
-    int y_move = parameters().get_int("y_move");
-    int blend = parameters().get_int("blend_mode");
+    int blend_mode = parameters().get_int("blend_mode");
 
     // Wrap position
     while (yp_ < 0) yp_ += spacing * 256;
@@ -62,13 +60,13 @@ int DotGridEffect::render(AudioData visdata, int isBeat,
 
     uint32_t* p = framebuffer + sy * w;
     for (int y = sy; y < h; y += spacing) {
-        if (blend == 1) {
+        if (blend_mode == 1) {
             for (int x = sx; x < w; x += spacing)
                 p[x] = BLEND(p[x], current_color);
-        } else if (blend == 2) {
+        } else if (blend_mode == 2) {
             for (int x = sx; x < w; x += spacing)
                 p[x] = BLEND_AVG(p[x], current_color);
-        } else if (blend == 3) {
+        } else if (blend_mode == 3) {
             for (int x = sx; x < w; x += spacing)
                 p[x] = BLEND(p[x], current_color);  // BLEND_LINE is additive
         } else {
@@ -78,8 +76,8 @@ int DotGridEffect::render(AudioData visdata, int isBeat,
         p += w * spacing;
     }
 
-    xp_ += x_move;
-    yp_ += y_move;
+    xp_ += parameters().get_int("x_move");
+    yp_ += parameters().get_int("y_move");
 
     return 0;
 }

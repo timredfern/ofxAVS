@@ -63,8 +63,6 @@ int BrightnessEffect::render(AudioData visdata, int isBeat,
     }
 
     auto blend_mode = static_cast<BlendMode>(parameters().get_int("blend_mode"));
-    bool blend = (blend_mode == BlendMode::ADDITIVE);
-    bool blendavg = (blend_mode == BlendMode::BLEND_5050);
     bool exclude = parameters().get_bool("exclude");
     uint32_t exc_color = parameters().get_color("exclude_color");
     int distance = parameters().get_int("distance");
@@ -72,7 +70,7 @@ int BrightnessEffect::render(AudioData visdata, int isBeat,
     int pixel_count = w * h;
     uint32_t* p = framebuffer;
 
-    if (blend) {
+    if (blend_mode == BlendMode::ADDITIVE) {
         // Additive blend mode
         if (!exclude) {
             for (int i = 0; i < pixel_count; i++) {
@@ -87,7 +85,7 @@ int BrightnessEffect::render(AudioData visdata, int isBeat,
                 }
             }
         }
-    } else if (blendavg) {
+    } else if (blend_mode == BlendMode::BLEND_5050) {
         // 50/50 blend mode
         if (!exclude) {
             for (int i = 0; i < pixel_count; i++) {

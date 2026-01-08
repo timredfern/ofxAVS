@@ -20,22 +20,18 @@ int OnBeatClearEffect::render(AudioData visdata, int isBeat,
     if (isBeat & 0x80000000) return 0;
 
     int nf = parameters().get_int("every_n_beats");
-    uint32_t color = parameters().get_color("color") | 0xFF000000;
-    bool blend = parameters().get_bool("blend");
+    if (isBeat && nf && ++beat_counter_ >= nf) {
+        beat_counter_ = 0;
+        uint32_t color = parameters().get_color("color") | 0xFF000000;
+        int pixel_count = w * h;
 
-    if (isBeat) {
-        if (nf && ++beat_counter_ >= nf) {
-            beat_counter_ = 0;
-            int pixel_count = w * h;
-
-            if (!blend) {
-                for (int i = 0; i < pixel_count; i++) {
-                    framebuffer[i] = color;
-                }
-            } else {
-                for (int i = 0; i < pixel_count; i++) {
-                    framebuffer[i] = BLEND_AVG(framebuffer[i], color);
-                }
+        if (parameters().get_bool("blend")) {
+            for (int i = 0; i < pixel_count; i++) {
+                framebuffer[i] = BLEND_AVG(framebuffer[i], color);
+            }
+        } else {
+            for (int i = 0; i < pixel_count; i++) {
+                framebuffer[i] = color;
             }
         }
     }

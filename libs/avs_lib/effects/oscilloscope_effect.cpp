@@ -58,7 +58,6 @@ int OscilloscopeEffect::render(AudioData visdata, int isBeat,
     auto channel = static_cast<AudioChannel>(parameters().get_int("channel"));
     auto draw_style = static_cast<DrawStyle>(parameters().get_int("draw_style"));
     auto position = static_cast<VerticalPosition>(parameters().get_int("position"));
-    auto mode = static_cast<RenderMode>(parameters().get_int("mode"));
 
     // Color cycling - matches original AVS behavior
     int num_colors = parameters().get_int("num_colors");
@@ -92,7 +91,7 @@ int OscilloscopeEffect::render(AudioData visdata, int isBeat,
     }
 
     // Source: 0 = spectrum (visdata[1]), 1 = waveform (visdata[0])
-    int source = (mode == RenderMode::SPECTRUM) ? 1 : 0;
+    int source = (parameters().get_int("mode") == 0) ? 1 : 0;  // mode 0 = SPECTRUM
 
     // Scale factors matching original AVS (uses 288 samples, scales to screen width)
     const int sample_count = 288;

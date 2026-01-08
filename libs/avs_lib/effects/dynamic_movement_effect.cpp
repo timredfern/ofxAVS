@@ -82,27 +82,24 @@ int DynamicMovementEffect::render(AudioData visdata, int isBeat,
         return 1;
     }
 
-    int grid_width = parameters().get_int("grid_width");
-    int grid_height = parameters().get_int("grid_height");
-    bool rectangular = parameters().get_bool("rectangular");
-    bool subpixel = parameters().get_bool("bilinear");
-    bool wrap = parameters().get_bool("wrap");
-    bool blend = parameters().get_bool("blend");
-
-    std::string frame_script = parameters().get_string("frame_script");
-    std::string beat_script = parameters().get_string("beat_script");
-    std::string pixel_script = parameters().get_string("pixel_script");
-
     engine_.set_audio_context(visdata, isBeat);
-    engine_.evaluate(frame_script);
+    engine_.evaluate(parameters().get_string("frame_script"));
     if (isBeat) {
-        engine_.evaluate(beat_script);
+        engine_.evaluate(parameters().get_string("beat_script"));
     }
-    CoordMode mode = rectangular ? CoordMode::RECTANGULAR : CoordMode::POLAR;
-    grid_.generate(engine_, grid_width, grid_height, w, h, pixel_script, mode, visdata);
 
-    // Apply the grid transformation
-    grid_.apply(framebuffer, fbout, w, h, subpixel, wrap, blend);
+    CoordMode mode = parameters().get_bool("rectangular") ? CoordMode::RECTANGULAR : CoordMode::POLAR;
+    grid_.generate(engine_,
+                   parameters().get_int("grid_width"),
+                   parameters().get_int("grid_height"),
+                   w, h,
+                   parameters().get_string("pixel_script"),
+                   mode, visdata);
+
+    grid_.apply(framebuffer, fbout, w, h,
+                parameters().get_bool("bilinear"),
+                parameters().get_bool("wrap"),
+                parameters().get_bool("blend"));
 
     return 1;
 }

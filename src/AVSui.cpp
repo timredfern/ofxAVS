@@ -329,7 +329,7 @@ void renderImGui(const avs::EffectUILayout& layout, avs::Configurable* configura
                 // Draw each color segment
                 for (int i = 0; i < num_colors; i++) {
                     std::string color_param = "color_" + std::to_string(i);
-                    uint32_t color = params.get_color(color_param, 0xFFFFFF);
+                    uint32_t color = params.get_color(color_param);
                     float col[4];
                     color_to_imgui(color, col);
                     ImU32 im_color = IM_COL32(
@@ -377,7 +377,7 @@ void renderImGui(const avs::EffectUILayout& layout, avs::Configurable* configura
                 if (ImGui::BeginPopup(popup_id.c_str())) {
                     int edit_idx = editing_color[unique_id];
                     std::string color_param = "color_" + std::to_string(edit_idx);
-                    uint32_t color = params.get_color(color_param, 0xFFFFFF);
+                    uint32_t color = params.get_color(color_param);
                     float col[4];
                     color_to_imgui(color, col);
                     col[3] = 1.0f;  // Force full alpha for display

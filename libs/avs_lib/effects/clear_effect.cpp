@@ -21,8 +21,7 @@ int ClearEffect::render(AudioData visdata, int isBeat,
     // Port of original render logic with minimal changes
     if (!is_enabled()) return 0;
     
-    bool only_first = parameters().get_bool("only_first");
-    if (only_first && frame_counter_ > 0) return 0;
+    if (parameters().get_bool("only_first") && frame_counter_ > 0) return 0;
     
     if (isBeat & 0x80000000) return 0; // Original beat check
     
