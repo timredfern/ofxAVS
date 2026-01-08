@@ -178,6 +178,9 @@ std::string Preset::to_json(const EffectContainer& root) {
     preset["version"] = "1.0";
     preset["format"] = "avs-json";
 
+    // Save root settings
+    preset["clear_each_frame"] = root.parameters().get_bool("clear_each_frame");
+
     // Serialize all children of root
     JsonArray effects;
     for (size_t i = 0; i < root.child_count(); i++) {
@@ -200,6 +203,11 @@ bool Preset::from_json(const std::string& json, EffectContainer& root) {
         // Clear existing effects
         while (root.child_count() > 0) {
             root.remove_child(0);
+        }
+
+        // Load root settings
+        if (parsed.has("clear_each_frame") && parsed["clear_each_frame"].is_bool()) {
+            root.parameters().set_bool("clear_each_frame", parsed["clear_each_frame"].as_bool());
         }
 
         // Load effects array
@@ -428,7 +436,9 @@ bool Preset::from_legacy(const std::vector<uint8_t>& data, EffectContainer& root
     reader.skip(1);
 
     // Root mode byte (position 24)
-    reader.read_u8();
+    // Bit 0 = clear every frame
+    uint8_t mode = reader.read_u8();
+    root.parameters().set_bool("clear_each_frame", (mode & 1) != 0);
 
     // Clear existing effects
     while (root.child_count() > 0) {

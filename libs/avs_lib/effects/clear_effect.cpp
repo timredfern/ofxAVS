@@ -7,6 +7,7 @@
 #include "clear_effect.h"
 #include "core/plugin_manager.h"
 #include "core/blend.h"
+#include "core/binary_reader.h"
 #include <memory>
 
 namespace avs {
@@ -49,6 +50,54 @@ int ClearEffect::render(AudioData visdata, int isBeat,
     }
     
     return 0; // Use input buffer (modified in place)
+}
+
+// Binary config loading from legacy AVS presets
+void ClearEffect::load_parameters(const std::vector<uint8_t>& data) {
+    if (data.size() < 4) return;
+
+    BinaryReader reader(data);
+
+    // Format from r_clear.cpp:
+    // enabled (4 bytes)
+    // color (4 bytes)
+    // blend (4 bytes)
+    // blendavg (4 bytes)
+    // onlyfirst (4 bytes)
+
+    if (reader.remaining() >= 4) {
+        parameters().set_bool("enabled", reader.read_i32() != 0);
+    }
+    if (reader.remaining() >= 4) {
+        parameters().set_color("color", reader.read_u32());
+    }
+
+    int blend = 0, blendavg = 0;
+    if (reader.remaining() >= 4) {
+        blend = reader.read_i32();
+    }
+    if (reader.remaining() >= 4) {
+        blendavg = reader.read_i32();
+    }
+
+    // Convert blend/blendavg to blend_mode enum
+    // blend=2 → default render blend (mode 3)
+    // blend=1 → additive (mode 1)
+    // blendavg=1 → blend 50/50 (mode 2)
+    // else → replace (mode 0)
+    int blend_mode = 0;
+    if (blend == 2) {
+        blend_mode = 3;  // Default render blend
+    } else if (blend == 1) {
+        blend_mode = 1;  // Additive
+    } else if (blendavg) {
+        blend_mode = 2;  // 50/50
+    }
+    parameters().set_int("blend_mode", blend_mode);
+
+    if (reader.remaining() >= 4) {
+        parameters().set_bool("only_first", reader.read_i32() != 0);
+    }
 }
 
 // Static member definition
