@@ -77,7 +77,7 @@ const PluginInfo ClearEffect::effect_info {
                 .text = "Color",
                 .type = ControlType::COLOR_BUTTON,
                 .x = 0, .y = 15, .w = 137, .h = 13,
-                .default_val = static_cast<int>(0xFF000000)
+                .default_val = 0xFF000000
             },
             {
                 .id = "only_first",

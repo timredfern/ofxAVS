@@ -7,8 +7,14 @@
 #pragma once
 #include <vector>
 #include <string>
+#include <cstdint>
+#include <variant>
 
 namespace avs {
+
+// Default value type for UI controls - can hold any parameter value type
+// Note: const char* included so string literals work without std::string() wrapper
+using DefaultValue = std::variant<int, bool, uint32_t, const char*, std::string>;
 
 enum class ControlType {
     CHECKBOX,
@@ -24,13 +30,6 @@ enum class ControlType {
     LABEL,           // Static text label (LTEXT in Windows)
     GROUPBOX         // Visual grouping box with title
 };
-
-// Common enums for radio group values
-enum class BlendMode { REPLACE = 0, ADDITIVE = 1, BLEND_5050 = 2, DEFAULT = 3 };
-enum class DrawStyle { LINES = 0, SOLID = 1, DOTS = 2 };
-enum class AudioChannel { LEFT = 0, RIGHT = 1, CENTER = 2 };
-enum class VerticalPosition { TOP = 0, BOTTOM = 1, CENTER = 2 };
-enum class RenderMode { SPECTRUM = 0, OSCILLOSCOPE = 1 };
 
 struct RadioOption {
     std::string label;
@@ -49,7 +48,7 @@ struct ControlLayout {
     ControlType type;
     int x, y, w, h;              // Position and size from original dialog
     ControlRange range = {0, 100};  // For sliders: min, max, tick_freq
-    int default_val = 0;            // Default value for all control types
+    DefaultValue default_val = 0;   // Default value (variant holds int, bool, uint32_t, or string)
     std::vector<std::string> options; // For dropdowns
     std::vector<RadioOption> radio_options; // For RADIO_GROUP: each option with position
     int max_items = 16;             // For array controls (e.g., COLOR_ARRAY): max item count

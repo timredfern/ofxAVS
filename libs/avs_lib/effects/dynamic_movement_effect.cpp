@@ -43,16 +43,6 @@ static constexpr int NUM_DMOV_PRESETS = 9;  // Number of presets in dmov_presets
 DynamicMovementEffect::DynamicMovementEffect()
 {
     init_parameters_from_layout(effect_info.ui_layout);
-
-    // Set default script values (STRING parameters need manual init)
-    parameters().add_parameter(std::make_shared<Parameter>("init_script", ParameterType::STRING,
-        std::string("")));
-    parameters().add_parameter(std::make_shared<Parameter>("frame_script", ParameterType::STRING,
-        std::string("")));
-    parameters().add_parameter(std::make_shared<Parameter>("beat_script", ParameterType::STRING,
-        std::string("")));
-    parameters().add_parameter(std::make_shared<Parameter>("pixel_script", ParameterType::STRING,
-        std::string("d=d*0.9")));
 }
 
 void DynamicMovementEffect::on_parameter_changed(const std::string& param_name) {
@@ -178,7 +168,8 @@ const PluginInfo DynamicMovementEffect::effect_info {
                 .id = "pixel_script",
                 .text = "",
                 .type = ControlType::EDITTEXT,
-                .x = 25, .y = 120, .w = 208, .h = 53
+                .x = 25, .y = 120, .w = 208, .h = 53,
+                .default_val = "d=d*0.9"
             },
             // Example preset dropdown - positioned near "source" label area
             {

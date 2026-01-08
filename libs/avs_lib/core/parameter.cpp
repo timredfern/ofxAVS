@@ -12,7 +12,6 @@ namespace avs {
 
 void Parameter::set_value(const Value& value) {
     value_ = clamp_value(value);
-    notify_callbacks();
 }
 
 double Parameter::as_float() const {
@@ -60,12 +59,6 @@ std::string Parameter::as_string() const {
         return std::get<std::string>(value_);
     }
     return "";
-}
-
-void Parameter::notify_callbacks() {
-    for (auto& callback : callbacks_) {
-        callback(value_);
-    }
 }
 
 Parameter::Value Parameter::clamp_value(const Value& value) const {

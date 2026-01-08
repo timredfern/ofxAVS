@@ -479,7 +479,7 @@ const PluginInfo SuperScopeEffect::effect_info {
                 .text = "",
                 .type = ControlType::COLOR_ARRAY,
                 .x = 125, .y = 202, .w = 108, .h = 11,
-                .default_val = static_cast<int>(0xFFFFFFFF),
+                .default_val = 0xFFFFFFFF,
                 .max_items = 16
             }
         }

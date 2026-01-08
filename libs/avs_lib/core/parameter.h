@@ -9,7 +9,6 @@
 #include <string>
 #include <map>
 #include <memory>
-#include <functional>
 #include <vector>
 #include <variant>
 
@@ -27,7 +26,6 @@ enum class ParameterType {
 class Parameter {
 public:
     using Value = std::variant<double, int, bool, uint32_t, std::string>;
-    using ChangeCallback = std::function<void(const Value&)>;
 
     Parameter(const std::string& name, ParameterType type, Value default_value,
               Value min_value = 0.0, Value max_value = 1.0)
@@ -70,11 +68,6 @@ public:
         return "";
     }
     
-    // Change notifications
-    void add_change_callback(ChangeCallback callback) {
-        callbacks_.push_back(callback);
-    }
-
 private:
     std::string name_;
     ParameterType type_;
@@ -82,9 +75,7 @@ private:
     Value min_value_;
     Value max_value_;
     std::vector<std::string> enum_options_; // For ENUM type parameters
-    std::vector<ChangeCallback> callbacks_;
-    
-    void notify_callbacks();
+
     Value clamp_value(const Value& value) const;
 };
 

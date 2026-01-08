@@ -21,6 +21,13 @@ struct PluginInfo;
 // Keep original audio data format for easy porting
 typedef char AudioData[2][2][576];
 
+// Common effect enums (used by multiple effects for render modes)
+enum class BlendMode { REPLACE = 0, ADDITIVE = 1, BLEND_5050 = 2, DEFAULT = 3 };
+enum class DrawStyle { LINES = 0, SOLID = 1, DOTS = 2 };
+enum class AudioChannel { LEFT = 0, RIGHT = 1, CENTER = 2 };
+enum class VerticalPosition { TOP = 0, BOTTOM = 1, CENTER = 2 };
+enum class RenderMode { SPECTRUM = 0, OSCILLOSCOPE = 1 };
+
 // Base class for all AVS effects
 class EffectBase : public Configurable {
 public:
@@ -59,66 +66,86 @@ protected:
     // Call this in effect constructor instead of manually creating parameters
     void init_parameters_from_layout(const EffectUILayout& layout) {
         for (const auto& control : layout.getControls()) {
+            // Helper to get int from variant (default 0)
+            auto get_int = [&]() -> int {
+                if (auto* v = std::get_if<int>(&control.default_val)) return *v;
+                if (auto* v = std::get_if<bool>(&control.default_val)) return *v ? 1 : 0;
+                return 0;
+            };
+            // Helper to get bool from variant (default false)
+            auto get_bool = [&]() -> bool {
+                if (auto* v = std::get_if<bool>(&control.default_val)) return *v;
+                if (auto* v = std::get_if<int>(&control.default_val)) return *v != 0;
+                return false;
+            };
+            // Helper to get uint32_t from variant (default 0xFFFFFF)
+            auto get_color = [&]() -> uint32_t {
+                if (auto* v = std::get_if<uint32_t>(&control.default_val)) return *v;
+                if (auto* v = std::get_if<int>(&control.default_val)) return static_cast<uint32_t>(*v);
+                return 0xFFFFFF;
+            };
+            // Helper to get string from variant (default "")
+            auto get_string = [&]() -> std::string {
+                if (auto* v = std::get_if<std::string>(&control.default_val)) return *v;
+                if (auto* v = std::get_if<const char*>(&control.default_val)) return *v;
+                return "";
+            };
+
             switch (control.type) {
                 case ControlType::CHECKBOX:
                     parameters_.add_parameter(std::make_shared<Parameter>(
-                        control.id, ParameterType::BOOL, control.default_val != 0));
+                        control.id, ParameterType::BOOL, get_bool()));
                     break;
                 case ControlType::RADIO_GROUP: {
-                    // Extract labels from radio options for ENUM parameter
                     std::vector<std::string> labels;
                     for (const auto& opt : control.radio_options) {
                         labels.push_back(opt.label);
                     }
                     parameters_.add_parameter(std::make_shared<Parameter>(
-                        control.id, ParameterType::ENUM, control.default_val, labels));
+                        control.id, ParameterType::ENUM, get_int(), labels));
                     break;
                 }
                 case ControlType::SLIDER:
                     parameters_.add_parameter(std::make_shared<Parameter>(
-                        control.id, ParameterType::INT, control.default_val,
+                        control.id, ParameterType::INT, get_int(),
                         control.range.min, control.range.max));
                     break;
                 case ControlType::COLOR_BUTTON:
                     parameters_.add_parameter(std::make_shared<Parameter>(
-                        control.id, ParameterType::COLOR, static_cast<uint32_t>(control.default_val)));
+                        control.id, ParameterType::COLOR, get_color()));
                     break;
                 case ControlType::BUTTON:
                     parameters_.add_parameter(std::make_shared<Parameter>(
                         control.id, ParameterType::BOOL, false));
                     break;
                 case ControlType::TEXT_INPUT:
-                    // Single-line text or integer input
                     if (control.range.max > 0) {
-                        // Has range, treat as integer
                         parameters_.add_parameter(std::make_shared<Parameter>(
-                            control.id, ParameterType::INT, control.default_val,
+                            control.id, ParameterType::INT, get_int(),
                             control.range.min, control.range.max));
                     } else {
                         parameters_.add_parameter(std::make_shared<Parameter>(
-                            control.id, ParameterType::STRING, std::string("")));
+                            control.id, ParameterType::STRING, get_string()));
                     }
                     break;
                 case ControlType::EDITTEXT:
-                    // Multi-line text edit - create STRING parameter
                     parameters_.add_parameter(std::make_shared<Parameter>(
-                        control.id, ParameterType::STRING, std::string("")));
+                        control.id, ParameterType::STRING, get_string()));
                     break;
                 case ControlType::DROPDOWN:
                     parameters_.add_parameter(std::make_shared<Parameter>(
-                        control.id, ParameterType::ENUM, control.default_val, control.options));
+                        control.id, ParameterType::ENUM, get_int(), control.options));
                     break;
                 case ControlType::LISTBOX:
                     parameters_.add_parameter(std::make_shared<Parameter>(
-                        control.id, ParameterType::ENUM, control.default_val, control.options));
+                        control.id, ParameterType::ENUM, get_int(), control.options));
                     break;
                 case ControlType::COLOR_ARRAY: {
-                    // Create color_0, color_1, ... color_N parameters
                     int max_colors = control.max_items > 0 ? control.max_items : 16;
+                    uint32_t first_color = get_color();
                     for (int i = 0; i < max_colors; i++) {
                         std::string color_param = "color_" + std::to_string(i);
-                        // Use default_val for first color, opaque white for rest
-                        uint32_t default_color = (i == 0) ? static_cast<uint32_t>(control.default_val) : 0xFFFFFFFF;
+                        uint32_t default_color = (i == 0) ? first_color : 0xFFFFFFFF;
                         parameters_.add_parameter(std::make_shared<Parameter>(
                             color_param, ParameterType::COLOR, default_color));
                     }

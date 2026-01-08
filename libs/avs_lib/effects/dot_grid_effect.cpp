@@ -128,7 +128,7 @@ const PluginInfo DotGridEffect::effect_info {
                 .text = "",
                 .type = ControlType::COLOR_ARRAY,
                 .x = 6, .y = 21, .w = 127, .h = 11,
-                .default_val = static_cast<int>(0xFFFFFF),
+                .default_val = 0xFFFFFF,
                 .max_items = 16
             },
             {

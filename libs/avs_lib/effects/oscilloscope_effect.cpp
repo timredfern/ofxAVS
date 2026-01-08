@@ -258,7 +258,7 @@ const PluginInfo OscilloscopeEffect::effect_info {
                 .text = "",
                 .type = ControlType::COLOR_ARRAY,
                 .x = 6, .y = 122, .w = 127, .h = 11,
-                .default_val = static_cast<int>(0xFFFFFFFF),
+                .default_val = 0xFFFFFFFF,
                 .max_items = 16
             }
         }
