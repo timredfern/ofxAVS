@@ -143,6 +143,10 @@ protected:
                 case ControlType::COLOR_ARRAY: {
                     int max_colors = control.max_items > 0 ? control.max_items : 16;
                     uint32_t first_color = get_color();
+                    // Create num_colors parameter (default 1)
+                    parameters_.add_parameter(std::make_shared<Parameter>(
+                        "num_colors", ParameterType::INT, 1, 1, max_colors));
+                    // Create color_0, color_1, ... color_N parameters
                     for (int i = 0; i < max_colors; i++) {
                         std::string color_param = "color_" + std::to_string(i);
                         uint32_t default_color = (i == 0) ? first_color : 0xFFFFFFFF;

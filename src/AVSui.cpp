@@ -314,7 +314,7 @@ void renderImGui(const avs::EffectUILayout& layout, avs::Configurable* configura
             case avs::ControlType::COLOR_ARRAY: {
                 // Multi-color bar with clickable segments
                 // Uses "num_colors" param for count, and "color_0", "color_1", etc. for colors
-                int num_colors = params.get_int("num_colors", 1);
+                int num_colors = params.get_int("num_colors");
                 int max_colors = control.max_items > 0 ? control.max_items : 16;
                 if (num_colors < 1) num_colors = 1;
                 if (num_colors > max_colors) num_colors = max_colors;
