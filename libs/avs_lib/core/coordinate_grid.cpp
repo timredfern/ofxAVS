@@ -109,11 +109,24 @@ void CoordinateGrid::generate(int grid_width, int grid_height,
                               CoordMode mode,
                               AudioData audio)
 {
+    // Create a temporary engine for standalone generation
+    ScriptEngine engine;
+    engine.set_audio_context(audio, false);
+    generate(engine, grid_width, grid_height, output_width, output_height, script, mode, audio);
+}
+
+void CoordinateGrid::generate(ScriptEngine& engine,
+                              int grid_width, int grid_height,
+                              int output_width, int output_height,
+                              const std::string& script,
+                              CoordMode mode,
+                              AudioData audio)
+{
     resize(grid_width, grid_height);
     output_width_ = output_width;
     output_height_ = output_height;
 
-    ScriptEngine engine;
+    // Update audio context (engine may already have variables set)
     engine.set_audio_context(audio, false);
 
     // Calculate max distance for polar mode (diagonal/2, matching original AVS)

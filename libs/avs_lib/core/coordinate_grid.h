@@ -14,6 +14,9 @@
 
 namespace avs {
 
+// Forward declaration
+class ScriptEngine;
+
 /**
  * Coordinate mode for grid generation
  */
@@ -89,6 +92,10 @@ public:
     /**
      * Generate grid by evaluating script at each grid point
      *
+     * Creates a temporary ScriptEngine for evaluation. Use the overload
+     * accepting ScriptEngine& if you need persistent variables from
+     * frame/beat scripts (e.g., DynamicMovementEffect).
+     *
      * @param grid_width Grid width
      * @param grid_height Grid height
      * @param output_width Output image width
@@ -98,6 +105,29 @@ public:
      * @param audio Audio data for script variables
      */
     void generate(int grid_width, int grid_height,
+                  int output_width, int output_height,
+                  const std::string& script,
+                  CoordMode mode,
+                  AudioData audio);
+
+    /**
+     * Generate grid using an external ScriptEngine
+     *
+     * Use this when the pixel script needs access to variables set by
+     * init/frame/beat scripts. The engine's existing variable values
+     * are preserved and used during evaluation.
+     *
+     * @param engine ScriptEngine with pre-set variables from frame/beat scripts
+     * @param grid_width Grid width
+     * @param grid_height Grid height
+     * @param output_width Output image width
+     * @param output_height Output image height
+     * @param script Script to evaluate at each grid point
+     * @param mode RECTANGULAR or POLAR coordinate mode
+     * @param audio Audio data for script variables
+     */
+    void generate(ScriptEngine& engine,
+                  int grid_width, int grid_height,
                   int output_width, int output_height,
                   const std::string& script,
                   CoordMode mode,

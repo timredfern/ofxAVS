@@ -13,11 +13,35 @@
 
 namespace avs {
 
+// Example presets from original r_dmove.cpp
+struct DMovPreset {
+    const char* name;
+    bool rect;      // rectangular coordinates
+    bool wrap;
+    int grid_w;
+    int grid_h;
+    const char* init;
+    const char* pixel;
+    const char* frame;
+    const char* beat;
+};
+
+static const DMovPreset dmov_presets[] = {
+    {"(current)", false, false, 16, 16, "", "d=d*0.9", "", ""},
+    {"Random Rotate", false, true, 2, 2, "", "r = r + dr;", "", "dr = (rand(100) / 100) * $PI;\r\nd = d * .95;"},
+    {"Random Direction", true, true, 2, 2, "speed=.05;dr = (rand(200) / 100) * $PI;", "x = x + dx;\r\ny = y + dy;", "dx = cos(dr) * speed;\r\ndy = sin(dr) * speed;", "dr = (rand(200) / 100) * $PI;"},
+    {"In and Out", false, true, 2, 2, "speed=.2;c=0;", "d = d * dd;", "", "c = c + ($PI/2);\r\ndd = 1 - (sin(c) * speed);"},
+    {"Unspun Kaleida", false, true, 33, 33, "c=200;f=0;dt=0;dl=0;beatdiv=8", "r=cos(r*dr);", "f = f + 1;\r\nt = ((f * $pi * 2)/c)/beatdiv;\r\ndt = dl + t;\r\ndr = 4+(cos(dt)*2);", "c=f;f=0;dl=dt"},
+    {"Roiling Gridley", true, true, 32, 32, "c=200;f=0;dt=0;dl=0;beatdiv=8", "x=x+(sin(y*dx) * .03);\r\ny=y-(cos(x*dy) * .03);", "f = f + 1;\r\nt = ((f * $pi * 2)/c)/beatdiv;\r\ndt = dl + t;\r\ndx = 14+(cos(dt)*8);\r\ndy = 10+(sin(dt*2)*4);", "c=f;f=0;dl=dt"},
+    {"6-Way Outswirl", false, false, 32, 32, "c=200;f=0;dt=0;dl=0;beatdiv=8", "d=d*(1+(cos(r*6) * .05));\r\nr=r-(sin(d*dr) * .05);\r\nd = d * .98;", "f = f + 1;\r\nt = ((f * $pi * 2)/c)/beatdiv;\r\ndt = dl + t;\r\ndr = 18+(cos(dt)*12);", "c=f;f=0;dl=dt"},
+    {"Wavy", true, true, 6, 6, "c=200;f=0;dx=0;dl=0;beatdiv=16;speed=.05", "y = y + ((sin((x+dx) * $PI))*speed);\r\nx = x + .025", "f = f + 1;\r\nt = ( (f * 2 * 3.1415) / c ) / beatdiv;\r\ndx = dl + t;", "c = f;\r\nf = 0;\r\ndl = dx;"},
+    {"Smooth Rotoblitter", false, true, 2, 2, "c=200;f=0;dt=0;dl=0;beatdiv=4;speed=.15", "r = r + dr;\r\nd = d * dd;", "f = f + 1;\r\nt = ((f * $pi * 2)/c)/beatdiv;\r\ndt = dl + t;\r\ndr = cos(dt)*speed*2;\r\ndd = 1 - (sin(dt)*speed);", "c=f;f=0;dl=dt"},
+};
+
+static constexpr int NUM_DMOV_PRESETS = 9;  // Number of presets in dmov_presets array
+
 DynamicMovementEffect::DynamicMovementEffect()
-    : script_initialized_(false)
 {
-    // Initialize script variables
-    memset(script_vars_, 0, sizeof(script_vars_));
     init_parameters_from_layout(effect_info.ui_layout);
 
     // Set default script values (STRING parameters need manual init)
@@ -29,41 +53,37 @@ DynamicMovementEffect::DynamicMovementEffect()
         std::string("")));
     parameters().add_parameter(std::make_shared<Parameter>("pixel_script", ParameterType::STRING,
         std::string("d=d*0.9")));
-
-    regenerate_grid();
-}
-
-void DynamicMovementEffect::regenerate_grid() {
-    int grid_width = parameters().get_int("grid_width", 16);
-    int grid_height = parameters().get_int("grid_height", 16);
-    bool rectangular = parameters().get_bool("rectangular", false);
-    std::string pixel_script = parameters().get_string("pixel_script");
-
-    // Generate grid using normalized coordinates
-    // Use 256x256 as reference for script sw/sh variables (aspect ratio 1:1)
-    // The actual output dimensions are handled by apply()
-    static char dummy_audio[2][2][576] = {{{0}}};
-    CoordMode mode = rectangular ? CoordMode::RECTANGULAR : CoordMode::POLAR;
-    grid_.generate(grid_width, grid_height, 256, 256, pixel_script, mode, dummy_audio);
 }
 
 void DynamicMovementEffect::on_parameter_changed(const std::string& param_name) {
-    // Regenerate grid when grid-affecting parameters change
-    if (param_name == "grid_width" || param_name == "grid_height" ||
-        param_name == "pixel_script" || param_name == "rectangular") {
-        regenerate_grid();
-    }
-    // Re-run init script when it changes
+    // Run init script when it changes
     if (param_name == "init_script") {
-        script_initialized_ = false;
+        engine_.evaluate(parameters().get_string("init_script"));
+    }
+
+    // Load preset when selected
+    if (param_name == "example") {
+        int preset_idx = parameters().get_int("example", 0);
+        if (preset_idx > 0 && preset_idx < NUM_DMOV_PRESETS) {
+            const auto& preset = dmov_presets[preset_idx];
+            parameters().set_string("init_script", preset.init);
+            parameters().set_string("frame_script", preset.frame);
+            parameters().set_string("beat_script", preset.beat);
+            parameters().set_string("pixel_script", preset.pixel);
+            parameters().set_int("grid_width", preset.grid_w);
+            parameters().set_int("grid_height", preset.grid_h);
+            parameters().set_bool("rectangular", preset.rect);
+            parameters().set_bool("wrap", preset.wrap);
+            // Init script runs via on_parameter_changed("init_script") callback
+        }
+        // Reset to (current) after loading
+        parameters().set_int("example", 0);
     }
 }
 
 int DynamicMovementEffect::render(AudioData visdata, int isBeat,
                                  uint32_t* framebuffer, uint32_t* fbout,
                                  int w, int h) {
-    (void)visdata; (void)isBeat;  // Grid is pre-generated, these are for future frame/beat scripts
-
     if (!is_enabled()) return 0;
 
     if (parameters().get_bool("no_movement", false)) {
@@ -71,28 +91,30 @@ int DynamicMovementEffect::render(AudioData visdata, int isBeat,
         return 1;
     }
 
-    // Apply pre-generated grid with runtime dimensions
+    // Get parameters
+    int grid_width = parameters().get_int("grid_width", 16);
+    int grid_height = parameters().get_int("grid_height", 16);
+    bool rectangular = parameters().get_bool("rectangular", false);
     bool subpixel = parameters().get_bool("bilinear", true);
     bool wrap = parameters().get_bool("wrap", false);
     bool blend = parameters().get_bool("blend", false);
+
+    std::string frame_script = parameters().get_string("frame_script");
+    std::string beat_script = parameters().get_string("beat_script");
+    std::string pixel_script = parameters().get_string("pixel_script");
+
+    engine_.set_audio_context(visdata, isBeat);
+    engine_.evaluate(frame_script);
+    if (isBeat) {
+        engine_.evaluate(beat_script);
+    }
+    CoordMode mode = rectangular ? CoordMode::RECTANGULAR : CoordMode::POLAR;
+    grid_.generate(engine_, grid_width, grid_height, w, h, pixel_script, mode, visdata);
+
+    // Apply the grid transformation
     grid_.apply(framebuffer, fbout, w, h, subpixel, wrap, blend);
 
     return 1;
-}
-
-void DynamicMovementEffect::execute_init_script(AudioData visdata, int w, int h) {
-    // TODO: Implement actual EEL script execution
-    // For now, this is a stub to resolve linker error
-}
-
-void DynamicMovementEffect::execute_frame_script(AudioData visdata, int w, int h) {
-    // TODO: Implement actual EEL script execution
-    // For now, this is a stub to resolve linker error
-}
-
-void DynamicMovementEffect::execute_beat_script(AudioData visdata, int w, int h) {
-    // TODO: Implement actual EEL script execution
-    // For now, this is a stub to resolve linker error
 }
 
 // Static member definition
@@ -158,25 +180,44 @@ const PluginInfo DynamicMovementEffect::effect_info {
                 .type = ControlType::EDITTEXT,
                 .x = 25, .y = 120, .w = 208, .h = 53
             },
+            // Example preset dropdown - positioned near "source" label area
+            {
+                .id = "example_label",
+                .text = "Example:",
+                .type = ControlType::LABEL,
+                .x = 0, .y = 177, .w = 30, .h = 8
+            },
+            {
+                .id = "example",
+                .text = "",
+                .type = ControlType::DROPDOWN,
+                .x = 35, .y = 175, .w = 70, .h = 56,
+                .default_val = 0,
+                .options = {
+                    "(current)", "Random Rotate", "Random Direction", "In and Out",
+                    "Unspun Kaleida", "Roiling Gridley", "6-Way Outswirl", "Wavy",
+                    "Smooth Rotoblitter"
+                }
+            },
             // Grid size labels
             {
                 .id = "gridsize_label",
                 .text = "Grid size:",
                 .type = ControlType::LABEL,
-                .x = 78, .y = 192, .w = 30, .h = 8
+                .x = 113, .y = 192, .w = 30, .h = 8
             },
             {
                 .id = "gridx_label",
                 .text = "x",
                 .type = ControlType::LABEL,
-                .x = 128, .y = 191, .w = 8, .h = 8
+                .x = 163, .y = 191, .w = 8, .h = 8
             },
             // Grid size inputs - IDC_EDIT5, IDC_EDIT6
             {
                 .id = "grid_width",
                 .text = "",
                 .type = ControlType::TEXT_INPUT,
-                .x = 108, .y = 190, .w = 18, .h = 12,
+                .x = 143, .y = 190, .w = 18, .h = 12,
                 .range = {2, 256},
                 .default_val = 16
             },
@@ -184,11 +225,11 @@ const PluginInfo DynamicMovementEffect::effect_info {
                 .id = "grid_height",
                 .text = "",
                 .type = ControlType::TEXT_INPUT,
-                .x = 136, .y = 190, .w = 18, .h = 12,
+                .x = 171, .y = 190, .w = 18, .h = 12,
                 .range = {2, 256},
                 .default_val = 16
             },
-            // Checkboxes
+            // Checkboxes - bottom row
             {
                 .id = "blend",
                 .text = "Blend",
@@ -207,7 +248,7 @@ const PluginInfo DynamicMovementEffect::effect_info {
                 .id = "no_movement",
                 .text = "No movement",
                 .type = ControlType::CHECKBOX,
-                .x = 113, .y = 176, .w = 100, .h = 10,
+                .x = 70, .y = 190, .w = 55, .h = 10,
                 .default_val = 0
             },
             {

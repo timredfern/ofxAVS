@@ -43,6 +43,11 @@ ScriptEngine::ScriptEngine() : pImpl(std::make_unique<Impl>()) {
 ScriptEngine::~ScriptEngine() = default;
 
 double ScriptEngine::evaluate(const std::string& expression) {
+    // Empty expression is a no-op
+    if (expression.empty()) {
+        return 0.0;
+    }
+
     try {
         pImpl->last_error.clear();
         

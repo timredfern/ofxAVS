@@ -191,34 +191,36 @@ Common radio group values use typed enums for clarity:
 
 ## Script Execution System
 
-### Script Phases
+### Script Phases and Execution Order
 
-**Original Plan:**
-```cpp
-enum class ScriptPhase {
-    INIT,    // Run once on effect creation/parameter change
-    FRAME,   // Run once per frame
-    BEAT,    // Run on beat detection
-    PIXEL,   // Run per coordinate (screen pixel or grid point)
-    POINT    // Run per data sample (audio/particles)
-};
-```
+Effects with scripting support use a persistent `ScriptEngine` that preserves variables across frames. Scripts execute in a specific order:
 
-**Current Implementation:**
-DynamicMovementEffect implements multi-phase execution internally:
-- `execute_init_script()` - Run once when effect created/parameters change
-- `execute_frame_script()` - Run once per frame
-- `execute_beat_script()` - Run on beat detection
-- `execute_pixel_script()` - Run per grid point
+1. **INIT** - Runs once via `on_parameter_changed("init_script")` when the init script is modified. Sets up initial variable values.
 
-The `ScriptPhase` enum was not extracted as a shared abstraction. Each effect manages its own script phases as needed.
+2. **FRAME** - Runs every frame in `render()`. Used for time-based animation (e.g., `counter = counter + 1`).
+
+3. **BEAT** - Runs on beats, **AFTER** frame script. This order is critical: beat can override frame's changes.
+   ```
+   // Example: beat snaps value that frame is smoothly animating
+   frame: alpha = alpha * 0.99    // smooth decay
+   beat:  alpha = 1.0             // snap to full on beat
+   ```
+   If beat ran before frame, frame would immediately decay the beat's effect.
+
+4. **PIXEL/POINT** - Runs per coordinate (DynamicMovement) or per audio sample (SuperScope). Uses variables set by frame/beat.
+
+### Event-Driven Init Script
+
+The init script runs in `on_parameter_changed()`, NOT in `render()`. This avoids:
+- Checking a flag every frame (`if (!initialized_)`)
+- Per-frame string comparisons
+- The anti-pattern of polling state that should be event-driven
 
 ### Phase Usage by Effect Type
 - **MovementEffect**: Single expression evaluation per pixel (no multi-phase)
 - **DynamicMovementEffect**: INIT + FRAME + BEAT + PIXEL (full multi-phase)
+- **SuperScopeEffect**: INIT + FRAME + BEAT + POINT (per audio sample)
 - **OscilloscopeEffect**: No scripting (hardcoded rendering)
-
-**Note:** SuperScopeEffect implements POINT-phase scripting for per-sample audio processing. OscilloscopeEffect is a simpler non-scriptable version.
 
 ## Effect Implementation Patterns
 

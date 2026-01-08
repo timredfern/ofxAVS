@@ -8,11 +8,12 @@
 
 #include "../core/effect_base.h"
 #include "../core/coordinate_grid.h"
+#include "../core/script/script_engine.h"
 #include <string>
 
 namespace avs {
 
-// Forward declarations  
+// Forward declarations
 typedef char AudioData[2][2][576];
 
 /**
@@ -43,21 +44,11 @@ public:
     static const PluginInfo effect_info;
 
 private:
-    void regenerate_grid();
-
-    // Script execution phases
-    void execute_init_script(AudioData visdata, int w, int h);
-    void execute_frame_script(AudioData visdata, int w, int h);
-    void execute_beat_script(AudioData visdata, int w, int h);
-    void execute_pixel_script(double& x, double& y, double& r, double& d,
-                             AudioData visdata, int w, int h);
-
     // Grid-based coordinate lookup with interpolation
     CoordinateGrid grid_;
 
-    // Script variable storage (persistent across frames)
-    double script_vars_[32]; // User variables
-    bool script_initialized_;
+    // Script engine with persistent variables across frames
+    ScriptEngine engine_;
 };
 
 } // namespace avs
