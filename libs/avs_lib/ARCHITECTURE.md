@@ -348,57 +348,7 @@ The original AVS used hand-written x86 MMX assembly for performance-critical eff
 
 This achieves comparable performance without platform-specific assembly, confirmed by inspecting compiler output which shows ARM NEON instructions (`ld4.4s`, `ushr.4s`, `add.4s`) being generated automatically.
 
-See **[OPTIMISATION.md](OPTIMISATION.md)** for detailed analysis including bit-shift division masks, sample assembly output, and NEON intrinsics reference.
-
-### SMP / Parallel Rendering
-
-#### Original AVS Approach
-
-The original AVS had a three-phase SMP interface in its base effect class:
-
-```cpp
-virtual int smp_getflags() { return 0; }  // Return 1 to enable SMP
-virtual int smp_begin(int max_threads, ...);  // Setup, return desired thread count
-virtual void smp_render(int this_thread, int max_threads, ...);  // Parallel work
-virtual int smp_finish(...);  // Cleanup, return final result
-```
-
-Thread management used a persistent thread pool with Windows Events for signaling:
-- Threads created once, reused across frames (no per-frame spawn overhead)
-- Event-based start/done/quit synchronization
-- Global config for enable/disable and max threads
-
-Work division was simple horizontal strips:
-```cpp
-int start_l = (this_thread * h) / max_threads;
-int end_l = ((this_thread + 1) * h) / max_threads;
-```
-
-Effects opted in by returning 1 from `smp_getflags()`. Effects like `r_trans.cpp` (Movement) implemented all three phases.
-
-#### Our Approach
-
-The three-phase design solved a problem we've already solved differently. Original AVS did per-frame setup (lookup table generation) in `smp_begin()`. We moved all setup to `on_parameter_changed()`, so there's nothing to do in begin/finish phases.
-
-A simpler approach captures most of the benefit:
-
-```cpp
-class ParallelRenderer {
-public:
-    void for_each_strip(int h, std::function<void(int y0, int y1)> func);
-};
-```
-
-Single-threaded implementation just calls `func(0, h)`. Parallel version splits into strips and dispatches to worker threads. Effects use identical code either way.
-
-Options for parallel execution:
-- **C++17 parallel algorithms** (`std::for_each(std::execution::par, ...)`) - cleanest, uses runtime thread pool (TBB or similar)
-- **Simple thread pool class** - more control, no external dependencies
-- **OpenMP** - requires compiler flags and potentially libomp on macOS
-
-The actual parallelism (horizontal strips) is identical to original AVS. The complexity of the three-phase interface is unnecessary given our event-driven parameter handling.
-
-**Status:** Not yet implemented. Movement and DynamicMovement apply() functions are good candidates.
+See **[OPTIMISATION.md](OPTIMISATION.md)** for detailed analysis including bit-shift division masks, sample assembly output, NEON intrinsics reference, and SMP/parallel rendering strategy.
 
 ## Testing Strategy
 
