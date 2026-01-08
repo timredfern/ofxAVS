@@ -72,6 +72,35 @@ int render(...) {
 }
 ```
 
+**Anti-Pattern Examples (DO NOT DO THESE):**
+
+1. **Comparing strings every frame:**
+   ```cpp
+   // WRONG - comparing script text 60 times per second
+   if (parameters().get_string("init_script") != last_init_script_) {
+       recompile();
+       last_init_script_ = parameters().get_string("init_script");
+   }
+   ```
+
+2. **Regenerating on screen resize when resolution is independent:**
+   ```cpp
+   // WRONG - grid is 16x16, doesn't depend on screen size
+   if (w != last_w_ || h != last_h_) {
+       regenerate_grid(w, h);  // Why pass w,h? Grid has its own resolution!
+   }
+   ```
+   The grid has parameters `grid_width` and `grid_height`. Screen dimensions (w, h) are only used at runtime to MAP the grid to pixels, not to generate it.
+
+3. **The `needs_regeneration()` function:**
+   ```cpp
+   // WRONG - if you have this function, you're doing it wrong
+   bool needs_regeneration() {
+       return param1 != last1_ || param2 != last2_ || ...;
+   }
+   ```
+   This function should not exist. Use `on_parameter_changed()` instead.
+
 **Parameter Names Must Match Control IDs**
 The UI layout defines control IDs. Your parameter names must be identical.
 ```cpp
