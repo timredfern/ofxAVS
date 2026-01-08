@@ -205,6 +205,7 @@ void renderImGui(const avs::EffectUILayout& layout, avs::Configurable* configura
                     std::string unique_label = option.label + "##" + control.id + "_" + std::to_string(option_index) + "_" + std::to_string(reinterpret_cast<uintptr_t>(configurable));
                     if (ImGui::RadioButton(unique_label.c_str(), current_value == option_index)) {
                         params.set_int(control.id, option_index);
+                        configurable->on_parameter_changed(control.id);
                     }
                     option_index++;
                 }
@@ -407,6 +408,7 @@ void renderImGui(const avs::EffectUILayout& layout, avs::Configurable* configura
                         bool is_selected = (current_value == i);
                         if (ImGui::Selectable(control.options[i].c_str(), is_selected)) {
                             params.set_int(control.id, i);
+                            configurable->on_parameter_changed(control.id);
                         }
                         if (is_selected) {
                             ImGui::SetItemDefaultFocus();
