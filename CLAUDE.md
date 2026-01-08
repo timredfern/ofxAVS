@@ -83,14 +83,29 @@ int render(...) {
    }
    ```
 
-2. **Regenerating on screen resize when resolution is independent:**
+2. **Passing screen dimensions to generation functions:**
    ```cpp
-   // WRONG - grid is 16x16, doesn't depend on screen size
-   if (w != last_w_ || h != last_h_) {
-       regenerate_grid(w, h);  // Why pass w,h? Grid has its own resolution!
+   // WRONG - why does generate_grid need screen dimensions?
+   void generate_grid(int w, int h, AudioData visdata) {
+       for (int y = 0; y < h; y++) {  // NO! Grid has its own resolution!
+           for (int x = 0; x < w; x++) {
+   ```
+
+   ```cpp
+   // RIGHT - grid uses its own parameters for generation
+   void regenerate_grid() {
+       int gw = parameters().get_int("grid_width", 16);
+       int gh = parameters().get_int("grid_height", 16);
+       grid_.generate(gw, gh, script);  // Grid's own resolution
+   }
+
+   // Screen dimensions only used when APPLYING the grid to pixels
+   int render(..., int w, int h) {
+       grid_.apply(framebuffer, fbout, w, h);  // Map grid to screen here
    }
    ```
-   The grid has parameters `grid_width` and `grid_height`. Screen dimensions (w, h) are only used at runtime to MAP the grid to pixels, not to generate it.
+
+   Generation uses PARAMETER dimensions. Rendering uses SCREEN dimensions. Don't mix them.
 
 3. **The `needs_regeneration()` function:**
    ```cpp
