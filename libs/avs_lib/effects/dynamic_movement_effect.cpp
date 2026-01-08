@@ -108,45 +108,83 @@ const PluginInfo DynamicMovementEffect::effect_info {
     },
     .ui_layout = {
         {
-            // Script editors - original positions from r_dmove.cpp dialog
+            // Labels for script boxes (from res.rc IDD_CFG_DMOVE)
+            {
+                .id = "init_label",
+                .text = "init",
+                .type = ControlType::LABEL,
+                .x = 0, .y = 3, .w = 10, .h = 8
+            },
+            {
+                .id = "frame_label",
+                .text = "frame",
+                .type = ControlType::LABEL,
+                .x = 0, .y = 36, .w = 18, .h = 8
+            },
+            {
+                .id = "beat_label",
+                .text = "beat",
+                .type = ControlType::LABEL,
+                .x = 0, .y = 89, .w = 15, .h = 8
+            },
+            {
+                .id = "pixel_label",
+                .text = "pixel",
+                .type = ControlType::LABEL,
+                .x = 0, .y = 142, .w = 15, .h = 8
+            },
+            // Script editors - IDC_EDIT4, IDC_EDIT2, IDC_EDIT3, IDC_EDIT1
             {
                 .id = "init_script",
-                .text = "Init",
+                .text = "",
                 .type = ControlType::EDITTEXT,
                 .x = 25, .y = 0, .w = 208, .h = 14
             },
             {
                 .id = "frame_script",
-                .text = "Frame",
+                .text = "",
                 .type = ControlType::EDITTEXT,
                 .x = 25, .y = 14, .w = 208, .h = 53
             },
             {
                 .id = "beat_script",
-                .text = "Beat",
+                .text = "",
                 .type = ControlType::EDITTEXT,
                 .x = 25, .y = 67, .w = 208, .h = 53
             },
             {
                 .id = "pixel_script",
-                .text = "Pixel",
+                .text = "",
                 .type = ControlType::EDITTEXT,
                 .x = 25, .y = 120, .w = 208, .h = 53
             },
-            // Grid size
+            // Grid size labels
+            {
+                .id = "gridsize_label",
+                .text = "Grid size:",
+                .type = ControlType::LABEL,
+                .x = 78, .y = 192, .w = 30, .h = 8
+            },
+            {
+                .id = "gridx_label",
+                .text = "x",
+                .type = ControlType::LABEL,
+                .x = 128, .y = 191, .w = 8, .h = 8
+            },
+            // Grid size inputs - IDC_EDIT5, IDC_EDIT6
             {
                 .id = "grid_width",
-                .text = "Grid W",
+                .text = "",
                 .type = ControlType::TEXT_INPUT,
-                .x = 108, .y = 190, .w = 24, .h = 12,
+                .x = 108, .y = 190, .w = 18, .h = 12,
                 .range = {2, 256},
                 .default_val = 16
             },
             {
                 .id = "grid_height",
-                .text = "Grid H",
+                .text = "",
                 .type = ControlType::TEXT_INPUT,
-                .x = 160, .y = 190, .w = 24, .h = 12,
+                .x = 136, .y = 190, .w = 18, .h = 12,
                 .range = {2, 256},
                 .default_val = 16
             },

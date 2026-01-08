@@ -147,13 +147,19 @@ The original AVS used Windows dialog resources (`.rc` files) with absolute pixel
 | PUSHBUTTON | BUTTON | Clickable button |
 | EDITTEXT | TEXT_INPUT / EDITTEXT | Single/multi-line text |
 
-**Key design principle:** Windows separates controls that some UI frameworks combine. For example, a slider label (LTEXT) and the slider track (msctls_trackbar32) are independent controls at explicit positions. avs_lib stores them as separate LABEL and SLIDER controls so renderers can position them correctly.
+**Key design principle:** Windows separates controls that some UI frameworks combine. Labels are always independent LTEXT controls at explicit positions, not embedded in other controls. avs_lib stores them as separate LABEL controls so renderers can position them correctly.
 
 ```cpp
 // Effect layout preserves Windows dialog structure
+// Labels are SEPARATE controls, not embedded in EDITTEXT/SLIDER
+{.id = "init_label", .type = ControlType::LABEL, .x = 0, .y = 3, .text = "init"},
+{.id = "init_script", .type = ControlType::EDITTEXT, .x = 25, .y = 0, .text = "", ...}
+
 {.id = "red_label", .type = ControlType::LABEL, .x = 0, .y = 15, .text = "Red"},
 {.id = "red_adjust", .type = ControlType::SLIDER, .x = 25, .y = 13, .w = 97, ...}
 ```
+
+**EDITTEXT `.text` field:** For EDITTEXT controls, the `.text` field should be empty (`""`). The label is a separate LABEL control. Do NOT put the label text in the EDITTEXT's `.text` field.
 
 See `src/ARCHITECTURE.md` in ofxAVS for the reference ImGui renderer implementation.
 
