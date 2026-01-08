@@ -19,7 +19,7 @@ int DotGridEffect::render(AudioData visdata, int isBeat,
                           int w, int h) {
     if (isBeat & 0x80000000) return 0;
 
-    int num_colors = parameters().get_int("num_colors", 1);
+    int num_colors = parameters().get_int("num_colors");
     if (num_colors < 1) return 0;
     if (num_colors > 16) num_colors = 16;
 
@@ -29,15 +29,15 @@ int DotGridEffect::render(AudioData visdata, int isBeat,
 
     uint32_t current_color;
     if (num_colors == 1) {
-        current_color = parameters().get_color("color_0", 0xFFFFFF) | 0xFF000000;
+        current_color = parameters().get_color("color_0") | 0xFF000000;
     } else {
         int p = color_pos_ / 64;
         int r = color_pos_ & 63;
 
         std::string c1_param = "color_" + std::to_string(p);
         std::string c2_param = "color_" + std::to_string((p + 1 < num_colors) ? p + 1 : 0);
-        uint32_t c1 = parameters().get_color(c1_param, 0xFFFFFF);
-        uint32_t c2 = parameters().get_color(c2_param, 0xFFFFFF);
+        uint32_t c1 = parameters().get_color(c1_param);
+        uint32_t c2 = parameters().get_color(c2_param);
 
         // Interpolate RGB channels
         int r1 = (((c1 & 0xff) * (63 - r)) + ((c2 & 0xff) * r)) / 64;
@@ -46,12 +46,12 @@ int DotGridEffect::render(AudioData visdata, int isBeat,
         current_color = r1 | (r2 << 8) | (r3 << 16) | 0xFF000000;  // Set alpha to opaque
     }
 
-    int spacing = parameters().get_int("spacing", 8);
+    int spacing = parameters().get_int("spacing");
     if (spacing < 2) spacing = 2;
 
-    int x_move = parameters().get_int("x_move", 0);
-    int y_move = parameters().get_int("y_move", 0);
-    int blend = parameters().get_int("blend_mode", 3);
+    int x_move = parameters().get_int("x_move");
+    int y_move = parameters().get_int("y_move");
+    int blend = parameters().get_int("blend_mode");
 
     // Wrap position
     while (yp_ < 0) yp_ += spacing * 256;

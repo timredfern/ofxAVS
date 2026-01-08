@@ -61,14 +61,14 @@ int OscilloscopeEffect::render(AudioData visdata, int isBeat,
     auto mode = static_cast<RenderMode>(parameters().get_int("mode"));
 
     // Color cycling - matches original AVS behavior
-    int num_colors = parameters().get_int("num_colors", 1);
+    int num_colors = parameters().get_int("num_colors");
     if (num_colors < 1) num_colors = 1;
     if (num_colors > 16) num_colors = 16;
 
     uint32_t color;
     if (num_colors == 1) {
         // Single color - no cycling
-        color = parameters().get_color("color_0", 0xFFFFFF);
+        color = parameters().get_color("color_0");
     } else {
         // Multi-color cycling with interpolation
         // Each color gets 64 frames, then interpolates to next
@@ -80,8 +80,8 @@ int OscilloscopeEffect::render(AudioData visdata, int isBeat,
 
         std::string c1_param = "color_" + std::to_string(p);
         std::string c2_param = "color_" + std::to_string((p + 1 < num_colors) ? p + 1 : 0);
-        uint32_t c1 = parameters().get_color(c1_param, 0xFFFFFF);
-        uint32_t c2 = parameters().get_color(c2_param, 0xFFFFFF);
+        uint32_t c1 = parameters().get_color(c1_param);
+        uint32_t c2 = parameters().get_color(c2_param);
 
         // Linear interpolation: blend = ((c1 * (63-r)) + (c2 * r)) / 64
         int blue = (((c1 & 0xFF) * (63 - r)) + ((c2 & 0xFF) * r)) / 64;

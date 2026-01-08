@@ -77,10 +77,10 @@ void MovementEffect::generate_lookup_table(int w, int h, AudioData visdata) {
     // Resize lookup table for full resolution
     lookup_table_.resize(w * h);
 
-    int preset_index = parameters().get_int("preset", 0);
-    bool rectangular = parameters().get_bool("rectangular", false);
-    bool wrap = parameters().get_bool("wrap", false);
-    bool subpixel = parameters().get_bool("subpixel", true);
+    int preset_index = parameters().get_int("preset");
+    bool rectangular = parameters().get_bool("rectangular");
+    bool wrap = parameters().get_bool("wrap");
+    bool subpixel = parameters().get_bool("subpixel");
 
     // Subpixel only works for certain effects and if resolution isn't too large
     // (need to fit base index in 22 bits = 4M pixels max)
@@ -288,7 +288,7 @@ bool MovementEffect::uses_rect(int preset_index) const {
     if (preset_index >= 0 && preset_index < 24) {
         return rect_flags[preset_index];
     }
-    return parameters().get_bool("rectangular", false);
+    return parameters().get_bool("rectangular");
 }
 
 void MovementEffect::apply_radial_effect(int preset_index, double& r, double& d, double max_d, int& xo, int& yo) {
@@ -482,8 +482,8 @@ static inline uint32_t blend4(uint32_t* p1, int w, int xp, int yp) {
 }
 
 void MovementEffect::apply_transformation(uint32_t* input, uint32_t* output, int w, int h) {
-    bool source_mapped = parameters().get_bool("source_mapped", false);
-    bool blend = parameters().get_bool("blend", false);
+    bool source_mapped = parameters().get_bool("source_mapped");
+    bool blend = parameters().get_bool("blend");
 
     if (source_mapped) {
         // Forward mapping: for each source pixel, place it at the transformed location
@@ -562,7 +562,7 @@ void MovementEffect::apply_transformation(uint32_t* input, uint32_t* output, int
 
 void MovementEffect::on_parameter_changed(const std::string& param_name) {
     if (param_name == "preset") {
-        int preset_index = parameters().get_int("preset", 0);
+        int preset_index = parameters().get_int("preset");
         // Only sync for built-in presets (0-23), not "(user defined)" (24)
         if (preset_index < 24) {
             std::string script = get_preset_script(preset_index);

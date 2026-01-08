@@ -92,6 +92,9 @@ class ParameterGroup {
 public:
     void add_parameter(std::shared_ptr<Parameter> param);
     std::shared_ptr<Parameter> get_parameter(const std::string& name);
+    bool has_parameter(const std::string& name) const {
+        return parameters_.find(name) != parameters_.end();
+    }
     
     // Convenience methods
     void set_float(const std::string& name, double value);
@@ -100,11 +103,11 @@ public:
     void set_color(const std::string& name, uint32_t value);
     void set_string(const std::string& name, const std::string& value);
     
-    double get_float(const std::string& name, double default_val = 0.0) const;
-    int get_int(const std::string& name, int default_val = 0) const;
-    bool get_bool(const std::string& name, bool default_val = false) const;
-    uint32_t get_color(const std::string& name, uint32_t default_val = 0xFFFFFF) const;
-    std::string get_string(const std::string& name, const std::string& default_val = "") const;
+    double get_float(const std::string& name) const;
+    int get_int(const std::string& name) const;
+    bool get_bool(const std::string& name) const;
+    uint32_t get_color(const std::string& name) const;
+    std::string get_string(const std::string& name) const;
     
     // Iteration
     const std::map<std::string, std::shared_ptr<Parameter>>& all_parameters() const {

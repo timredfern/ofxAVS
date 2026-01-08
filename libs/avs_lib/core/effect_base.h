@@ -49,7 +49,9 @@ public:
     virtual std::vector<uint8_t> save_parameters() const { return {}; }
     
     // Enable/disable state
-    virtual bool is_enabled() const { return parameters_.get_bool("enabled", true); }
+    virtual bool is_enabled() const {
+        return parameters_.has_parameter("enabled") ? parameters_.get_bool("enabled") : true;
+    }
     virtual void set_enabled(bool enabled) { parameters_.set_bool("enabled", enabled); }
 
 protected:

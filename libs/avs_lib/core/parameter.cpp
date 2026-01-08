@@ -135,29 +135,29 @@ void ParameterGroup::set_string(const std::string& name, const std::string& valu
     }
 }
 
-double ParameterGroup::get_float(const std::string& name, double default_val) const {
+double ParameterGroup::get_float(const std::string& name) const {
     auto it = parameters_.find(name);
-    return (it != parameters_.end()) ? it->second->as_float() : default_val;
+    return (it != parameters_.end()) ? it->second->as_float() : 0.0;
 }
 
-int ParameterGroup::get_int(const std::string& name, int default_val) const {
+int ParameterGroup::get_int(const std::string& name) const {
     auto it = parameters_.find(name);
-    return (it != parameters_.end()) ? it->second->as_int() : default_val;
+    return (it != parameters_.end()) ? it->second->as_int() : 0;
 }
 
-bool ParameterGroup::get_bool(const std::string& name, bool default_val) const {
+bool ParameterGroup::get_bool(const std::string& name) const {
     auto it = parameters_.find(name);
-    return (it != parameters_.end()) ? it->second->as_bool() : default_val;
+    return (it != parameters_.end()) ? it->second->as_bool() : false;
 }
 
-uint32_t ParameterGroup::get_color(const std::string& name, uint32_t default_val) const {
+uint32_t ParameterGroup::get_color(const std::string& name) const {
     auto it = parameters_.find(name);
-    return (it != parameters_.end()) ? it->second->as_color() : default_val;
+    return (it != parameters_.end()) ? it->second->as_color() : 0xFFFFFF;
 }
 
-std::string ParameterGroup::get_string(const std::string& name, const std::string& default_val) const {
+std::string ParameterGroup::get_string(const std::string& name) const {
     auto it = parameters_.find(name);
-    return (it != parameters_.end()) ? it->second->as_string() : default_val;
+    return (it != parameters_.end()) ? it->second->as_string() : "";
 }
 
 } // namespace avs

@@ -173,14 +173,14 @@ int SuperScopeEffect::render(AudioData visdata, int isBeat,
     int draw_mode = parameters().get_int("draw_mode");  // 0=dots, 1=lines
 
     // Color cycling - matches original AVS behavior
-    int num_colors = parameters().get_int("num_colors", 1);
+    int num_colors = parameters().get_int("num_colors");
     if (num_colors < 1) num_colors = 1;
     if (num_colors > 16) num_colors = 16;
 
     uint32_t current_color;
     if (num_colors == 1) {
         // Single color - no cycling
-        current_color = parameters().get_color("color_0", 0xFFFFFF);
+        current_color = parameters().get_color("color_0");
     } else {
         // Multi-color cycling with interpolation
         // Each color gets 64 frames, then interpolates to next
@@ -192,8 +192,8 @@ int SuperScopeEffect::render(AudioData visdata, int isBeat,
 
         std::string c1_param = "color_" + std::to_string(p);
         std::string c2_param = "color_" + std::to_string((p + 1 < num_colors) ? p + 1 : 0);
-        uint32_t c1 = parameters().get_color(c1_param, 0xFFFFFF);
-        uint32_t c2 = parameters().get_color(c2_param, 0xFFFFFF);
+        uint32_t c1 = parameters().get_color(c1_param);
+        uint32_t c2 = parameters().get_color(c2_param);
 
         // Linear interpolation: blend = ((c1 * (63-r)) + (c2 * r)) / 64
         // Color format is 0xAABBGGRR (R in bits 0-7, G in bits 8-15, B in bits 16-23)

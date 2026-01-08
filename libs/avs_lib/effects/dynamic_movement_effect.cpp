@@ -63,7 +63,7 @@ void DynamicMovementEffect::on_parameter_changed(const std::string& param_name) 
 
     // Load preset when selected
     if (param_name == "example") {
-        int preset_idx = parameters().get_int("example", 0);
+        int preset_idx = parameters().get_int("example");
         if (preset_idx > 0 && preset_idx < NUM_DMOV_PRESETS) {
             const auto& preset = dmov_presets[preset_idx];
             parameters().set_string("init_script", preset.init);
@@ -74,7 +74,8 @@ void DynamicMovementEffect::on_parameter_changed(const std::string& param_name) 
             parameters().set_int("grid_height", preset.grid_h);
             parameters().set_bool("rectangular", preset.rect);
             parameters().set_bool("wrap", preset.wrap);
-            // Init script runs via on_parameter_changed("init_script") callback
+            // Run init script (set_string doesn't trigger on_parameter_changed)
+            engine_.evaluate(preset.init);
         }
         // Reset to (current) after loading
         parameters().set_int("example", 0);
@@ -86,18 +87,17 @@ int DynamicMovementEffect::render(AudioData visdata, int isBeat,
                                  int w, int h) {
     if (!is_enabled()) return 0;
 
-    if (parameters().get_bool("no_movement", false)) {
+    if (parameters().get_bool("no_movement")) {
         memcpy(fbout, framebuffer, w * h * sizeof(uint32_t));
         return 1;
     }
 
-    // Get parameters
-    int grid_width = parameters().get_int("grid_width", 16);
-    int grid_height = parameters().get_int("grid_height", 16);
-    bool rectangular = parameters().get_bool("rectangular", false);
-    bool subpixel = parameters().get_bool("bilinear", true);
-    bool wrap = parameters().get_bool("wrap", false);
-    bool blend = parameters().get_bool("blend", false);
+    int grid_width = parameters().get_int("grid_width");
+    int grid_height = parameters().get_int("grid_height");
+    bool rectangular = parameters().get_bool("rectangular");
+    bool subpixel = parameters().get_bool("bilinear");
+    bool wrap = parameters().get_bool("wrap");
+    bool blend = parameters().get_bool("blend");
 
     std::string frame_script = parameters().get_string("frame_script");
     std::string beat_script = parameters().get_string("beat_script");

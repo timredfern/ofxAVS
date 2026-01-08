@@ -95,7 +95,8 @@ static JsonValue effect_to_json(const EffectBase* effect) {
     JsonObject params;
 
     // Check for num_colors to limit color array serialization
-    int num_colors = effect->parameters().get_int("num_colors", 0);
+    int num_colors = effect->parameters().has_parameter("num_colors")
+                     ? effect->parameters().get_int("num_colors") : 0;
 
     for (const auto& [name, param] : effect->parameters().all_parameters()) {
         // Skip 'enabled' - we handle it separately
