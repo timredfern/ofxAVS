@@ -107,7 +107,7 @@ int render(...) {
 
    Generation uses PARAMETER dimensions. Rendering uses SCREEN dimensions. Don't mix them.
 
-   How this happens: you add w,h parameters when first writing the class without understanding how the grid works. Later, because render() legitimately needs w,h, you never question whether generate() should also have them. The unnecessary parameters cascade into tracking `last_w_`, `last_h_` and regenerating on screen resize. Question every parameter - why is it there?
+   When your understanding changes, update the code. We added w,h to generate() before understanding grids. After learning the grid has its own resolution, we should have immediately removed them. We didn't. The stale parameters led to tracking `last_w_`, `last_h_` and regenerating on resize - all unnecessary complexity from not cleaning up after ourselves.
 
 3. **The `needs_regeneration()` function:**
    ```cpp
