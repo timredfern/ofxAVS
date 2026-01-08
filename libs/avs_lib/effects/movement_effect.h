@@ -49,10 +49,10 @@ public:
     std::string get_preset_script(int preset_index) const;
 
 private:
-    bool needs_table_regeneration(int w, int h, AudioData visdata) const;
+    bool needs_table_regeneration(int w, int h) const;
     void generate_lookup_table(int w, int h, AudioData visdata);
     void apply_transformation(uint32_t* input, uint32_t* output, int w, int h);
-    
+
     // Script execution for both presets and custom expressions
     void evaluate_movement_script(const std::string& script, double& x, double& y, double& r, double& d,
                                  AudioData visdata, int w, int h);
@@ -68,16 +68,9 @@ private:
     std::vector<int> lookup_table_;
     bool table_valid_;
     bool subpixel_enabled_;  // Track if current table has subpixel data
-    
-    // State tracking for regeneration
+
+    // Dimension tracking (table must regenerate on resize)
     int last_width_, last_height_;
-    int last_preset_index_;
-    std::string last_custom_expr_;
-    bool last_rectangular_;
-    bool last_source_mapped_;
-    bool last_wrap_;
-    bool last_blend_;
-    bool last_subpixel_;
 };
 
 } // namespace avs

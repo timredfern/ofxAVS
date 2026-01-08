@@ -108,6 +108,7 @@ void renderImGui(const avs::EffectUILayout& layout, avs::Configurable* configura
                 std::string unique_label = control.text + "##" + control.id + "_" + std::to_string(reinterpret_cast<uintptr_t>(configurable));
                 if (ImGui::Checkbox(unique_label.c_str(), &value)) {
                     params.set_bool(control.id, value);
+                    configurable->on_parameter_changed(control.id);
                 }
                 break;
             }
@@ -291,6 +292,7 @@ void renderImGui(const avs::EffectUILayout& layout, avs::Configurable* configura
                     std::string new_value(edit_buffers[buffer_key].data());
                     params.set_string(control.id, new_value);
                     last_param_values[buffer_key] = new_value;
+                    configurable->on_parameter_changed(control.id);
                 }
                 break;
             }

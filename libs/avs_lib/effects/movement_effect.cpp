@@ -62,10 +62,7 @@ static const char* preset_names[] = {
 
 MovementEffect::MovementEffect()
     : table_valid_(false), subpixel_enabled_(false),
-      last_width_(0), last_height_(0),
-      last_preset_index_(-1), last_rectangular_(true),
-      last_source_mapped_(false), last_wrap_(false),
-      last_blend_(false), last_subpixel_(true)
+      last_width_(0), last_height_(0)
 {
     init_blendtable();  // Initialize bilinear blend table
     init_parameters_from_layout(effect_info.ui_layout);
@@ -76,25 +73,10 @@ MovementEffect::MovementEffect()
 }
 
 
-bool MovementEffect::needs_table_regeneration(int w, int h, AudioData visdata) const {
-    int preset_index = parameters().get_int("preset", 0);
-    std::string custom_expr = parameters().get_string("custom_expr");
-    bool rectangular = parameters().get_bool("rectangular", false);
-    bool source_mapped = parameters().get_bool("source_mapped", false);
-    bool wrap = parameters().get_bool("wrap", false);
-    bool blend = parameters().get_bool("blend", false);
-    bool subpixel = parameters().get_bool("subpixel", true);
-    
-    return !table_valid_ || 
-           w != last_width_ || 
-           h != last_height_ ||
-           preset_index != last_preset_index_ ||
-           custom_expr != last_custom_expr_ ||
-           rectangular != last_rectangular_ ||
-           source_mapped != last_source_mapped_ ||
-           wrap != last_wrap_ ||
-           blend != last_blend_ ||
-           subpixel != last_subpixel_;
+bool MovementEffect::needs_table_regeneration(int w, int h) const {
+    // table_valid_ is set to false by on_parameter_changed when params change
+    // We only need to check dimensions here
+    return !table_valid_ || w != last_width_ || h != last_height_;
 }
 
 void MovementEffect::generate_lookup_table(int w, int h, AudioData visdata) {
@@ -270,17 +252,9 @@ void MovementEffect::generate_lookup_table(int w, int h, AudioData visdata) {
         }
     }
 
-    // Update state
+    // Update dimension tracking and mark table valid
     last_width_ = w;
     last_height_ = h;
-    last_preset_index_ = preset_index;
-    last_custom_expr_ = parameters().get_string("custom_expr");
-    last_rectangular_ = rectangular;
-    last_source_mapped_ = parameters().get_bool("source_mapped", false);
-    last_wrap_ = parameters().get_bool("wrap", false);
-    last_blend_ = parameters().get_bool("blend", false);
-    last_subpixel_ = parameters().get_bool("subpixel", true);
-
     table_valid_ = true;
 }
 
@@ -600,9 +574,14 @@ void MovementEffect::on_parameter_changed(const std::string& param_name) {
             std::string script = get_preset_script(preset_index);
             parameters().set_string("custom_expr", script);
         }
-        // Invalidate lookup table so it regenerates with new preset
         table_valid_ = false;
     }
+    // Invalidate lookup table when any table-affecting parameter changes
+    else if (param_name == "custom_expr" || param_name == "rectangular" ||
+             param_name == "wrap" || param_name == "subpixel") {
+        table_valid_ = false;
+    }
+    // Note: source_mapped and blend don't affect the table, only rendering
 }
 
 int MovementEffect::render(AudioData visdata, int isBeat,
@@ -611,7 +590,7 @@ int MovementEffect::render(AudioData visdata, int isBeat,
     if (!is_enabled()) return 0;
 
     // Check if we need to regenerate the lookup table
-    if (needs_table_regeneration(w, h, visdata)) {
+    if (needs_table_regeneration(w, h)) {
         generate_lookup_table(w, h, visdata);
     }
 
