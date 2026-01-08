@@ -139,10 +139,10 @@ TEST_CASE("Binary preset effect loading", "[preset][binary]") {
         REQUIRE(root.get_child(2)->get_plugin_info().name == "Brightness");
     }
 
-    SECTION("Unknown effect index is skipped") {
+    SECTION("Unknown effect index creates placeholder") {
         auto data = make_header();
 
-        // Unknown effect index 99
+        // Unknown effect index 99 (beyond known effects)
         append_u32(data, 99);
         append_u32(data, 8);
         for (int i = 0; i < 8; i++) data.push_back(0);
@@ -153,9 +153,11 @@ TEST_CASE("Binary preset effect loading", "[preset][binary]") {
         for (int i = 0; i < 16; i++) data.push_back(0);
 
         REQUIRE(avs::Preset::from_legacy(data, root) == true);
-        // Unknown effect skipped, Clear loaded
-        REQUIRE(root.child_count() == 1);
-        REQUIRE(root.get_child(0)->get_plugin_info().name == "Clear");
+        // Unknown effect creates placeholder, Clear loaded
+        REQUIRE(root.child_count() == 2);
+        // First effect is unsupported placeholder
+        REQUIRE(root.get_child(0)->get_plugin_info().name.find("Unsupported") != std::string::npos);
+        REQUIRE(root.get_child(1)->get_plugin_info().name == "Clear");
     }
 }
 

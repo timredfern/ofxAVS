@@ -7,6 +7,7 @@
 #include "json.h"
 #include "plugin_manager.h"
 #include "effect_container.h"
+#include "effects/unsupported_effect.h"
 #include <fstream>
 #include <sstream>
 #include <cstring>
@@ -328,6 +329,19 @@ static std::unique_ptr<EffectBase> load_legacy_effect(BinaryReader& reader) {
         // Built-in effect by index
         effect = PluginManager::instance().create_by_legacy_index(static_cast<int>(effect_index));
 
+        // If effect not implemented, create placeholder with the effect name
+        if (!effect) {
+            const char* name = get_legacy_effect_name(static_cast<int>(effect_index));
+            if (name) {
+                effect = std::make_unique<UnsupportedEffect>(name, static_cast<int>(effect_index));
+            } else {
+                // Unknown effect index
+                effect = std::make_unique<UnsupportedEffect>(
+                    "Unknown Effect #" + std::to_string(effect_index),
+                    static_cast<int>(effect_index));
+            }
+        }
+
         // Pass config data to effect for parsing
         if (effect && config_length > 0 && reader.remaining() >= config_length) {
             std::vector<uint8_t> config_data(reader.ptr(), reader.ptr() + config_length);
@@ -335,7 +349,10 @@ static std::unique_ptr<EffectBase> load_legacy_effect(BinaryReader& reader) {
         }
         reader.skip(config_length);
     } else {
-        // Plugin effect by string ID - not supported yet
+        // Plugin effect by string ID
+        effect = std::make_unique<UnsupportedEffect>(
+            "Plugin: " + plugin_id,
+            static_cast<int>(effect_index));
         reader.skip(config_length);
     }
 
