@@ -20,7 +20,7 @@ template<typename T>
 struct RGBAPixel {
     T r, g, b, a;
     
-    // Constructor
+    // Constructor - default to black (alpha handled at output stage)
     RGBAPixel() : r(0), g(0), b(0), a(0) {}
     RGBAPixel(T red, T green, T blue, T alpha = 0xFF) : r(red), g(green), b(blue), a(alpha) {}
     
@@ -171,10 +171,12 @@ void Renderer<PixelType>::render(AudioData visdata, bool is_beat, uint32_t* outp
     // Legacy compatibility - convert to PixelType temporarily
     std::vector<PixelType> temp_buffer(width_ * height_);
     render(visdata, is_beat, temp_buffer.data());
-    
-    // Convert back to uint32_t
+
+    // Convert back to uint32_t, forcing alpha to opaque
+    // Original AVS ignored alpha for display (used BitBlt SRCCOPY)
+    // We need opaque pixels for OpenFrameworks alpha blending
     for (size_t i = 0; i < temp_buffer.size(); ++i) {
-        output_buffer[i] = static_cast<uint32_t>(temp_buffer[i]);
+        output_buffer[i] = static_cast<uint32_t>(temp_buffer[i]) | 0xFF000000;
     }
 }
 

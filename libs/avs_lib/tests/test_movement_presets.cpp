@@ -17,8 +17,8 @@ TEST_CASE("Movement Effect Script Presets", "[movement]") {
     
     SECTION("Default parameters match AVS") {
         auto& params = effect.parameters();
-        
-        REQUIRE(params.get_bool("enabled") == true);
+
+        // Note: Movement effect has no enabled checkbox in original AVS
         REQUIRE(params.get_int("preset") == 0); // none by default
         REQUIRE(params.get_bool("rectangular") == false); // polar by default
         REQUIRE(params.get_bool("wrap") == false);

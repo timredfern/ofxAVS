@@ -146,19 +146,37 @@ Each pixel is a 32-bit integer: `0xAARRGGBB` stored as `0xAABBGGRR` in memory (l
 - Bits 16-23: Blue
 - Bits 24-31: Alpha
 
-**Alpha Channel**
-The alpha byte controls opacity. 0xFF = fully opaque, 0x00 = fully transparent.
+**Alpha Channel Handling**
 
-If you calculate RGB values but forget alpha, your pixel is `0x00RRGGBB` - completely transparent. The effect appears to "do nothing" because all output is invisible.
+Alpha propagates through the effect chain and can be used by effects for internal compositing:
 
-Always set alpha:
+- **Effects CAN read alpha** from the framebuffer (set by previous effects)
+- **Effects CAN write alpha** for subsequent effects to use
+- **BLEND macro preserves alpha** - see `r_defs.h` lines 100-111
+- **At final display**: Renderer forces alpha to 0xFF when copying to the output buffer
+
+Original AVS on Windows displayed with `BitBlt(SRCCOPY)` which ignores alpha. Our port uses OpenFrameworks which respects alpha, so we force 0xFF at the output stage only.
+
+Example - effect that uses alpha for compositing:
 ```cpp
-// Modifying existing pixel - preserve its alpha
-p[i] = (original & 0xFF000000) | calculated_rgb;
+// Read alpha from previous effect
+uint8_t alpha = (framebuffer[i] >> 24) & 0xFF;
 
-// Creating new color - explicitly set alpha
-uint32_t color = red | (green << 8) | (blue << 16) | 0xFF000000;
+// Use alpha for blending
+if (alpha > 128) {
+    framebuffer[i] = blend_pixels(framebuffer[i], new_color);
+}
+
+// Write alpha for next effect
+framebuffer[i] = (my_alpha << 24) | (r << 16) | (g << 8) | b;
 ```
+
+The alpha is only forced opaque at the final output stage in `Renderer::render()`:
+```cpp
+output_buffer[i] = static_cast<uint32_t>(temp_buffer[i]) | 0xFF000000;
+```
+
+**Do NOT** add `| 0xFF000000` inside effect code - alpha should propagate through the chain for effects that use it.
 
 **Color Conversion**
 Colors are stored as `0xAABBGGRR` everywhere in avs_lib. The only format conversion happens in `src/AVSui.cpp` when interfacing with ImGui color pickers. Never add conversions inside render loops or effect code.

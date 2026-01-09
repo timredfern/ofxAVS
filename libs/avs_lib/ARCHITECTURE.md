@@ -481,6 +481,69 @@ The ofxAVS addon supports two modes controlled by `#define AVS_ENHANCED_FFT`:
 - **AVS log table**: `vis_avs/avs/vis_avs/main.cpp` lines 243-287
 - **ofxAVS implementation**: `src/ofxAVS.cpp` `audioIn()` method
 
+## Rendering Chain and Pixel Format
+
+### Pixel Format
+
+Each pixel is a 32-bit integer in ARGB format:
+- Bits 0-7: Blue
+- Bits 8-15: Green
+- Bits 16-23: Red
+- Bits 24-31: Alpha
+
+In memory (little-endian): `0xAARRGGBB` stored as bytes `[B, G, R, A]`.
+
+### Alpha Channel Handling
+
+Alpha propagates through the effect chain and can be used by effects for internal compositing:
+
+1. **Effects CAN read alpha** from the framebuffer (set by previous effects)
+2. **Effects CAN write alpha** for subsequent effects to use
+3. **BLEND macro preserves alpha** - original `r_defs.h` explicitly handles the alpha byte
+4. **At final display**: `Renderer::render()` forces alpha to 0xFF when copying to the output buffer
+
+**Original AVS Behavior:**
+- Cleared framebuffer with `memset(framebuffer, 0, ...)` - alpha becomes 0x00
+- Displayed with `BitBlt(SRCCOPY)` which ignores alpha entirely
+- Effects could use alpha internally, but it had no effect on final display
+
+**Our Port:**
+- Matches original AVS behavior during the effect chain
+- Forces alpha to 0xFF only at the final output stage for OpenFrameworks compatibility
+- Effects can use alpha for compositing/blending with subsequent effects
+
+```cpp
+// In Renderer::render() - final output stage only
+for (size_t i = 0; i < temp_buffer.size(); ++i) {
+    output_buffer[i] = static_cast<uint32_t>(temp_buffer[i]) | 0xFF000000;
+}
+```
+
+### Effect Return Values
+
+Each effect's `render()` function returns an integer indicating where the result was written:
+- **Return 0**: Result is in `framebuffer` (input buffer, modified in place)
+- **Return 1**: Result is in `fbout` (output buffer, requires swap)
+
+The container (`EffectList` or `EffectListRoot`) handles buffer swapping:
+```cpp
+int result = child->render(visdata, isBeat, current_in, current_out, w, h);
+if (result == 1) {
+    std::swap(current_in, current_out);
+}
+```
+
+At the end, if `current_in != framebuffer`, the result is copied back to `framebuffer`.
+
+### Buffer Clearing
+
+When "Clear every frame" is enabled on an EffectList, it clears to transparent black (0x00000000), matching original AVS:
+```cpp
+memset(framebuffer, 0, w * h * sizeof(uint32_t));
+```
+
+This is intentional - alpha is not forced here. Effects in the chain may use or ignore alpha as needed.
+
 ## Key Implementation Notes
 
 Research into the original AVS codebase revealed several important behaviors that affect authenticity. See **[AVS_PARAMS.md](AVS_PARAMS.md)** for complete documentation of global parameters and UI.

@@ -579,8 +579,6 @@ void MovementEffect::on_parameter_changed(const std::string& param_name) {
 int MovementEffect::render(AudioData visdata, int isBeat,
                           uint32_t* framebuffer, uint32_t* fbout,
                           int w, int h) {
-    if (!is_enabled()) return 0;
-
     if (!table_valid_ || w != last_width_ || h != last_height_) {
         generate_lookup_table(w, h, visdata);
     }
@@ -690,14 +688,6 @@ const PluginInfo MovementEffect::effect_info {
     },
     .ui_layout = {
         {
-            // Enabled (implicit in most effects but needed for parameter)
-            {
-                .id = "enabled",
-                .text = "Enabled",
-                .type = ControlType::CHECKBOX,
-                .x = 0, .y = 0, .w = 0, .h = 0,  // Hidden, but parameter needed
-                .default_val = 1
-            },
             // Preset listbox - from res.rc: IDC_LIST1 at 101,0 132x142
             {
                 .id = "preset",

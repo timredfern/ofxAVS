@@ -7,6 +7,7 @@
 #include "effect_list.h"
 #include "core/plugin_manager.h"
 #include "core/ui.h"
+#include <algorithm>
 #include <memory>
 #include <cstring>
 
@@ -26,7 +27,7 @@ int EffectList::render(AudioData visdata, int isBeat,
 
     // Clear framebuffer if requested
     if (parameters().get_bool("clear_each_frame")) {
-        std::memset(framebuffer, 0, w * h * sizeof(uint32_t));
+        memset(framebuffer, 0, w * h * sizeof(uint32_t));
     }
 
     // Render each child effect in sequence

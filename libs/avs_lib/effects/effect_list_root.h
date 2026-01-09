@@ -28,7 +28,7 @@ public:
                int w, int h) override {
         // Clear framebuffer if requested
         if (parameters().get_bool("clear_each_frame")) {
-            std::memset(framebuffer, 0, w * h * sizeof(uint32_t));
+            memset(framebuffer, 0, w * h * sizeof(uint32_t));
         }
 
         // Render each child effect in sequence

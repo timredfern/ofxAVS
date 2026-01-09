@@ -76,9 +76,6 @@ void renderImGui(const avs::EffectUILayout& layout, avs::Configurable* configura
 
     for (const auto& control : layout.getControls()) {
 
-        // Skip "enabled" control - it's handled by the chain view toggle
-        if (control.id == "enabled") continue;
-
         // Absolute positioning from original Windows dialog coordinates
         float scale=2.0f;
 

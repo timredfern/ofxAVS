@@ -879,4 +879,24 @@ void ofxAVS::handleEffectListKeyboard() {
             }
         }
     }
+
+    // Delete key: remove selected effect
+    if (ImGui::IsKeyPressed(ImGuiKey_Delete) || ImGui::IsKeyPressed(ImGuiKey_Backspace)) {
+        if (selected_effect && selected_effect != renderer->root()) {
+            // Get next effect before removing so we can select it after
+            auto* next = getNextVisibleEffect(selected_effect);
+            auto* prev = getPrevVisibleEffect(selected_effect);
+
+            removeEffect(selected_effect);
+
+            // Select next effect, or previous if there's no next
+            if (next && next != selected_effect) {
+                selected_ = next;
+            } else if (prev) {
+                selected_ = prev;
+            } else {
+                selected_ = renderer->root();
+            }
+        }
+    }
 }
