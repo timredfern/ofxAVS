@@ -39,6 +39,9 @@ add_library(avs_core_test STATIC
     ${AVS_LIB_ROOT}/effects/superscope_effect.cpp
     ${AVS_LIB_ROOT}/effects/oscilloscope_effect.cpp
     ${AVS_LIB_ROOT}/effects/color_fade_effect.cpp
+    ${AVS_LIB_ROOT}/effects/ddm_effect.cpp
+    ${AVS_LIB_ROOT}/effects/fadeout_effect.cpp
+    ${AVS_LIB_ROOT}/effects/bump_effect.cpp
     ${AVS_LIB_ROOT}/effects/effect_list.cpp
     ${AVS_LIB_ROOT}/effects/unsupported_effect.cpp
 )

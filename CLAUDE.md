@@ -36,6 +36,27 @@ Before implementing any effect, read `libs/avs_lib/EFFECTS.md`. It documents ori
 **Never Claim "Fixed" Until User Confirms**
 You write code. The user builds and tests. After making changes, STOP and WAIT for the user to report results. Never say "fixed", "should work", or "this will work" - you don't know until tested.
 
+**Read APIs Before Using Them**
+Before writing code that uses a class or function, READ THE HEADER FILE. Do not assume what methods exist based on common patterns or what "makes sense". Every API assumption must be verified by reading actual source code.
+
+WRONG:
+```cpp
+// Assumed ScriptEngine had these methods without checking
+script_engine_.compile(script, "pixel");
+script_engine_.execute("pixel");
+var_d_ = script_engine_.register_variable("d");
+```
+
+RIGHT:
+```cpp
+// First read script_engine.h, found actual API:
+script_engine_.set_variable("d", value);
+script_engine_.evaluate(script);
+double d = script_engine_.get_variable("d");
+```
+
+This applies to ALL code - effects, core classes, utilities. If you haven't read the header, you don't know the API.
+
 **User Builds the App**
 Do not run make/cmake for the main OpenFrameworks application. The user handles this.
 

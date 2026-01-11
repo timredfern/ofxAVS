@@ -16,6 +16,9 @@
 #include "../effects/onbeat_clear_effect.h"
 #include "../effects/dot_grid_effect.h"
 #include "../effects/color_fade_effect.h"
+#include "../effects/ddm_effect.h"
+#include "../effects/fadeout_effect.h"
+#include "../effects/bump_effect.h"
 #include "../effects/effect_list.h"
 
 namespace avs {
@@ -41,6 +44,9 @@ void register_builtin_effects() {
     pm.register_effect(OnBeatClearEffect::effect_info);
     pm.register_effect(DotGridEffect::effect_info);
     pm.register_effect(ColorFadeEffect::effect_info);
+    pm.register_effect(DDMEffect::effect_info);
+    pm.register_effect(FadeoutEffect::effect_info);
+    pm.register_effect(BumpEffect::effect_info);
     pm.register_effect(EffectList::effect_info);
 }
 
