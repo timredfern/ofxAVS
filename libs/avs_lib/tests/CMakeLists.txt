@@ -50,6 +50,8 @@ add_library(avs_core_test STATIC
     ${AVS_LIB_ROOT}/effects/interferences_effect.cpp
     ${AVS_LIB_ROOT}/effects/scatter_effect.cpp
     ${AVS_LIB_ROOT}/effects/shift_effect.cpp
+    ${AVS_LIB_ROOT}/effects/mirror_effect.cpp
+    ${AVS_LIB_ROOT}/effects/set_render_mode_effect.cpp
 )
 
 target_include_directories(avs_core_test PUBLIC 

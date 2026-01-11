@@ -46,7 +46,12 @@ private:
     bool useFileInput = false;
     bool isPlaying = false;
     std::string loadedFileName;
+    std::string loadedFilePath;  // Full path for persistence
 
     void loadSoundFile(const std::string& path);
     void drawAudioControls();
+
+    // App settings persistence (separate from AVS preset)
+    void loadAppSettings();
+    void saveAppSettings();
 };

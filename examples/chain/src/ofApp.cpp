@@ -3,6 +3,12 @@
 // Licensed under MIT License
 
 #include "ofApp.h"
+#include "ofJson.h"
+
+// App settings file location
+static std::string getAppSettingsPath() {
+    return ofToDataPath("app_settings.json");
+}
 
 //--------------------------------------------------------------
 void ofApp::setup(){
@@ -144,6 +150,9 @@ void ofApp::setup(){
     if (!audioInitialized) {
         ofLogWarning() << "No audio device available";
     }
+
+    // Load app settings (sound file, etc.) after audio is ready
+    loadAppSettings();
 }
 
 //--------------------------------------------------------------
@@ -241,6 +250,7 @@ void ofApp::loadSoundFile(const std::string& path) {
 
     if (ofxAudioDecoder::load(audioFileBuffer, path)) {
         loadedFileName = ofFilePath::getFileName(path);
+        loadedFilePath = path;  // Store full path for persistence
         playbackPos = 0;
         useFileInput = true;
         isPlaying = true;
@@ -331,9 +341,44 @@ void ofApp::audioOut(ofSoundBuffer& buffer) {
 
 //--------------------------------------------------------------
 void ofApp::exit(){
+    saveAppSettings();
+
     if (audioInitialized) {
         soundStream.stop();
         soundStream.close();
+    }
+}
+
+//--------------------------------------------------------------
+void ofApp::loadAppSettings() {
+    std::string path = getAppSettingsPath();
+    if (!ofFile::doesFileExist(path)) return;
+
+    try {
+        ofJson json = ofLoadJson(path);
+        if (json.contains("sound_file") && !json["sound_file"].is_null()) {
+            std::string soundPath = json["sound_file"].get<std::string>();
+            if (!soundPath.empty() && ofFile::doesFileExist(soundPath)) {
+                loadSoundFile(soundPath);
+                isPlaying = false;  // Don't auto-play on startup
+            }
+        }
+        ofLogNotice("ofApp") << "Loaded app settings from " << path;
+    } catch (const std::exception& e) {
+        ofLogWarning("ofApp") << "Failed to load app settings: " << e.what();
+    }
+}
+
+//--------------------------------------------------------------
+void ofApp::saveAppSettings() {
+    ofJson json;
+    json["sound_file"] = loadedFilePath;
+
+    std::string path = getAppSettingsPath();
+    if (ofSaveJson(path, json)) {
+        ofLogNotice("ofApp") << "Saved app settings to " << path;
+    } else {
+        ofLogWarning("ofApp") << "Failed to save app settings";
     }
 }
 
