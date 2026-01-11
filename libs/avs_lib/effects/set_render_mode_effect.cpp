@@ -26,8 +26,15 @@ int SetRenderModeEffect::render(AudioData visdata, int isBeat,
         int alpha = parameters().get_int("alpha");
         int line_width = parameters().get_int("line_width");
 
-        // Format: 0x80000000 | (line_width << 16) | (alpha << 8) | blend_mode
-        g_line_blend_mode = 0x80000000 | ((line_width & 0xFF) << 16) |
+        // Line style flags (bits 24-26) - new extension
+        int line_style = 0;
+        if (parameters().get_bool("anti_aliased")) line_style |= LINE_STYLE_AA;
+        if (parameters().get_bool("angle_corrected")) line_style |= LINE_STYLE_ANGLE_CORRECT;
+        if (parameters().get_bool("rounded_ends")) line_style |= LINE_STYLE_ROUNDED;
+
+        // Format: 0x80000000 | (line_style << 24) | (line_width << 16) | (alpha << 8) | blend_mode
+        g_line_blend_mode = 0x80000000 | (line_style << 24) |
+                           ((line_width & 0xFF) << 16) |
                            ((alpha & 0xFF) << 8) | (blend_mode & 0xFF);
     }
 
@@ -123,6 +130,34 @@ const PluginInfo SetRenderModeEffect::effect_info {
                 .x = 58, .y = 53, .w = 20, .h = 12,
                 .range = {1, 255},
                 .default_val = 1
+            },
+            // Line style options (new extension - bits 24-26)
+            {
+                .id = "line_style_group",
+                .text = "Line style",
+                .type = ControlType::GROUPBOX,
+                .x = 0, .y = 68, .w = 136, .h = 45
+            },
+            {
+                .id = "anti_aliased",
+                .text = "Anti-aliased",
+                .type = ControlType::CHECKBOX,
+                .x = 5, .y = 78, .w = 60, .h = 10,
+                .default_val = 0
+            },
+            {
+                .id = "angle_corrected",
+                .text = "Angle-corrected thickness",
+                .type = ControlType::CHECKBOX,
+                .x = 5, .y = 88, .w = 100, .h = 10,
+                .default_val = 0
+            },
+            {
+                .id = "rounded_ends",
+                .text = "Rounded endpoints",
+                .type = ControlType::CHECKBOX,
+                .x = 5, .y = 98, .w = 80, .h = 10,
+                .default_val = 0
             }
         }
     }
