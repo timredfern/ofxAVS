@@ -99,6 +99,9 @@ private:
     // Last error message for preset operations
     std::string last_error_;
 
+    // Current preset name (for display)
+    std::string current_preset_name_ = "AVS";
+
     // UI panel dimensions
     int chain_panel_width = 280;
     int chain_panel_height = 480;

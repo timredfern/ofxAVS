@@ -346,6 +346,8 @@ bool ofxAVS::loadPreset(const std::string& path) {
         last_error_ = avs::Preset::last_error();
     } else {
         last_error_.clear();
+        // Extract preset name from filename (without extension)
+        current_preset_name_ = ofFilePath::getBaseName(path);
         ofLogNotice("ofxAVS") << "Loaded preset: " << path;
     }
     return success;
@@ -434,7 +436,7 @@ void ofxAVS::drawChainPanel() {
     ImGui::PushStyleColor(ImGuiCol_TitleBgActive, ImVec4(0.2f, 0.2f, 0.2f, 1.0f));
     ImGui::PushStyleColor(ImGuiCol_TitleBgCollapsed, ImVec4(0.2f, 0.2f, 0.2f, 1.0f));
 
-    if (ImGui::Begin("AVS", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove)) {
+    if (ImGui::Begin(current_preset_name_.c_str(), nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove)) {
         // Handle keyboard navigation
         handleEffectListKeyboard();
 
