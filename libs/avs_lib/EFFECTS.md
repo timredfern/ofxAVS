@@ -753,7 +753,7 @@ Effects that modify pixel colors or apply filters.
   - Fade to color: COLOR_BUTTON, Position(0, 51), Size(78, 20), ID(IDC_LC)
 
 37. ### Color Fade
-- **Purpose**: Fades colors, with options for beat-triggered changes.
+- **Purpose**: Fades colors toward dominant channel, with options for beat-triggered changes.
 - **Source File**: `r_colorfade.cpp`
 - **Inputs**:
   - Framebuffer
@@ -761,15 +761,22 @@ Effects that modify pixel colors or apply filters.
 - **Outputs**: Color-faded framebuffer
 - **Blend Modes**: None (direct pixel manipulation)
 - **Controls**:
-  - Enable colorfade: CHECKBOX, Position(0, 0), Size(69, 10), ID(IDC_CHECK1)
-  - Color Fade Red: SLIDER, Position(0, 11), Size(100, 14), ID(IDC_SLIDER1)
-  - Color Fade Green: SLIDER, Position(0, 28), Size(100, 14), ID(IDC_SLIDER2)
-  - Color Fade Blue: SLIDER, Position(0, 46), Size(100, 14), ID(IDC_SLIDER3)
-  - OnBeat Change: CHECKBOX, Position(0, 67), Size(67, 10), ID(IDC_CHECK3)
-  - Onbeat Randomize: CHECKBOX, Position(9, 79), Size(73, 10), ID(IDC_CHECK2)
-  - Onbeat Color Fade Red: SLIDER, Position(7, 90), Size(100, 14), ID(IDC_SLIDER4)
-  - Onbeat Color Fade Green: SLIDER, Position(7, 107), Size(100, 14), ID(IDC_SLIDER5)
-  - Onbeat Color Fade Blue: SLIDER, Position(7, 125), Size(100, 14), ID(IDC_SLIDER6)
+  - Enable colorfade: CHECKBOX, Position(0, 0), Size(69, 10), ID(IDC_CHECK1), Default(1)
+  - Color Fade Red: SLIDER, Position(0, 11), Size(100, 14), ID(IDC_SLIDER1), Range(-32, 32), Default(8)
+  - Color Fade Green: SLIDER, Position(0, 28), Size(100, 14), ID(IDC_SLIDER2), Range(-32, 32), Default(-8)
+  - Color Fade Blue: SLIDER, Position(0, 46), Size(100, 14), ID(IDC_SLIDER3), Range(-32, 32), Default(-8)
+  - OnBeat Change: CHECKBOX, Position(0, 67), Size(67, 10), ID(IDC_CHECK3), Default(0)
+  - Onbeat Randomize: CHECKBOX, Position(9, 79), Size(73, 10), ID(IDC_CHECK2), Default(0)
+  - Onbeat Color Fade Red: SLIDER, Position(7, 90), Size(100, 14), ID(IDC_SLIDER4), Range(-32, 32), Default(8)
+  - Onbeat Color Fade Green: SLIDER, Position(7, 107), Size(100, 14), ID(IDC_SLIDER5), Range(-32, 32), Default(-8)
+  - Onbeat Color Fade Blue: SLIDER, Position(7, 125), Size(100, 14), ID(IDC_SLIDER6), Range(-32, 32), Default(-8)
+- **Notes**:
+  - Slider UI range is 0-64, stored value is slider_pos - 32
+  - Algorithm determines dominant color channel and applies different fade values based on which channel dominates
+  - c_tab[512][512] lookup table maps (g-b, b-r) to one of 4 fade categories
+  - When OnBeat Change disabled: faderpos = faders (instant)
+  - When OnBeat Change enabled: faderpos interpolates toward faders (1 step per frame)
+  - When OnBeat Randomize enabled: on beat, faderpos is randomized
 
 38. ### Grain
 - **Purpose**: Add film grain effect
