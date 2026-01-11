@@ -285,8 +285,88 @@ bool Preset::load_json(const std::string& path, EffectContainer& root) {
 // Legacy binary format loading
 // ============================================================================
 
+static const char AVS_EXT_SIGSTR[] = "AVS 2.8+ Effect List Config";
+
 // Forward declaration for recursive Effect List loading
-static bool load_effect_list_children(BinaryReader& reader, EffectContainer* container);
+static std::unique_ptr<EffectBase> load_legacy_effect(BinaryReader& reader);
+
+// Load children of an Effect List from a sub-reader containing the list's config data
+static void load_effect_list_from_config(BinaryReader& config_reader, EffectContainer* container) {
+    if (config_reader.remaining() < 1) return;
+
+    // Read mode byte
+    uint8_t mode = config_reader.read_u8();
+
+    // Extended data if high bit set
+    if (mode & 0x80) {
+        // Skip: mode (4) + inblendval (4) + outblendval (4) + bufferin (4) +
+        //       bufferout (4) + ininvert (4) + outinvert (4) + beat_render (4) + beat_render_frames (4)
+        config_reader.skip(4 + 4 + 4 + 4 + 4 + 4 + 4 + 4 + 4);
+    }
+
+    // Check for "AVS 2.8+ Effect List Config" extended config
+    // This appears as a plugin effect entry with the signature string as its ID
+    while (config_reader.remaining() >= 8) {
+        uint32_t effect_index = config_reader.read_u32();
+
+        if (effect_index >= DLLRENDERBASE && effect_index != EFFECT_LIST_INDEX) {
+            // Plugin effect - check if it's the ext config marker
+            std::string plugin_id = config_reader.read_string_fixed(32);
+            uint32_t entry_len = config_reader.read_u32();
+
+            if (plugin_id == AVS_EXT_SIGSTR) {
+                // Skip the extended config data (init/frame code etc.)
+                config_reader.skip(entry_len);
+                continue;
+            } else {
+                // Real plugin effect - create unsupported placeholder
+                auto effect = std::make_unique<UnsupportedEffect>(
+                    "Plugin: " + plugin_id, static_cast<int>(effect_index));
+                config_reader.skip(entry_len);
+                container->add_child(std::move(effect));
+            }
+        } else if (effect_index == EFFECT_LIST_INDEX) {
+            // Nested Effect List
+            uint32_t entry_len = config_reader.read_u32();
+            if (entry_len > 0 && config_reader.remaining() >= entry_len) {
+                auto effect = PluginManager::instance().create_effect("Effect List");
+                if (effect) {
+                    // Create a sub-reader for this nested Effect List's config
+                    BinaryReader nested_reader = config_reader.sub_reader(entry_len);
+                    auto* nested_container = dynamic_cast<EffectContainer*>(effect.get());
+                    if (nested_container) {
+                        load_effect_list_from_config(nested_reader, nested_container);
+                    }
+                    container->add_child(std::move(effect));
+                }
+            }
+            config_reader.skip(entry_len);
+        } else {
+            // Built-in effect
+            uint32_t entry_len = config_reader.read_u32();
+
+            auto effect = PluginManager::instance().create_by_legacy_index(static_cast<int>(effect_index));
+            if (!effect) {
+                const char* name = get_legacy_effect_name(static_cast<int>(effect_index));
+                if (name) {
+                    effect = std::make_unique<UnsupportedEffect>(name, static_cast<int>(effect_index));
+                } else {
+                    effect = std::make_unique<UnsupportedEffect>(
+                        "Unknown Effect #" + std::to_string(effect_index),
+                        static_cast<int>(effect_index));
+                }
+            }
+
+            // Pass config data to effect for parsing
+            if (effect && entry_len > 0 && config_reader.remaining() >= entry_len) {
+                std::vector<uint8_t> config_data(config_reader.ptr(), config_reader.ptr() + entry_len);
+                effect->load_parameters(config_data);
+            }
+            config_reader.skip(entry_len);
+            container->add_child(std::move(effect));
+        }
+    }
+}
 
 static std::unique_ptr<EffectBase> load_legacy_effect(BinaryReader& reader) {
     if (reader.remaining() < 8) return nullptr;
@@ -305,39 +385,19 @@ static std::unique_ptr<EffectBase> load_legacy_effect(BinaryReader& reader) {
     std::unique_ptr<EffectBase> effect;
 
     if (effect_index == EFFECT_LIST_INDEX) {
-        // Effect List - special handling
+        // Effect List - children are embedded within config_length
         effect = PluginManager::instance().create_effect("Effect List");
 
-        if (effect && config_length > 0) {
-            // Read mode byte
-            uint8_t mode = reader.read_u8();
-            size_t consumed = 1;
+        if (effect && config_length > 0 && reader.remaining() >= config_length) {
+            // Create a sub-reader limited to this Effect List's config data
+            BinaryReader config_reader = reader.sub_reader(config_length);
 
-            // Extended data if high bit set
-            if (mode & 0x80) {
-                reader.skip(4 + 4 + 4 + 4 + 4 + 4 + 4 + 4 + 4); // mode, blend vals, buffers, etc
-                consumed += 36;
-            }
-
-            // For non-root Effect Lists, there's additional config
-            // Check for "AVS 2.8+ Effect List Config" marker
-            if (config_length > consumed + 36) {
-                size_t remaining_config = config_length - consumed;
-                // Just skip the Effect List's own config for now
-                // Child effects follow after config_length bytes total
-            }
-
-            // Skip rest of Effect List config
-            if (config_length > consumed) {
-                reader.skip(config_length - consumed);
-            }
-
-            // Load children recursively
             auto* container = dynamic_cast<EffectContainer*>(effect.get());
             if (container) {
-                load_effect_list_children(reader, container);
+                load_effect_list_from_config(config_reader, container);
             }
         }
+        reader.skip(config_length);
     } else if (effect_index < DLLRENDERBASE) {
         // Built-in effect by index
         effect = PluginManager::instance().create_by_legacy_index(static_cast<int>(effect_index));
@@ -370,23 +430,6 @@ static std::unique_ptr<EffectBase> load_legacy_effect(BinaryReader& reader) {
     }
 
     return effect;
-}
-
-static bool load_effect_list_children(BinaryReader& reader, EffectContainer* container) {
-    // Load effects until we hit end of data or another Effect List end marker
-    while (!reader.eof()) {
-        // Peek at next effect index
-        if (reader.remaining() < 4) break;
-
-        auto effect = load_legacy_effect(reader);
-        if (effect) {
-            container->add_child(std::move(effect));
-        } else {
-            // Unknown effect or parse error - stop
-            break;
-        }
-    }
-    return true;
 }
 
 bool Preset::load_legacy(const std::string& path, EffectContainer& root) {

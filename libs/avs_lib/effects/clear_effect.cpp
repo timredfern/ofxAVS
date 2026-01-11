@@ -43,7 +43,12 @@ int ClearEffect::render(AudioData visdata, int isBeat,
         for (int i = 0; i < pixel_count; i++) {
             p[i] = BLEND_AVG(p[i], color);
         }
-    } else {  // REPLACE or DEFAULT
+    } else if (blend_mode == BlendMode::DEFAULT) {
+        // Use global line blend mode (set by Set Render Mode effect)
+        for (int i = 0; i < pixel_count; i++) {
+            BLEND_LINE(&p[i], color);
+        }
+    } else {  // REPLACE
         for (int i = 0; i < pixel_count; i++) {
             p[i] = color;
         }

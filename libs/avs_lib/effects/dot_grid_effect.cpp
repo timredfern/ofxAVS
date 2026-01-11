@@ -68,8 +68,9 @@ int DotGridEffect::render(AudioData visdata, int isBeat,
             for (int x = sx; x < w; x += spacing)
                 p[x] = BLEND_AVG(p[x], current_color);
         } else if (blend_mode == 3) {
+            // Use global line blend mode (set by Set Render Mode effect)
             for (int x = sx; x < w; x += spacing)
-                p[x] = BLEND(p[x], current_color);  // BLEND_LINE is additive
+                BLEND_LINE(&p[x], current_color);
         } else {
             for (int x = sx; x < w; x += spacing)
                 p[x] = current_color;

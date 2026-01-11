@@ -33,8 +33,6 @@ public:
 
 private:
     int color_pos_ = 0;
-
-    void draw_line(uint32_t* buffer, int w, int h, int x1, int y1, int x2, int y2, uint32_t color);
 };
 
 } // namespace avs

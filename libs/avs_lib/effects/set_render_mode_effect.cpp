@@ -7,12 +7,9 @@
 #include "set_render_mode_effect.h"
 #include "core/plugin_manager.h"
 #include "core/binary_reader.h"
+#include "core/blend.h"
 
 namespace avs {
-
-// Global line blend mode - used by SuperScope and other line-drawing effects
-// Format: bit 31 = enabled, bits 8-15 = alpha, bits 16-23 = line width, bits 0-7 = blend mode
-int g_line_blend_mode = 0;
 
 SetRenderModeEffect::SetRenderModeEffect() {
     init_parameters_from_layout(effect_info.ui_layout);

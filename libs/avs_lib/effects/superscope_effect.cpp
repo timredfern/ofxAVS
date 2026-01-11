@@ -8,6 +8,7 @@
 #include "core/binary_reader.h"
 #include "core/plugin_manager.h"
 #include "core/ui.h"
+#include "core/line_draw.h"
 #include <algorithm>
 #include <cmath>
 
@@ -111,38 +112,7 @@ SuperScopeEffect::SuperScopeEffect() {
     engine_.set_variable("t", 0.0);
 }
 
-void SuperScopeEffect::draw_line(uint32_t* buffer, int w, int h,
-                                  int x1, int y1, int x2, int y2, uint32_t color) {
-    // Bresenham-style line drawing
-    int dx = abs(x2 - x1);
-    int dy = abs(y2 - y1);
-    int steps = std::max(dx, dy);
-
-    if (steps == 0) {
-        if (x1 >= 0 && x1 < w && y1 >= 0 && y1 < h) {
-            buffer[y1 * w + x1] = color;
-        }
-        return;
-    }
-
-    float x_inc = static_cast<float>(x2 - x1) / steps;
-    float y_inc = static_cast<float>(y2 - y1) / steps;
-
-    float x = static_cast<float>(x1);
-    float y = static_cast<float>(y1);
-
-    for (int i = 0; i <= steps; i++) {
-        int px = static_cast<int>(x + 0.5f);
-        int py = static_cast<int>(y + 0.5f);
-
-        if (px >= 0 && px < w && py >= 0 && py < h) {
-            buffer[py * w + px] = color;
-        }
-
-        x += x_inc;
-        y += y_inc;
-    }
-}
+// SuperScope uses the shared draw_line from core/line_draw.h
 
 int SuperScopeEffect::render(AudioData visdata, int isBeat,
                               uint32_t* framebuffer, uint32_t* fbout,
@@ -295,13 +265,11 @@ int SuperScopeEffect::render(AudioData visdata, int isBeat,
 
                 if (current_drawmode < 0.00001) {
                     // Dots mode
-                    if (py >= 0 && py < h && px >= 0 && px < w) {
-                        framebuffer[px + py * w] = point_color;
-                    }
+                    draw_point(framebuffer, px, py, w, h, point_color);
                 } else {
                     // Lines mode
                     if (can_draw) {
-                        draw_line(framebuffer, w, h, last_x, last_y, px, py, point_color);
+                        draw_line(framebuffer, last_x, last_y, px, py, w, h, point_color);
                     }
                 }
             }

@@ -40,9 +40,6 @@ private:
     bool inited_ = false;
     int color_pos_ = 0;
 
-    void draw_line(uint32_t* buffer, int w, int h,
-                   int x1, int y1, int x2, int y2, uint32_t color);
-
     // Helper to convert 0-1 color to 0-255
     static int make_color_component(double val) {
         if (val <= 0.0) return 0;

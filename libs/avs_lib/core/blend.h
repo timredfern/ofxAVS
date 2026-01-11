@@ -72,6 +72,51 @@ static inline uint32_t BLEND_ADJ(uint32_t a, uint32_t b, int alpha) {
     return (r & 0xff) | ((g & 0xff) << 8) | ((bl & 0xff) << 16);
 }
 
+// Multiply blend - per-channel multiply (result = (a * b) / 256)
+static inline uint32_t BLEND_MUL(uint32_t a, uint32_t b) {
+    uint32_t r = ((a & 0xff) * (b & 0xff)) >> 8;
+    uint32_t g = (((a >> 8) & 0xff) * ((b >> 8) & 0xff)) >> 8;
+    uint32_t bl = (((a >> 16) & 0xff) * ((b >> 16) & 0xff)) >> 8;
+    return (r & 0xff) | ((g & 0xff) << 8) | ((bl & 0xff) << 16);
+}
+
+// Global line blend mode - set by Set Render Mode effect
+// Format: bit 31 = enabled, bits 0-7 = blend mode, bits 8-15 = alpha, bits 16-23 = line width
+extern int g_line_blend_mode;
+
+// BLEND_LINE - writes a pixel using the current global line blend mode
+// Blend modes:
+//   0 = Replace
+//   1 = Additive
+//   2 = Maximum
+//   3 = 50/50
+//   4 = Subtractive 1 (fb - color)
+//   5 = Subtractive 2 (color - fb)
+//   6 = Multiply
+//   7 = Adjustable (uses alpha from bits 8-15)
+//   8 = XOR
+//   9 = Minimum
+static inline void BLEND_LINE(uint32_t* fb, uint32_t color) {
+    if (!(g_line_blend_mode & 0x80000000)) {
+        // Mode not enabled - use replace
+        *fb = color;
+        return;
+    }
+
+    switch (g_line_blend_mode & 0xff) {
+        case 1: *fb = BLEND(*fb, color); break;           // Additive
+        case 2: *fb = BLEND_MAX(*fb, color); break;       // Maximum
+        case 3: *fb = BLEND_AVG(*fb, color); break;       // 50/50
+        case 4: *fb = BLEND_SUB(*fb, color); break;       // Sub 1 (fb - color)
+        case 5: *fb = BLEND_SUB(color, *fb); break;       // Sub 2 (color - fb)
+        case 6: *fb = BLEND_MUL(*fb, color); break;       // Multiply
+        case 7: *fb = BLEND_ADJ(*fb, color, (g_line_blend_mode >> 8) & 0xff); break;  // Adjustable
+        case 8: *fb = *fb ^ color; break;                 // XOR
+        case 9: *fb = BLEND_MIN(*fb, color); break;       // Minimum
+        default: *fb = color; break;                      // Replace (case 0)
+    }
+}
+
 // Bilinear interpolation of a 2x2 pixel block
 // src points to top-left pixel, w is stride
 // lerp_x and lerp_y are 0-255 interpolation factors (fractional position * 256)

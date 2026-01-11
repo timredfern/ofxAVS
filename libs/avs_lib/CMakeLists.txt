@@ -17,6 +17,7 @@ add_library(avs_core STATIC
     core/script/lexer.cpp
     core/script/parser.cpp
     core/coordinate_grid.cpp
+    core/blend.cpp
 )
 
 target_include_directories(avs_core PUBLIC . core)

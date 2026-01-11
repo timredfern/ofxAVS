@@ -81,6 +81,12 @@ public:
         pos_ = std::min(pos_ + bytes, data_.size());
     }
 
+    // Create a sub-reader limited to the next 'len' bytes
+    BinaryReader sub_reader(size_t len) const {
+        size_t actual_len = std::min(len, remaining());
+        return BinaryReader(&data_[pos_], actual_len);
+    }
+
     // Check if next bytes match a pattern
     bool peek_match(const char* pattern, size_t len) const {
         if (pos_ + len > data_.size()) return false;

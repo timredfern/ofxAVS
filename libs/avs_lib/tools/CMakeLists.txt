@@ -19,6 +19,7 @@ add_library(avs_core STATIC
     ${AVS_LIB_ROOT}/core/script/lexer.cpp
     ${AVS_LIB_ROOT}/core/script/parser.cpp
     ${AVS_LIB_ROOT}/core/coordinate_grid.cpp
+    ${AVS_LIB_ROOT}/core/blend.cpp
     ${AVS_LIB_ROOT}/effects/movement_effect.cpp
     ${AVS_LIB_ROOT}/effects/dynamic_movement_effect.cpp
     ${AVS_LIB_ROOT}/effects/brightness_effect.cpp

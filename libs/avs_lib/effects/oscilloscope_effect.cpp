@@ -7,6 +7,7 @@
 #include "oscilloscope_effect.h"
 #include "core/plugin_manager.h"
 #include "core/binary_reader.h"
+#include "core/line_draw.h"
 #include "core/ui.h"
 #include <algorithm>
 #include <cmath>
@@ -17,37 +18,7 @@ OscilloscopeEffect::OscilloscopeEffect() {
     init_parameters_from_layout(effect_info.ui_layout);
 }
 
-void OscilloscopeEffect::draw_line(uint32_t* buffer, int w, int h, int x1, int y1, int x2, int y2, uint32_t color) {
-    // Simple line drawing (Bresenham's line algorithm would be better)
-    int dx = abs(x2 - x1);
-    int dy = abs(y2 - y1);
-    int steps = std::max(dx, dy);
-    
-    if (steps == 0) {
-        if (x1 >= 0 && x1 < w && y1 >= 0 && y1 < h) {
-            buffer[y1 * w + x1] = color;
-        }
-        return;
-    }
-    
-    float x_inc = (float)(x2 - x1) / steps;
-    float y_inc = (float)(y2 - y1) / steps;
-    
-    float x = x1;
-    float y = y1;
-    
-    for (int i = 0; i <= steps; i++) {
-        int px = (int)(x + 0.5f);
-        int py = (int)(y + 0.5f);
-        
-        if (px >= 0 && px < w && py >= 0 && py < h) {
-            buffer[py * w + px] = color;
-        }
-        
-        x += x_inc;
-        y += y_inc;
-    }
-}
+// Oscilloscope uses the shared draw_line from core/line_draw.h
 
 int OscilloscopeEffect::render(AudioData visdata, int isBeat,
                               uint32_t* framebuffer, uint32_t* fbout,
@@ -151,7 +122,7 @@ int OscilloscopeEffect::render(AudioData visdata, int isBeat,
                        sample_to_unsigned(audio_data[idx + 1]) * frac;
             int y = y_base + static_cast<int>(yr * y_scale);
 
-            draw_line(framebuffer, w, h, x, y_center, x, y, color);
+            draw_line(framebuffer, x, y_center, x, y, w, h, color);
         }
     } else if (draw_style == DrawStyle::LINES) {
         // Line scope: draw connected line segments
@@ -163,7 +134,7 @@ int OscilloscopeEffect::render(AudioData visdata, int isBeat,
             int ox = static_cast<int>(i * xs);
             int oy = y_base + static_cast<int>(sample_to_unsigned(audio_data[i]) * y_scale);
 
-            draw_line(framebuffer, w, h, lx, ly, ox, oy, color);
+            draw_line(framebuffer, lx, ly, ox, oy, w, h, color);
 
             lx = ox;
             ly = oy;
@@ -180,9 +151,7 @@ int OscilloscopeEffect::render(AudioData visdata, int isBeat,
                        sample_to_unsigned(audio_data[idx + 1]) * frac;
             int y = y_base + static_cast<int>(yr * y_scale);
 
-            if (y >= 0 && y < h) {
-                framebuffer[y * w + x] = color;
-            }
+            draw_point(framebuffer, x, y, w, h, color);
         }
     }
 
