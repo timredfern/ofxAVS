@@ -91,11 +91,31 @@ audio_data[1][1][0] = 100;  // Right channel, waveform, first sample
 
 ### Available Effects
 
-| Effect | ID | Description |
-|--------|----|-----------| 
-| Clear | `"clear"` | Fills screen with solid color, supports blend modes |
-| Oscilloscope | `"oscilloscope"` | Draws audio waveforms as dots or connected lines |
-| Blur | `"blur"` | Box blur with configurable strength and radius |
+| Effect | Category | Description |
+|--------|----------|-----------|
+| Clear | Render | Fills screen with solid color, supports blend modes |
+| OnBeat Clear | Render | Clears screen on beat with blend modes |
+| Oscilloscope | Render | Draws audio waveforms as dots or connected lines |
+| SuperScope | Render | Scriptable audio visualization with per-point expressions |
+| Dot Grid | Render | Animated color-cycling dot grid |
+| Dot Fountain | Render | 3D rotating particle fountain with audio response |
+| Blur | Trans | Box blur with configurable strength and radius |
+| Brightness | Trans | RGB channel adjustment with lookup tables |
+| Movement | Trans | 23 built-in presets + custom polar/rectangular transforms |
+| Dynamic Movement | Trans | Grid-based transforms with multi-phase scripting |
+| Color Fade | Trans | Fades to target color over time |
+| Fadeout | Trans | Fades screen to black |
+| DDM | Trans | Dynamic Distance Modifier |
+| Bump | Trans | Bump mapping distortion effect |
+| Water | Trans | Water ripple distortion effect |
+| Mirror | Trans | Horizontal/vertical mirroring |
+| Shift | Trans | Shifts image by offset |
+| Scatter | Trans | Randomizes pixel positions |
+| Roto Blitter | Trans | Rotation and zoom transformation |
+| Interferences | Trans | Interference pattern overlay |
+| Set Render Mode | Misc | Controls line drawing style, width, blend mode with scripting |
+| Custom BPM | Misc | Manual BPM control |
+| Effect List | Container | Groups effects with blend modes and clear options |
 
 ### Effect Parameters
 
@@ -284,25 +304,24 @@ public:
 ## Development Status
 
 ### Completed ✅
-- Core rendering pipeline
-- Parameter system  
-- Plugin architecture
-- 3 basic effects (Clear, Oscilloscope, Blur)
-- Standalone example and build system
+- Core rendering pipeline with double-buffering
+- Parameter system with typed values
+- Plugin architecture with legacy index mapping
+- Binary .avs preset loading
+- Custom script engine (EEL-compatible subset)
+- 23+ effects implemented (see Available Effects table)
+- Line drawing infrastructure with Wu's anti-aliased algorithm
+- Set Render Mode with dynamic scripting for line style control
+- Standalone example and test suite
 
 ### In Progress 🚧
-- Script engine refactoring for multi-phase execution
-- Transform effect split (Movement vs Dynamic Movement)
-- Coordinate lookup table optimization
+- Remaining ~30 AVS effects
+- Full NS-EEL compatibility for edge cases
 
 ### Planned 📋
-- MovementEffect with 23 built-in presets + custom scripting
-- DynamicMovementEffect with grid-based coordinate interpolation
-- SuperScopeEffect with point-phase audio rendering
-- Complete NS-EEL scripting system
-- Original .avs preset loading and compatibility
 - Complete effect library (54+ effects matching original AVS)
-- UI architecture for effect chain editing
+- Global frame buffer system (Buffer Save effect)
+- Preset transitions
 
 ---
 

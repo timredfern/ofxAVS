@@ -21,6 +21,9 @@ Each AVS effect is implemented as a separate class that exactly matches the orig
 - `ClearEffect` → `r_clear.cpp` (Render/Clear Screen)
 - `OnBeatClearEffect` → `r_onetone.cpp` (Render/OnBeat Clear)
 - `DotGridEffect` → `r_dotgrid.cpp` (Render/Dot Grid)
+- `DotFountainEffect` → `r_fountain.cpp` (Render/Dot Fountain)
+- `WaterEffect` → `r_water.cpp` (Trans/Water)
+- `SetRenderModeEffect` → `r_linemode.cpp` (Misc/Set Render Mode)
 - `EffectList` → `r_list.cpp` (Container/Effect List)
 
 ### 2. Script Infrastructure
@@ -79,24 +82,25 @@ libs/avs_lib/
 │   │   ├── lexer.cpp           # Token scanning
 │   │   ├── parser.cpp          # Expression parsing
 │   │   └── script_engine.cpp   # Variable context and evaluation
-│   ├── coordinate_grid.cpp          # Grid-based transforms with interpolation
-│   ├── builtin_effects.cpp     # Built-in effect presets
+│   ├── coordinate_grid.cpp     # Grid-based transforms with interpolation
+│   ├── builtin_effects.cpp     # Built-in effect registration
 │   ├── parameter.cpp           # Parameter system
 │   ├── plugin_manager.cpp      # Effect registration and factory
+│   ├── preset.cpp              # Binary .avs preset loading
+│   ├── blend.cpp               # Blend mode implementations
+│   ├── line_draw.h             # Line drawing (Bresenham, Wu anti-aliasing)
 │   ├── effect_base.h           # Base effect interface
 │   └── ui.h                    # UI layout definitions
-├── effects/
-│   ├── movement_effect.cpp         # Trans/Movement (r_trans.cpp)
-│   ├── dynamic_movement_effect.cpp # Trans/Dynamic Movement (r_dmove.cpp)
-│   ├── oscilloscope_effect.cpp     # Render/Simple (r_simple.cpp)
-│   ├── superscope_effect.cpp       # Render/SuperScope (r_sscope.cpp)
-│   ├── blur_effect.cpp             # Trans/Blur (r_blur.cpp)
-│   ├── brightness_effect.cpp       # Trans/Brightness (r_bright.cpp)
-│   ├── clear_effect.cpp            # Render/Clear Screen (r_clear.cpp)
-│   ├── onbeat_clear_effect.cpp     # Render/OnBeat Clear (r_onetone.cpp)
-│   ├── dot_grid_effect.cpp         # Render/Dot Grid (r_dotgrid.cpp)
-│   └── effect_list.cpp             # Container/Effect List (r_list.cpp)
+├── effects/                     # 23+ ported AVS effects
+│   ├── movement_effect.cpp         # Trans/Movement (23 presets + custom)
+│   ├── dynamic_movement_effect.cpp # Trans/Dynamic Movement (grid-based)
+│   ├── superscope_effect.cpp       # Render/SuperScope (scriptable)
+│   ├── set_render_mode_effect.cpp  # Misc/Set Render Mode (line control)
+│   ├── dot_fountain_effect.cpp     # Render/Dot Fountain (3D particles)
+│   ├── water_effect.cpp            # Trans/Water (ripple effect)
+│   └── ...                         # See EFFECTS.md for full list
 ├── example/                     # Standalone example (no OpenFrameworks)
+├── tools/                       # CLI utilities (avs2json)
 └── tests/                       # Catch2 unit tests
 ```
 
@@ -221,6 +225,7 @@ The init script runs in `on_parameter_changed()`, NOT in `render()`. This avoids
 - **DynamicMovementEffect**: INIT + FRAME + BEAT + PIXEL (full multi-phase)
 - **SuperScopeEffect**: INIT + FRAME + BEAT + POINT (per audio sample)
 - **OscilloscopeEffect**: No scripting (hardcoded rendering)
+- **SetRenderModeEffect**: INIT + FRAME + BEAT (controls global line drawing state)
 
 ## Effect Implementation Patterns
 
@@ -288,6 +293,37 @@ class OscilloscopeEffect : public EffectBase {
 
 **Note:** `SuperScopeEffect` with full POINT-phase scripting is implemented in `superscope_effect.cpp`.
 
+### Line Drawing Infrastructure
+
+AVS uses a global line drawing mode that affects how render effects (Oscilloscope, SuperScope) draw lines. This is controlled by the `Set Render Mode` effect and stored in a global variable `g_line_blend_mode`.
+
+**Line Drawing Module** (`core/line_draw.h`):
+- `line()` - Bresenham's algorithm for single-pixel lines
+- `line_wu()` - Wu's anti-aliased line algorithm (1991, public domain)
+- Support for variable line width (1-256 pixels)
+- Blend modes: Replace, Additive, Maximum, 50/50, Subtractive, XOR, Minimum
+
+**Global Line Mode** (`g_line_blend_mode`):
+The 32-bit packed value contains:
+- Bit 31: Enabled flag
+- Bits 24-26: Line style (0=solid, 1=dotted, 2=anti-aliased)
+- Bits 16-23: Line width (1-256)
+- Bits 8-15: Alpha value (for future use)
+- Bits 0-7: Blend mode
+
+**Set Render Mode Effect**:
+Controls the global line drawing state with optional scripting:
+- Script variables: `lw` (line width), `bm` (blend mode), `a` (alpha), `aa` (anti-alias), `ac` (additive color), `rd` (random dots)
+- Init/Frame/Beat scripts allow dynamic control (e.g., thicker lines on beat)
+- Backwards compatible with presets that don't use scripting
+
+```cpp
+// Example: Pulse line width on beat
+// Init: lw=2
+// Frame: lw=max(1,lw-0.5)
+// Beat: lw=10
+```
+
 ## Compatibility Strategy
 
 ### Preset Loading
@@ -321,22 +357,34 @@ The `CoordinateGrid` class uses a two-stage transformation matching original AVS
 - Plugin registration and factory pattern
 - UI layout system with data-driven controls (Windows-to-ImGui translation)
 - RADIO_GROUP with typed enums
+- Binary .avs preset loading with legacy index mapping
 - BlurEffect (bit-shift optimized, matches original r_blur.cpp)
 - BrightnessEffect (lookup table based, matches r_bright.cpp)
 - ClearEffect (with blend modes)
 - OnBeatClearEffect (beat-triggered clear with blend)
 - DotGridEffect (animated color-cycling dot grid)
+- DotFountainEffect (3D particle fountain with matrix transforms)
+- WaterEffect (ripple distortion with neighbor averaging)
 - OscilloscopeEffect (basic non-scriptable version)
 - SuperScopeEffect (with POINT-phase scripting)
 - CoordinateGrid with two-stage transformation
 - MovementEffect (23 presets + custom scripting)
 - DynamicMovementEffect (multi-phase scripting)
 - EffectList (container for nested effects)
+- SetRenderModeEffect (line drawing control with scripting)
+- Line drawing module with Wu's anti-aliased algorithm
+- MirrorEffect, ShiftEffect, ScatterEffect
+- RotoBlitterEffect (rotation/zoom transforms)
+- InterferencesEffect, MovingParticleEffect
+- CustomBpmEffect, ColorFadeEffect, FadeoutEffect
+- DDMEffect (Dynamic Distance Modifier)
+- BumpEffect (bump mapping)
 
 ### Planned / Not Yet Implemented
-- Preset file loading (.avs format)
 - Full NS-EEL compatibility (current parser covers common subset)
-- Remaining ~40 AVS effects
+- Remaining ~25 AVS effects
+- Global frame buffer system (Buffer Save effect)
+- Preset transitions
 
 ## Performance Considerations
 
