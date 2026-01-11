@@ -6,6 +6,7 @@
 
 #include "dot_grid_effect.h"
 #include "core/plugin_manager.h"
+#include "core/binary_reader.h"
 #include "core/blend.h"
 
 namespace avs {
@@ -80,6 +81,46 @@ int DotGridEffect::render(AudioData visdata, int isBeat,
     yp_ += parameters().get_int("y_move");
 
     return 0;
+}
+
+void DotGridEffect::load_parameters(const std::vector<uint8_t>& data) {
+    if (data.size() < 4) return;
+
+    BinaryReader reader(data);
+
+    // Binary format from r_dotgrid.cpp:
+    // num_colors (int32)
+    // colors[num_colors] (int32 each, BGR format)
+    // spacing (int32)
+    // x_move (int32)
+    // y_move (int32)
+    // blend (int32)
+    int num_colors = reader.read_u32();
+    if (num_colors > 16) num_colors = 16;
+    if (num_colors < 1) num_colors = 1;
+    parameters().set_int("num_colors", num_colors);
+
+    for (int i = 0; i < num_colors && reader.remaining() >= 4; i++) {
+        uint32_t color = BinaryReader::bgr_to_argb(reader.read_u32());
+        parameters().set_color("color_" + std::to_string(i), color);
+    }
+
+    if (reader.remaining() >= 4) {
+        int spacing = reader.read_u32();
+        parameters().set_int("spacing", spacing);
+    }
+    if (reader.remaining() >= 4) {
+        int x_move = static_cast<int32_t>(reader.read_u32());
+        parameters().set_int("x_move", x_move);
+    }
+    if (reader.remaining() >= 4) {
+        int y_move = static_cast<int32_t>(reader.read_u32());
+        parameters().set_int("y_move", y_move);
+    }
+    if (reader.remaining() >= 4) {
+        int blend = reader.read_u32();
+        parameters().set_int("blend_mode", blend);
+    }
 }
 
 const PluginInfo DotGridEffect::effect_info {

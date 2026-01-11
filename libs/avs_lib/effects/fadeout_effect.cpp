@@ -6,6 +6,7 @@
 
 #include "fadeout_effect.h"
 #include "core/plugin_manager.h"
+#include "core/binary_reader.h"
 
 namespace avs {
 
@@ -80,6 +81,25 @@ int FadeoutEffect::render(AudioData visdata, int isBeat,
     }
 
     return 0;  // Modified framebuffer in-place
+}
+
+void FadeoutEffect::load_parameters(const std::vector<uint8_t>& data) {
+    if (data.size() < 4) return;
+
+    BinaryReader reader(data);
+
+    // Binary format from r_fadeout.cpp:
+    // fadelen (int32)
+    // color (int32, BGR format)
+    int fadelen = reader.read_u32();
+    parameters().set_int("fadelen", fadelen);
+
+    if (reader.remaining() >= 4) {
+        uint32_t color = BinaryReader::bgr_to_argb(reader.read_u32());
+        parameters().set_color("color", color);
+    }
+
+    make_table();
 }
 
 // Static member definition - UI layout from res.rc IDD_CFG_FADE

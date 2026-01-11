@@ -6,6 +6,7 @@
 
 #include "brightness_effect.h"
 #include "core/plugin_manager.h"
+#include "core/binary_reader.h"
 #include "core/blend.h"
 #include <algorithm>
 #include <cmath>
@@ -118,6 +119,69 @@ int BrightnessEffect::render(AudioData visdata, int isBeat,
     }
 
     return 0; // Modified in place
+}
+
+void BrightnessEffect::load_parameters(const std::vector<uint8_t>& data) {
+    if (data.size() < 4) return;
+
+    BinaryReader reader(data);
+
+    // Binary format from r_bright.cpp:
+    // enabled (int32)
+    // blend (int32)
+    // blendavg (int32)
+    // redp (int32) - stored as -4096 to 4096, UI uses 0-8192
+    // greenp (int32)
+    // bluep (int32)
+    // dissoc (int32)
+    // color (int32, BGR format)
+    // exclude (int32)
+    // distance (int32)
+    int enabled = reader.read_u32();
+    parameters().set_bool("enabled", enabled != 0);
+
+    int blend = 0, blendavg = 0;
+    if (reader.remaining() >= 4) blend = reader.read_u32();
+    if (reader.remaining() >= 4) blendavg = reader.read_u32();
+
+    // Map blend modes: blend=additive, blendavg=50/50, neither=replace
+    if (blend) parameters().set_int("blend_mode", 1);  // Additive
+    else if (blendavg) parameters().set_int("blend_mode", 2);  // 50/50
+    else parameters().set_int("blend_mode", 0);  // Replace
+
+    // RGB adjustments - convert from -4096..4096 to 0..8192 for UI
+    if (reader.remaining() >= 4) {
+        int redp = static_cast<int32_t>(reader.read_u32());
+        parameters().set_int("red_adjust", redp + 4096);
+    }
+    if (reader.remaining() >= 4) {
+        int greenp = static_cast<int32_t>(reader.read_u32());
+        parameters().set_int("green_adjust", greenp + 4096);
+    }
+    if (reader.remaining() >= 4) {
+        int bluep = static_cast<int32_t>(reader.read_u32());
+        parameters().set_int("blue_adjust", bluep + 4096);
+    }
+
+    if (reader.remaining() >= 4) {
+        int dissoc = reader.read_u32();
+        parameters().set_bool("dissoc", dissoc != 0);
+    }
+
+    if (reader.remaining() >= 4) {
+        uint32_t color = BinaryReader::bgr_to_argb(reader.read_u32());
+        parameters().set_color("exclude_color", color);
+    }
+
+    if (reader.remaining() >= 4) {
+        int exclude = reader.read_u32();
+        parameters().set_bool("exclude", exclude != 0);
+    }
+
+    if (reader.remaining() >= 4) {
+        int distance = reader.read_u32();
+        parameters().set_int("distance", distance);
+    }
 }
 
 // Static member definition

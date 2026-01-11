@@ -6,6 +6,7 @@
 
 #include "color_fade_effect.h"
 #include "core/plugin_manager.h"
+#include "core/binary_reader.h"
 #include <algorithm>
 #include <cstdlib>
 
@@ -123,6 +124,51 @@ int ColorFadeEffect::render(AudioData visdata, int isBeat,
     }
 
     return 0;
+}
+
+void ColorFadeEffect::load_parameters(const std::vector<uint8_t>& data) {
+    if (data.size() < 4) return;
+
+    BinaryReader reader(data);
+
+    // Binary format from r_colorfade.cpp:
+    // enabled (int32) - bit 2 controls onbeat_change, bit 3 controls onbeat_random
+    // faders[0] (int32) - fade_red
+    // faders[1] (int32) - fade_green
+    // faders[2] (int32) - fade_blue
+    // beatfaders[0] (int32) - beat_fade_red
+    // beatfaders[1] (int32) - beat_fade_green
+    // beatfaders[2] (int32) - beat_fade_blue
+    int enabled = reader.read_u32();
+    parameters().set_bool("enabled", (enabled & 1) != 0);
+    parameters().set_bool("onbeat_change", (enabled & 4) != 0);
+    parameters().set_bool("onbeat_random", (enabled & 2) != 0);
+
+    if (reader.remaining() >= 4) {
+        int fade_red = static_cast<int32_t>(reader.read_u32());
+        parameters().set_int("fade_red", fade_red);
+    }
+    if (reader.remaining() >= 4) {
+        int fade_green = static_cast<int32_t>(reader.read_u32());
+        parameters().set_int("fade_green", fade_green);
+    }
+    if (reader.remaining() >= 4) {
+        int fade_blue = static_cast<int32_t>(reader.read_u32());
+        parameters().set_int("fade_blue", fade_blue);
+    }
+
+    if (reader.remaining() >= 4) {
+        int beat_fade_red = static_cast<int32_t>(reader.read_u32());
+        parameters().set_int("beat_fade_red", beat_fade_red);
+    }
+    if (reader.remaining() >= 4) {
+        int beat_fade_green = static_cast<int32_t>(reader.read_u32());
+        parameters().set_int("beat_fade_green", beat_fade_green);
+    }
+    if (reader.remaining() >= 4) {
+        int beat_fade_blue = static_cast<int32_t>(reader.read_u32());
+        parameters().set_int("beat_fade_blue", beat_fade_blue);
+    }
 }
 
 // Static member definition

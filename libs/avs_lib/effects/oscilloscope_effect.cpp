@@ -6,6 +6,7 @@
 
 #include "oscilloscope_effect.h"
 #include "core/plugin_manager.h"
+#include "core/binary_reader.h"
 #include "core/ui.h"
 #include <algorithm>
 #include <cmath>
@@ -186,6 +187,54 @@ int OscilloscopeEffect::render(AudioData visdata, int isBeat,
     }
 
     return 0;
+}
+
+void OscilloscopeEffect::load_parameters(const std::vector<uint8_t>& data) {
+    if (data.size() < 4) return;
+
+    BinaryReader reader(data);
+
+    // Binary format from r_simple.cpp:
+    // effect (int32) - bitfield: bits 0-1=mode, bit 6=dot mode, bits 2-3=channel, bits 4-5=position
+    // num_colors (int32)
+    // colors[num_colors] (int32 each, BGR format)
+    uint32_t effect = reader.read_u32();
+
+    // Decode effect bitfield
+    int mode_bits = effect & 0x03;       // 0-3: draw style
+    bool dot_mode = (effect >> 6) & 1;   // bit 6: dot mode
+    int channel = (effect >> 2) & 0x03;  // bits 2-3: channel
+    int position = (effect >> 4) & 0x03; // bits 4-5: position
+
+    // Map to our parameters
+    // Original: mode 0=solid analyzer, 1=line analyzer, 2=line scope, 3=solid scope
+    // With dot_mode: mode 0=dot analyzer, mode 2=dot scope
+    // Our mode: 0=spectrum, 1=oscilloscope
+    // Our draw_style: 0=lines, 1=solid, 2=dots
+    if (dot_mode) {
+        parameters().set_int("draw_style", 2);  // Dots
+        parameters().set_int("mode", (mode_bits & 2) ? 1 : 0);  // bit 1 = osc vs spec
+    } else {
+        // mode_bits: 0=solid analyzer, 1=line analyzer, 2=line scope, 3=solid scope
+        parameters().set_int("mode", (mode_bits >= 2) ? 1 : 0);  // 2,3=osc, 0,1=spec
+        parameters().set_int("draw_style", (mode_bits & 1) ? 0 : 1);  // odd=lines, even=solid
+    }
+
+    parameters().set_int("channel", channel);
+    parameters().set_int("position", position);
+
+    // Read colors
+    if (reader.remaining() >= 4) {
+        int num_colors = reader.read_u32();
+        if (num_colors > 16) num_colors = 16;
+        if (num_colors < 1) num_colors = 1;
+        parameters().set_int("num_colors", num_colors);
+
+        for (int i = 0; i < num_colors && reader.remaining() >= 4; i++) {
+            uint32_t color = BinaryReader::bgr_to_argb(reader.read_u32());
+            parameters().set_color("color_" + std::to_string(i), color);
+        }
+    }
 }
 
 // Static member definition

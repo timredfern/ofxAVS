@@ -52,9 +52,10 @@ common:
 	# they can be specified here
 	# ADDON_SOURCES =
 	
-	# exclude the standalone example and tests from being compiled with the addon
+	# exclude the standalone example, tests, and tools from being compiled with the addon
 	ADDON_SOURCES_EXCLUDE = libs/avs_lib/example/%
 	ADDON_SOURCES_EXCLUDE += libs/avs_lib/tests/%
+	ADDON_SOURCES_EXCLUDE += libs/avs_lib/tools/%
 	ADDON_SOURCES_EXCLUDE += libs/avs_lib/build/% 
 
 	# some addons need resources to be copied to the bin/data folder of the project

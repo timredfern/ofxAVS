@@ -19,6 +19,7 @@ public:
                int w, int h) override;
 
     const PluginInfo& get_plugin_info() const override { return effect_info; }
+    void load_parameters(const std::vector<uint8_t>& data) override;
     static const PluginInfo effect_info;
 
 private:

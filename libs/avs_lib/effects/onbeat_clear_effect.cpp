@@ -6,6 +6,7 @@
 
 #include "onbeat_clear_effect.h"
 #include "core/plugin_manager.h"
+#include "core/binary_reader.h"
 #include "core/blend.h"
 #include "core/ui.h"
 
@@ -37,6 +38,29 @@ int OnBeatClearEffect::render(AudioData visdata, int isBeat,
     }
 
     return 0;
+}
+
+void OnBeatClearEffect::load_parameters(const std::vector<uint8_t>& data) {
+    if (data.size() < 4) return;
+
+    BinaryReader reader(data);
+
+    // Binary format from r_nfclr.cpp:
+    // color (int32, BGR format)
+    // blend (int32)
+    // nf (int32) - every N beats
+    uint32_t color = BinaryReader::bgr_to_argb(reader.read_u32());
+    parameters().set_color("color", color);
+
+    if (reader.remaining() >= 4) {
+        int blend = reader.read_u32();
+        parameters().set_bool("blend", blend != 0);
+    }
+
+    if (reader.remaining() >= 4) {
+        int nf = reader.read_u32();
+        parameters().set_int("every_n_beats", nf);
+    }
 }
 
 const PluginInfo OnBeatClearEffect::effect_info {

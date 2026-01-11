@@ -6,6 +6,7 @@
 
 #include "blur_effect.h"
 #include "core/plugin_manager.h"
+#include "core/binary_reader.h"
 #include "core/ui.h"
 
 namespace avs {
@@ -278,6 +279,23 @@ int BlurEffect::render(AudioData visdata, int isBeat,
     }
 
     return 1;  // Use output buffer
+}
+
+void BlurEffect::load_parameters(const std::vector<uint8_t>& data) {
+    if (data.size() < 4) return;
+
+    BinaryReader reader(data);
+
+    // Binary format from r_blur.cpp:
+    // enabled (int32) - 0=none, 1=medium, 2=light, 3=heavy
+    // roundmode (int32) - 0=down, 1=up
+    int enabled = reader.read_u32();
+    parameters().set_int("blur_level", enabled);
+
+    if (reader.remaining() >= 4) {
+        int roundmode = reader.read_u32();
+        parameters().set_int("round_mode", roundmode);
+    }
 }
 
 // Static member definition

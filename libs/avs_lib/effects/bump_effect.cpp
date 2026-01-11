@@ -5,6 +5,7 @@
 // Licensed under MIT License
 
 #include "bump_effect.h"
+#include "core/binary_reader.h"
 #include "core/plugin_manager.h"
 #include "core/blend.h"
 #include <algorithm>
@@ -22,6 +23,78 @@ void BumpEffect::on_parameter_changed(const std::string& param_name) {
     if (param_name == "init_script") {
         inited_ = false;
     }
+}
+
+void BumpEffect::load_parameters(const std::vector<uint8_t>& data) {
+    if (data.size() < 4) return;
+
+    BinaryReader reader(data);
+
+    // Binary format from r_bump.cpp:
+    // enabled, onbeat, durFrames, depth, depth2, blend, blendavg
+    // code1 (frame), code2 (beat), code3 (init)
+    // showlight, invert, oldstyle, buffern
+    int enabled = reader.read_u32();
+    parameters().set_bool("enabled", enabled != 0);
+
+    if (reader.remaining() >= 4) {
+        int onbeat = reader.read_u32();
+        parameters().set_bool("onbeat", onbeat != 0);
+    }
+    if (reader.remaining() >= 4) {
+        int durFrames = reader.read_u32();
+        parameters().set_int("beat_duration", durFrames);
+    }
+    if (reader.remaining() >= 4) {
+        int depth = reader.read_u32();
+        parameters().set_int("depth", depth);
+    }
+    if (reader.remaining() >= 4) {
+        int depth2 = reader.read_u32();
+        parameters().set_int("depth2", depth2);
+    }
+
+    // blend and blendavg are separate flags in original
+    int blend = 0, blendavg = 0;
+    if (reader.remaining() >= 4) {
+        blend = reader.read_u32();
+    }
+    if (reader.remaining() >= 4) {
+        blendavg = reader.read_u32();
+    }
+    // Map to blend_mode: 0=replace, 1=additive, 2=50/50
+    int blend_mode = 0;
+    if (blend) blend_mode = 1;
+    else if (blendavg) blend_mode = 2;
+    parameters().set_int("blend_mode", blend_mode);
+
+    // Scripts: code1=frame, code2=beat, code3=init (length-prefixed)
+    std::string frame_script = reader.read_length_prefixed_string();
+    std::string beat_script = reader.read_length_prefixed_string();
+    std::string init_script = reader.read_length_prefixed_string();
+    parameters().set_string("frame_script", frame_script);
+    parameters().set_string("beat_script", beat_script);
+    parameters().set_string("init_script", init_script);
+
+    if (reader.remaining() >= 4) {
+        int showlight = reader.read_u32();
+        parameters().set_bool("showlight", showlight != 0);
+    }
+    if (reader.remaining() >= 4) {
+        int invert = reader.read_u32();
+        parameters().set_bool("invert", invert != 0);
+    }
+    // Skip oldstyle (not exposed in our UI)
+    if (reader.remaining() >= 4) reader.read_u32();
+    if (reader.remaining() >= 4) {
+        int buffern = reader.read_u32();
+        parameters().set_int("depth_buffer", buffern);
+    }
+
+    // Initialize state from loaded depth
+    this_depth_ = parameters().get_int("depth");
+    nF_ = 0;
+    inited_ = false;
 }
 
 inline int BumpEffect::depthof(int c, bool invert) {

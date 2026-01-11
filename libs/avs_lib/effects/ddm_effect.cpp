@@ -5,6 +5,7 @@
 // Licensed under MIT License
 
 #include "ddm_effect.h"
+#include "core/binary_reader.h"
 #include "core/plugin_manager.h"
 #include "core/blend.h"
 #include <algorithm>
@@ -77,6 +78,57 @@ void DDMEffect::on_parameter_changed(const std::string& param_name) {
     if (param_name == "init_script") {
         inited_ = false;
     }
+}
+
+void DDMEffect::load_parameters(const std::vector<uint8_t>& data) {
+    if (data.empty()) return;
+
+    BinaryReader reader(data);
+
+    // Binary format from r_ddm.cpp:
+    // If first byte == 1: new format with length-prefixed strings
+    // Else: old format with 2 x 512 byte blocks (4 x 256 byte strings)
+    // Order: effect_exp[0]=pixel, [1]=frame, [2]=beat, [3]=init
+    std::string pixel_script, frame_script, beat_script, init_script;
+
+    if (reader.read_u8() == 1) {
+        // New format: length-prefixed strings
+        pixel_script = reader.read_length_prefixed_string();
+        frame_script = reader.read_length_prefixed_string();
+        beat_script = reader.read_length_prefixed_string();
+        init_script = reader.read_length_prefixed_string();
+    } else {
+        // Old format: 2 x 512 byte blocks
+        // First block: effect_exp[0] (256 bytes) + effect_exp[1] (256 bytes)
+        // Second block: effect_exp[2] (256 bytes) + effect_exp[3] (256 bytes)
+        BinaryReader reader2(data);  // Fresh reader from start
+        if (reader2.remaining() >= 512) {
+            pixel_script = reader2.read_string_fixed(256);
+            frame_script = reader2.read_string_fixed(256);
+        }
+        if (reader2.remaining() >= 512) {
+            beat_script = reader2.read_string_fixed(256);
+            init_script = reader2.read_string_fixed(256);
+        }
+    }
+
+    parameters().set_string("pixel_script", pixel_script);
+    parameters().set_string("frame_script", frame_script);
+    parameters().set_string("beat_script", beat_script);
+    parameters().set_string("init_script", init_script);
+
+    // After strings: blend (int32), subpixel (int32)
+    if (reader.remaining() >= 4) {
+        int blend = reader.read_u32();
+        parameters().set_bool("blend", blend != 0);
+    }
+    if (reader.remaining() >= 4) {
+        int subpixel = reader.read_u32();
+        parameters().set_bool("bilinear", subpixel != 0);
+    }
+
+    // Trigger init script re-execution
+    inited_ = false;
 }
 
 void DDMEffect::generate_distance_table(int imax_d) {

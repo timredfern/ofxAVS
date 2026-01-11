@@ -24,6 +24,7 @@ public:
     const PluginInfo& get_plugin_info() const override { return effect_info; }
 
     void on_parameter_changed(const std::string& param_name) override;
+    void load_parameters(const std::vector<uint8_t>& data) override;
 
     static const PluginInfo effect_info;
 

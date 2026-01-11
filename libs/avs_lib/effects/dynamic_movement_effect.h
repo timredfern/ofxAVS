@@ -40,6 +40,7 @@ public:
 
     // Respond to UI parameter changes
     void on_parameter_changed(const std::string& param_name) override;
+    void load_parameters(const std::vector<uint8_t>& data) override;
 
     static const PluginInfo effect_info;
 

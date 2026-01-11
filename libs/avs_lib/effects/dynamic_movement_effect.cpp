@@ -5,6 +5,7 @@
 // Licensed under MIT License
 
 #include "dynamic_movement_effect.h"
+#include "core/binary_reader.h"
 #include "core/parameter.h"
 #include "core/plugin_manager.h"
 #include "core/ui.h"
@@ -102,6 +103,75 @@ int DynamicMovementEffect::render(AudioData visdata, int isBeat,
                 parameters().get_bool("blend"));
 
     return 1;
+}
+
+void DynamicMovementEffect::load_parameters(const std::vector<uint8_t>& data) {
+    if (data.empty()) return;
+
+    BinaryReader reader(data);
+
+    // Binary format from r_dmove.cpp:
+    // If first byte == 1: new format with length-prefixed strings
+    // Else: old format with 4 x 256 byte fixed strings
+    std::string init_script, pixel_script, frame_script, beat_script;
+
+    if (reader.read_u8() == 1) {
+        // New format: length-prefixed strings
+        init_script = reader.read_length_prefixed_string();
+        pixel_script = reader.read_length_prefixed_string();
+        frame_script = reader.read_length_prefixed_string();
+        beat_script = reader.read_length_prefixed_string();
+    } else {
+        // Old format: 4 x 256 byte fixed strings (total 1024 bytes)
+        reader.skip(static_cast<size_t>(-1));  // Go back to start
+        BinaryReader reader2(data);  // Fresh reader from start
+        if (reader2.remaining() >= 1024) {
+            init_script = reader2.read_string_fixed(256);
+            pixel_script = reader2.read_string_fixed(256);
+            frame_script = reader2.read_string_fixed(256);
+            beat_script = reader2.read_string_fixed(256);
+        }
+    }
+
+    parameters().set_string("init_script", init_script);
+    parameters().set_string("pixel_script", pixel_script);
+    parameters().set_string("frame_script", frame_script);
+    parameters().set_string("beat_script", beat_script);
+
+    // After strings: subpixel, rectcoords, m_xres, m_yres, blend, wrap, buffern, nomove
+    if (reader.remaining() >= 4) {
+        int subpixel = reader.read_u32();
+        parameters().set_bool("bilinear", subpixel != 0);
+    }
+    if (reader.remaining() >= 4) {
+        int rectcoords = reader.read_u32();
+        parameters().set_bool("rectangular", rectcoords != 0);
+    }
+    if (reader.remaining() >= 4) {
+        int m_xres = reader.read_u32();
+        parameters().set_int("grid_width", m_xres);
+    }
+    if (reader.remaining() >= 4) {
+        int m_yres = reader.read_u32();
+        parameters().set_int("grid_height", m_yres);
+    }
+    if (reader.remaining() >= 4) {
+        int blend = reader.read_u32();
+        parameters().set_bool("blend", blend != 0);
+    }
+    if (reader.remaining() >= 4) {
+        int wrap = reader.read_u32();
+        parameters().set_bool("wrap", wrap != 0);
+    }
+    // Skip buffern (internal buffer tracking)
+    if (reader.remaining() >= 4) reader.read_u32();
+    if (reader.remaining() >= 4) {
+        int nomove = reader.read_u32();
+        parameters().set_bool("no_movement", nomove != 0);
+    }
+
+    // Run init script
+    engine_.evaluate(init_script);
 }
 
 // Static member definition
