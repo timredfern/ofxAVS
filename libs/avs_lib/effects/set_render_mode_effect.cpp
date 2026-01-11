@@ -121,13 +121,13 @@ const PluginInfo SetRenderModeEffect::effect_info {
                 .id = "line_width_label",
                 .text = "Line width (pixels)",
                 .type = ControlType::LABEL,
-                .x = 0, .y = 55, .w = 56, .h = 8
+                .x = 0, .y = 55, .w = 100, .h = 8
             },
             {
                 .id = "line_width",
                 .text = "",
                 .type = ControlType::TEXT_INPUT,
-                .x = 58, .y = 53, .w = 20, .h = 12,
+                .x = 70, .y = 53, .w = 20, .h = 12,
                 .range = {1, 255},
                 .default_val = 1
             },

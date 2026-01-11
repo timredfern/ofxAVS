@@ -67,6 +67,8 @@ inline void draw_filled_circle(uint32_t* fb, int cx, int cy, int radius,
 }
 
 // Wu's anti-aliased line algorithm (single pixel width)
+// Based on: Xiaolin Wu, "An Efficient Antialiasing Technique",
+// Computer Graphics, July 1991
 inline void draw_line_wu(uint32_t* fb, int x0, int y0, int x1, int y1,
                           int width, int height, uint32_t color) {
     bool steep = std::abs(y1 - y0) > std::abs(x1 - x0);

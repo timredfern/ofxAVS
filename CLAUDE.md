@@ -67,6 +67,14 @@ make && ./avs_tests
 ```
 All tests must pass before any commit. No exceptions.
 
+**Wait for User Testing Before Committing**
+After implementing a feature or fix:
+1. Run automated tests (above)
+2. STOP and wait for the user to build and test the app
+3. Only commit after the user confirms it works
+
+Do not commit immediately after writing code. The user needs to verify changes work in the actual application before they go into version control.
+
 ---
 
 ## 4. Code Patterns
