@@ -8,7 +8,7 @@
 
 #include "effect_base.h"
 #include "effect_container.h"
-#include "../effects/effect_list_root.h"
+#include "effects/effect_list_root.h"
 #include <memory>
 #include <vector>
 #include <cstdint>
