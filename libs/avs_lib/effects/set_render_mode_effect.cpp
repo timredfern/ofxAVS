@@ -8,11 +8,21 @@
 #include "core/plugin_manager.h"
 #include "core/binary_reader.h"
 #include "core/blend.h"
+#include <algorithm>
+#include <cmath>
 
 namespace avs {
 
 SetRenderModeEffect::SetRenderModeEffect() {
     init_parameters_from_layout(effect_info.ui_layout);
+
+    // Initialize script variables to defaults
+    engine_.set_variable("lw", 1.0);      // line width
+    engine_.set_variable("bm", 0.0);      // blend mode
+    engine_.set_variable("a", 128.0);     // alpha
+    engine_.set_variable("aa", 0.0);      // anti-aliased
+    engine_.set_variable("ac", 0.0);      // angle-corrected
+    engine_.set_variable("rd", 0.0);      // rounded endpoints
 }
 
 int SetRenderModeEffect::render(AudioData visdata, int isBeat,
@@ -20,23 +30,76 @@ int SetRenderModeEffect::render(AudioData visdata, int isBeat,
                                 int w, int h) {
     if (isBeat & 0x80000000) return 0;
 
-    if (parameters().get_bool("enabled")) {
-        // Build newmode value matching original format
-        int blend_mode = parameters().get_int("blend_mode");
-        int alpha = parameters().get_int("alpha");
-        int line_width = parameters().get_int("line_width");
+    if (!parameters().get_bool("enabled")) return 0;
 
-        // Line style flags (bits 24-26) - new extension
-        int line_style = 0;
-        if (parameters().get_bool("anti_aliased")) line_style |= LINE_STYLE_AA;
-        if (parameters().get_bool("angle_corrected")) line_style |= LINE_STYLE_ANGLE_CORRECT;
-        if (parameters().get_bool("rounded_ends")) line_style |= LINE_STYLE_ROUNDED;
+    // Get base values from UI
+    int blend_mode = parameters().get_int("blend_mode");
+    int alpha = parameters().get_int("alpha");
+    int line_width = parameters().get_int("line_width");
 
-        // Format: 0x80000000 | (line_style << 24) | (line_width << 16) | (alpha << 8) | blend_mode
-        g_line_blend_mode = 0x80000000 | (line_style << 24) |
-                           ((line_width & 0xFF) << 16) |
-                           ((alpha & 0xFF) << 8) | (blend_mode & 0xFF);
+    // Line style flags
+    int line_style = 0;
+    if (parameters().get_bool("anti_aliased")) line_style |= LINE_STYLE_AA;
+    if (parameters().get_bool("angle_corrected")) line_style |= LINE_STYLE_ANGLE_CORRECT;
+    if (parameters().get_bool("rounded_ends")) line_style |= LINE_STYLE_ROUNDED;
+
+    // Get scripts
+    std::string init_script = parameters().get_string("init_script");
+    std::string frame_script = parameters().get_string("frame_script");
+    std::string beat_script = parameters().get_string("beat_script");
+
+    // Run scripts if any are defined
+    bool use_scripts = !init_script.empty() || !frame_script.empty() || !beat_script.empty();
+
+    if (use_scripts) {
+        // Set up engine variables
+        engine_.set_variable("w", static_cast<double>(w));
+        engine_.set_variable("h", static_cast<double>(h));
+        engine_.set_variable("b", isBeat ? 1.0 : 0.0);
+
+        // Initialize from UI values once
+        if (!inited_) {
+            engine_.set_variable("lw", static_cast<double>(line_width));
+            engine_.set_variable("bm", static_cast<double>(blend_mode));
+            engine_.set_variable("a", static_cast<double>(alpha));
+            engine_.set_variable("aa", (line_style & LINE_STYLE_AA) ? 1.0 : 0.0);
+            engine_.set_variable("ac", (line_style & LINE_STYLE_ANGLE_CORRECT) ? 1.0 : 0.0);
+            engine_.set_variable("rd", (line_style & LINE_STYLE_ROUNDED) ? 1.0 : 0.0);
+
+            // Run init script if present
+            if (!init_script.empty()) {
+                engine_.evaluate(init_script);
+            }
+            inited_ = true;
+        }
+
+        // Run frame script
+        if (!frame_script.empty()) {
+            engine_.evaluate(frame_script);
+        }
+
+        // Run beat script
+        if (isBeat && !beat_script.empty()) {
+            engine_.evaluate(beat_script);
+        }
+
+        // Get values from script
+        line_width = static_cast<int>(std::clamp(engine_.get_variable("lw"), 1.0, 255.0));
+        blend_mode = static_cast<int>(std::clamp(engine_.get_variable("bm"), 0.0, 9.0));
+        alpha = static_cast<int>(std::clamp(engine_.get_variable("a"), 0.0, 255.0));
+
+        // Get style flags from script
+        line_style = 0;
+        if (engine_.get_variable("aa") >= 0.5) line_style |= LINE_STYLE_AA;
+        if (engine_.get_variable("ac") >= 0.5) line_style |= LINE_STYLE_ANGLE_CORRECT;
+        if (engine_.get_variable("rd") >= 0.5) line_style |= LINE_STYLE_ROUNDED;
     }
+
+    // Apply the mode
+    // Format: 0x80000000 | (line_style << 24) | (line_width << 16) | (alpha << 8) | blend_mode
+    g_line_blend_mode = 0x80000000 | (line_style << 24) |
+                       ((line_width & 0xFF) << 16) |
+                       ((alpha & 0xFF) << 8) | (blend_mode & 0xFF);
 
     return 0;  // No framebuffer modification
 }
@@ -61,20 +124,23 @@ void SetRenderModeEffect::load_parameters(const std::vector<uint8_t>& data) {
         parameters().set_int("alpha", (newmode >> 8) & 0xFF);
         parameters().set_int("line_width", (newmode >> 16) & 0xFF);
     }
+
+    // Reset init state when loading
+    inited_ = false;
 }
 
 // Static member definition
 const PluginInfo SetRenderModeEffect::effect_info {
     .name = "Set Render Mode",
     .category = "Misc",
-    .description = "Control rendering pipeline",
+    .description = "Control rendering pipeline with optional scripting",
     .author = "",
     .version = 1,
     .legacy_index = 40,  // R_LineMode
     .factory = []() -> std::unique_ptr<avs::EffectBase> {
         return std::make_unique<SetRenderModeEffect>();
     },
-    .ui_layout = {
+    .ui_layout = EffectUILayout(
         {
             // From res.rc IDD_CFG_LINEMODE
             {
@@ -131,7 +197,7 @@ const PluginInfo SetRenderModeEffect::effect_info {
                 .range = {1, 255},
                 .default_val = 1
             },
-            // Line style options (new extension - bits 24-26)
+            // Line style options (bits 24-26)
             {
                 .id = "line_style_group",
                 .text = "Line style",
@@ -158,10 +224,82 @@ const PluginInfo SetRenderModeEffect::effect_info {
                 .type = ControlType::CHECKBOX,
                 .x = 5, .y = 98, .w = 80, .h = 10,
                 .default_val = 0
+            },
+            // Scripting section
+            {
+                .id = "script_group",
+                .text = "Dynamic scripting",
+                .type = ControlType::GROUPBOX,
+                .x = 0, .y = 115, .w = 240, .h = 105
+            },
+            {
+                .id = "init_label",
+                .text = "init",
+                .type = ControlType::LABEL,
+                .x = 5, .y = 128, .w = 15, .h = 8
+            },
+            {
+                .id = "init_script",
+                .text = "",
+                .type = ControlType::EDITTEXT,
+                .x = 30, .y = 125, .w = 205, .h = 26
+            },
+            {
+                .id = "frame_label",
+                .text = "frame",
+                .type = ControlType::LABEL,
+                .x = 5, .y = 156, .w = 20, .h = 8
+            },
+            {
+                .id = "frame_script",
+                .text = "",
+                .type = ControlType::EDITTEXT,
+                .x = 30, .y = 153, .w = 205, .h = 26
+            },
+            {
+                .id = "beat_label",
+                .text = "beat",
+                .type = ControlType::LABEL,
+                .x = 5, .y = 184, .w = 15, .h = 8
+            },
+            {
+                .id = "beat_script",
+                .text = "",
+                .type = ControlType::EDITTEXT,
+                .x = 30, .y = 181, .w = 205, .h = 26
             }
-        }
-    }
+        },
+        // Help text for scripting
+        "Set Render Mode - Scripting\n"
+        "\n"
+        "Variables:\n"
+        "  lw   Line width (1-255)\n"
+        "  bm   Blend mode (0-9)\n"
+        "  a    Alpha for adjustable blend (0-255)\n"
+        "  aa   Anti-aliasing (0/1)\n"
+        "  ac   Angle-corrected thickness (0/1)\n"
+        "  rd   Rounded endpoints (0/1)\n"
+        "  b    Beat (1 on beat, else 0)\n"
+        "  w,h  Screen size\n"
+        "\n"
+        "Blend modes: 0=replace, 1=add, 2=max,\n"
+        "3=50/50, 4=sub1, 5=sub2, 6=mul,\n"
+        "7=adjustable, 8=xor, 9=min\n"
+        "\n"
+        "Examples:\n"
+        "  init: lw=1; dir=1\n"
+        "  frame: lw=lw+dir; if(lw>10,dir=-1,0)\n"
+        "  beat: bm=rand(10); aa=1-aa\n"
+    )
 };
+
+void SetRenderModeEffect::on_parameter_changed(const std::string& param_name) {
+    // Re-init when any script changes
+    if (param_name == "init_script" || param_name == "frame_script" ||
+        param_name == "beat_script") {
+        inited_ = false;
+    }
+}
 
 // Register effect at startup
 static bool register_set_render_mode = []() {

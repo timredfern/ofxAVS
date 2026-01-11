@@ -8,6 +8,7 @@
 
 #include "core/effect_base.h"
 #include "core/plugin_manager.h"
+#include "core/script/script_engine.h"
 
 namespace avs {
 
@@ -16,6 +17,8 @@ namespace avs {
  *
  * Sets global line blend mode and line width for subsequent
  * rendering effects (SuperScope, etc.)
+ *
+ * Extended with frame/beat scripting for dynamic control.
  */
 class SetRenderModeEffect : public EffectBase {
 public:
@@ -26,6 +29,7 @@ public:
                int w, int h) override;
 
     void load_parameters(const std::vector<uint8_t>& data) override;
+    void on_parameter_changed(const std::string& param_name) override;
 
     const PluginInfo& get_plugin_info() const override { return effect_info; }
 
@@ -44,6 +48,10 @@ public:
         BLEND_XOR = 8,
         BLEND_MINIMUM = 9
     };
+
+private:
+    ScriptEngine engine_;
+    bool inited_ = false;
 };
 
 } // namespace avs

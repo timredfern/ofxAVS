@@ -82,6 +82,7 @@ add_executable(avs_tests
     test_color_format.cpp
     test_preset_binary.cpp
     test_load_parameters_colors.cpp
+    test_minmax.cpp
 )
 
 target_link_libraries(avs_tests PRIVATE 
