@@ -212,24 +212,29 @@ Effects that generate new visual content from audio data or clear the screen.
   - Bottom Color: COLOR_BUTTON, Position(7, 123), Size(41, 10), ID(IDC_C5)
 
 7. ### Moving Particle
-- **Purpose**: Particle system driven by audio
+- **Purpose**: Physics-based bouncing particle that reacts to beats
 - **Source File**: `r_parts.cpp`
+- **Legacy Index**: 8
 - **Inputs**:
-  - Audio spectrum/waveform
-  - Beat signal
-- **Outputs**: Particle sprites to Framebuffer
-- **Blend Modes**: Additive
+  - Beat signal (sets random target position)
+- **Outputs**: Circular particle rendered to Framebuffer
+- **Blend Modes**: Replace, Additive, 50/50, Default
 - **Controls**:
-  - Enabled: CHECKBOX, Position(0, 0), Size(41, 10), ID(IDC_LEFT)
-  - Color: COLOR_BUTTON, Position(43, 0), Size(40, 10), ID(IDC_LC)
-  - Distance from center: SLIDER, Position(5, 21), Size(130, 16), ID(IDC_SLIDER1)
-  - Particle size: SLIDER, Position(5, 47), Size(130, 16), ID(IDC_SLIDER3)
-  - Onbeat sizechange enabled: CHECKBOX, Position(9, 75), Size(107, 10), ID(IDC_CHECK1)
-  - Particle size (onbeat): SLIDER, Position(5, 84), Size(130, 16), ID(IDC_SLIDER4)
-  - Replace blend mode: RADIO_BUTTON, Position(5, 114), Size(43, 10), ID(IDC_RADIO1)
-  - Additive blend mode: RADIO_BUTTON, Position(51, 114), Size(41, 10), ID(IDC_RADIO2)
-  - 50/50 blend mode: RADIO_BUTTON, Position(93, 114), Size(35, 10), ID(IDC_RADIO3)
-  - Default render blend mode: RADIO_BUTTON, Position(5, 124), Size(99, 9), ID(IDC_RADIO4)
+  - Enabled: CHECKBOX, Position(0, 0), Size(41, 10), ID(IDC_LEFT), Default(true)
+  - Color: COLOR_BUTTON, Position(43, 0), Size(40, 10), ID(IDC_LC), Default(0xFFFFFF)
+  - Distance from center: SLIDER, Position(5, 21), Size(130, 16), ID(IDC_SLIDER1), Range(1, 32), Default(16)
+  - Particle size: SLIDER, Position(5, 47), Size(130, 16), ID(IDC_SLIDER3), Range(1, 128), Default(8)
+  - Onbeat sizechange enabled: CHECKBOX, Position(9, 75), Size(107, 10), ID(IDC_CHECK1), Default(false)
+  - Particle size (onbeat): SLIDER, Position(5, 84), Size(130, 16), ID(IDC_SLIDER4), Range(1, 128), Default(8)
+  - Replace blend mode: RADIO_BUTTON, Position(5, 114), Size(43, 10), ID(IDC_RADIO1), Value(0)
+  - Additive blend mode: RADIO_BUTTON, Position(51, 114), Size(41, 10), ID(IDC_RADIO2), Value(1)
+  - 50/50 blend mode: RADIO_BUTTON, Position(93, 114), Size(35, 10), ID(IDC_RADIO3), Value(2)
+  - Default render blend mode: RADIO_BUTTON, Position(5, 124), Size(99, 9), ID(IDC_RADIO4), Value(3)
+- **Notes**:
+  - On beat: Sets random target position for particle to move toward
+  - Physics: Particle accelerates toward target with spring force, velocity damped by 0.991x
+  - Size interpolates toward target size over time (s_pos = (s_pos + size) / 2)
+  - Draws filled circle using scan-line algorithm
 
 7. ### OnBeat Clear
 - **Purpose**: Clears screen on beat detection
@@ -800,28 +805,40 @@ Effects that modify pixel colors or apply filters.
   - Static grain: CHECKBOX, Position(0, 60), Size(51, 10), ID(IDC_STATGRAIN)
 
 39. ### Interferences
-- **Purpose**: Wave interference patterns
+- **Purpose**: Wave interference patterns by sampling framebuffer at multiple offset positions
 - **Source File**: `r_interf.cpp`
+- **Legacy Index**: 41
 - **Inputs**:
   - Framebuffer
-- **Outputs**: Interference pattern overlay
-- **Blend Modes**: Additive or multiply
+  - Beat signal
+- **Outputs**: Interference pattern to fbout (blended back to framebuffer)
+- **Blend Modes**: Replace, Additive, 50/50
 - **Controls**:
-  - Enable Interferences: CHECKBOX, Position(0, 0), Size(81, 10), ID(IDC_CHECK1)
-  - Wave count: SLIDER, Position(0, 13), Size(67, 11), ID(IDC_NPOINTS)
-  - Alpha: SLIDER, Position(70, 12), Size(67, 11), ID(IDC_ALPHA)
-  - Rotation: SLIDER, Position(0, 33), Size(67, 11), ID(IDC_ROTATE)
-  - Distance: SLIDER, Position(70, 33), Size(67, 11), ID(IDC_DISTANCE)
-  - Separate RGB: CHECKBOX, Position(2, 51), Size(62, 10), ID(IDC_RGB)
-  - OnBeat: CHECKBOX, Position(2, 60), Size(40, 10), ID(IDC_ONBEAT)
-  - OnBeat Speed: SLIDER, Position(4, 78), Size(63, 11), ID(IDC_SPEED)
-  - OnBeat Alpha: SLIDER, Position(70, 78), Size(63, 11), ID(IDC_ALPHA2)
-  - OnBeat Rotation: SLIDER, Position(4, 99), Size(63, 11), ID(IDC_ROTATE2)
-  - OnBeat Distance: SLIDER, Position(70, 99), Size(63, 11), ID(IDC_DISTANCE2)
-  - Init Rotation: SLIDER, Position(70, 52), Size(67, 11), ID(IDC_INITROT)
-  - Replace blend mode: RADIO_BUTTON, Position(2, 123), Size(43, 10), ID(IDC_REPLACE)
-  - Additive blend mode: RADIO_BUTTON, Position(51, 123), Size(41, 10), ID(IDC_ADDITIVE)
-  - 50/50 blend mode: RADIO_BUTTON, Position(100, 123), Size(35, 10), ID(IDC_5050)
+  - Enable Interferences: CHECKBOX, Position(0, 0), Size(81, 10), ID(IDC_CHECK1), Default(true)
+  - Wave count: SLIDER, Position(0, 13), Size(67, 11), ID(IDC_NPOINTS), Range(0, 8), Default(2)
+  - Alpha: SLIDER, Position(70, 12), Size(67, 11), ID(IDC_ALPHA), Range(1, 255), Default(128)
+  - Rotation speed: SLIDER, Position(0, 33), Size(67, 11), ID(IDC_ROTATE), Range(-32, 32), Default(0)
+    - Note: UI shows 0-64, value = -(slider_pos - 32)
+  - Distance: SLIDER, Position(70, 33), Size(67, 11), ID(IDC_DISTANCE), Range(1, 64), Default(10)
+  - Separate RGB: CHECKBOX, Position(2, 51), Size(62, 10), ID(IDC_RGB), Default(true)
+    - Note: Only enabled when wave count is 3 or 6
+  - OnBeat: CHECKBOX, Position(2, 60), Size(40, 10), ID(IDC_ONBEAT), Default(true)
+  - Init Rotation: SLIDER, Position(70, 52), Size(67, 11), ID(IDC_INITROT), Range(0, 255), Default(0)
+    - Note: UI shows 255 - value
+  - OnBeat Speed: SLIDER, Position(4, 78), Size(63, 11), ID(IDC_SPEED), Range(1, 128), Default(20)
+    - Note: Stored as speed = slider_pos / 100
+  - OnBeat Alpha: SLIDER, Position(70, 78), Size(63, 11), ID(IDC_ALPHA2), Range(1, 255), Default(192)
+  - OnBeat Rotation speed: SLIDER, Position(4, 99), Size(63, 11), ID(IDC_ROTATE2), Range(-32, 32), Default(25)
+  - OnBeat Distance: SLIDER, Position(70, 99), Size(63, 11), ID(IDC_DISTANCE2), Range(1, 64), Default(32)
+  - Replace blend mode: RADIO_BUTTON, Position(2, 123), Size(43, 10), ID(IDC_REPLACE), Value(0)
+  - Additive blend mode: RADIO_BUTTON, Position(51, 123), Size(41, 10), ID(IDC_ADDITIVE), Value(1)
+  - 50/50 blend mode: RADIO_BUTTON, Position(100, 123), Size(35, 10), ID(IDC_5050), Value(2)
+- **Notes**:
+  - Creates N "points" arranged in a circle at specified distance
+  - Each point samples the framebuffer at an offset position
+  - RGB mode (for 3 or 6 points): Each point samples only one color channel
+  - On-beat: Smoothly transitions between normal and on-beat parameters using sin(status)
+  - Uses pre-computed blend table for fast alpha blending
 
 40. ### Interleave
 - **Purpose**: Interlace/scanline effects
