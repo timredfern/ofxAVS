@@ -4,6 +4,7 @@
 
 #include "AVSui.h"
 #include "ofxImGui.h"
+#include "core/expression_help.h"
 #include <cmath>
 #include <array>
 #include <unordered_map>
@@ -465,7 +466,106 @@ void renderImGui(const avs::EffectUILayout& layout, avs::Configurable* configura
     // Pop universal styling
     ImGui::PopStyleColor(5);
 
+    // Render expression help button if layout has help text
+    if (!layout.help_text.empty()) {
+        // Position at bottom-right area (typical position from res.rc dialogs)
+        float scale = 2.0f;
+        ImGui::SetCursorPos(ImVec2(158 * scale, 200 * scale));
+
+        // Extract effect name from first line of help text (format: "Effect Name\n...")
+        std::string effect_name = layout.help_text;
+        size_t newline = effect_name.find('\n');
+        if (newline != std::string::npos) {
+            effect_name = effect_name.substr(0, newline);
+        }
+
+        renderExpressionHelpButton(effect_name, layout.help_text, 73 * scale, 13 * scale);
+    }
+
     ImGui::EndChild();
+}
+
+// Global state for expression help popup
+static bool s_help_popup_open = false;
+static std::string s_help_effect_name;
+static std::string s_help_effect_text;
+static int s_help_last_tab = 0;  // Remember last viewed tab
+
+void renderExpressionHelpButton(const std::string& effect_name, const std::string& effect_help,
+                                 float width, float height) {
+    if (effect_help.empty()) return;
+
+    // Caller should position with ImGui::SetCursorPos() before calling
+    if (ImGui::Button("Expression Help", ImVec2(width, height))) {
+        s_help_popup_open = true;
+        s_help_effect_name = effect_name;
+        s_help_effect_text = effect_help;
+        // Default to effect-specific tab (index 4) when opening
+        s_help_last_tab = 4;
+    }
+}
+
+void renderExpressionHelpPopup() {
+    if (!s_help_popup_open) return;
+
+    // Center the window on first appearance
+    ImGui::SetNextWindowSize(ImVec2(500, 400), ImGuiCond_FirstUseEver);
+
+    if (ImGui::Begin("AVS Expression Help", &s_help_popup_open)) {
+        if (ImGui::BeginTabBar("HelpTabs")) {
+            // Tab 0: General
+            if (ImGui::BeginTabItem("General")) {
+                s_help_last_tab = 0;
+                ImGui::BeginChild("GeneralScroll", ImVec2(0, 0), false, ImGuiWindowFlags_AlwaysVerticalScrollbar);
+                ImGui::TextWrapped("%s", avs::expression_help::general());
+                ImGui::EndChild();
+                ImGui::EndTabItem();
+            }
+
+            // Tab 1: Operators
+            if (ImGui::BeginTabItem("Operators")) {
+                s_help_last_tab = 1;
+                ImGui::BeginChild("OperatorsScroll", ImVec2(0, 0), false, ImGuiWindowFlags_AlwaysVerticalScrollbar);
+                ImGui::TextWrapped("%s", avs::expression_help::operators());
+                ImGui::EndChild();
+                ImGui::EndTabItem();
+            }
+
+            // Tab 2: Functions
+            if (ImGui::BeginTabItem("Functions")) {
+                s_help_last_tab = 2;
+                ImGui::BeginChild("FunctionsScroll", ImVec2(0, 0), false, ImGuiWindowFlags_AlwaysVerticalScrollbar);
+                ImGui::TextWrapped("%s", avs::expression_help::functions());
+                ImGui::EndChild();
+                ImGui::EndTabItem();
+            }
+
+            // Tab 3: Constants
+            if (ImGui::BeginTabItem("Constants")) {
+                s_help_last_tab = 3;
+                ImGui::BeginChild("ConstantsScroll", ImVec2(0, 0), false, ImGuiWindowFlags_AlwaysVerticalScrollbar);
+                ImGui::TextWrapped("%s", avs::expression_help::constants());
+                ImGui::EndChild();
+                ImGui::EndTabItem();
+            }
+
+            // Tab 4: Effect-specific (only if we have effect help text)
+            if (!s_help_effect_name.empty() && !s_help_effect_text.empty()) {
+                // Use SetSelected to open this tab when first opening the popup
+                ImGuiTabItemFlags flags = (s_help_last_tab == 4) ? ImGuiTabItemFlags_SetSelected : 0;
+                if (ImGui::BeginTabItem(s_help_effect_name.c_str(), nullptr, flags)) {
+                    s_help_last_tab = 4;
+                    ImGui::BeginChild("EffectScroll", ImVec2(0, 0), false, ImGuiWindowFlags_AlwaysVerticalScrollbar);
+                    ImGui::TextWrapped("%s", s_help_effect_text.c_str());
+                    ImGui::EndChild();
+                    ImGui::EndTabItem();
+                }
+            }
+
+            ImGui::EndTabBar();
+        }
+    }
+    ImGui::End();
 }
 
 } // namespace avs_ui

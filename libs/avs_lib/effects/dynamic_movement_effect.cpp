@@ -238,18 +238,18 @@ const PluginInfo DynamicMovementEffect::effect_info {
                 .x = 25, .y = 120, .w = 208, .h = 53,
                 .default_val = "d=d*0.9"
             },
-            // Example preset dropdown - positioned near "source" label area
+            // Example preset dropdown - "source" label with dropdown
             {
                 .id = "example_label",
-                .text = "Example:",
+                .text = "source",
                 .type = ControlType::LABEL,
-                .x = 0, .y = 177, .w = 30, .h = 8
+                .x = 0, .y = 177, .w = 22, .h = 8
             },
             {
                 .id = "example",
                 .text = "",
                 .type = ControlType::DROPDOWN,
-                .x = 35, .y = 175, .w = 70, .h = 56,
+                .x = 25, .y = 175, .w = 85, .h = 56,
                 .default_val = 0,
                 .options = {
                     "(current)", "Random Rotate", "Random Direction", "In and Out",
@@ -257,25 +257,25 @@ const PluginInfo DynamicMovementEffect::effect_info {
                     "Smooth Rotoblitter"
                 }
             },
-            // Grid size labels
+            // Grid size labels - from res.rc
             {
                 .id = "gridsize_label",
                 .text = "Grid size:",
                 .type = ControlType::LABEL,
-                .x = 113, .y = 192, .w = 30, .h = 8
+                .x = 78, .y = 192, .w = 30, .h = 8
             },
             {
                 .id = "gridx_label",
                 .text = "x",
                 .type = ControlType::LABEL,
-                .x = 163, .y = 191, .w = 8, .h = 8
+                .x = 128, .y = 191, .w = 8, .h = 8
             },
             // Grid size inputs - IDC_EDIT5, IDC_EDIT6
             {
                 .id = "grid_width",
                 .text = "",
                 .type = ControlType::TEXT_INPUT,
-                .x = 143, .y = 190, .w = 18, .h = 12,
+                .x = 108, .y = 190, .w = 18, .h = 12,
                 .range = {2, 256},
                 .default_val = 16
             },
@@ -283,7 +283,7 @@ const PluginInfo DynamicMovementEffect::effect_info {
                 .id = "grid_height",
                 .text = "",
                 .type = ControlType::TEXT_INPUT,
-                .x = 171, .y = 190, .w = 18, .h = 12,
+                .x = 136, .y = 190, .w = 18, .h = 12,
                 .range = {2, 256},
                 .default_val = 16
             },
@@ -304,9 +304,9 @@ const PluginInfo DynamicMovementEffect::effect_info {
             },
             {
                 .id = "no_movement",
-                .text = "No movement",
+                .text = "No movement (just blend)",
                 .type = ControlType::CHECKBOX,
-                .x = 70, .y = 190, .w = 55, .h = 10,
+                .x = 113, .y = 176, .w = 100, .h = 10,
                 .default_val = 0
             },
             {
@@ -323,7 +323,26 @@ const PluginInfo DynamicMovementEffect::effect_info {
                 .x = 94, .y = 204, .w = 63, .h = 10,
                 .default_val = 1
             }
-        }
+        },
+        "Dynamic Movement\n"
+        "\n"
+        "Variables (polar mode):\n"
+        "d = distance from center (0=center, 1=edge)\n"
+        "r = angle in radians\n"
+        "\n"
+        "Variables (rectangular mode):\n"
+        "x, y = coordinates (-1 to 1)\n"
+        "\n"
+        "Common variables:\n"
+        "w, h = width, height (in pixels)\n"
+        "b = isBeat (1 if beat, 0 otherwise)\n"
+        "alpha = blend amount (0.0-1.0)\n"
+        "\n"
+        "Scripts:\n"
+        "init: runs once at start\n"
+        "frame: runs once per frame\n"
+        "beat: runs on beat\n"
+        "pixel: runs for each grid point\n"
     }
 };
 

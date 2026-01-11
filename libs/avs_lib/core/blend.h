@@ -62,6 +62,16 @@ static inline uint32_t BLEND_SUB(uint32_t a, uint32_t b) {
     return t;
 }
 
+// Adjustable alpha blend: blends a over b with alpha (0-255)
+// alpha=0 returns b, alpha=255 returns a
+static inline uint32_t BLEND_ADJ(uint32_t a, uint32_t b, int alpha) {
+    int inv_alpha = 256 - alpha;
+    uint32_t r = (((a & 0xff) * alpha) + ((b & 0xff) * inv_alpha)) >> 8;
+    uint32_t g = ((((a >> 8) & 0xff) * alpha) + (((b >> 8) & 0xff) * inv_alpha)) >> 8;
+    uint32_t bl = ((((a >> 16) & 0xff) * alpha) + (((b >> 16) & 0xff) * inv_alpha)) >> 8;
+    return (r & 0xff) | ((g & 0xff) << 8) | ((bl & 0xff) << 16);
+}
+
 // Bilinear interpolation of a 2x2 pixel block
 // src points to top-left pixel, w is stride
 // lerp_x and lerp_y are 0-255 interpolation factors (fractional position * 256)

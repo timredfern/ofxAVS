@@ -257,6 +257,33 @@ JSON uses standard ARGB (`#AARRGGBB`) for human readability. Conversion happens 
 **UI Layout**
 Dialog coordinates come from original `res.rc`. The 2x position scaling is intentional. Don't adjust sizes or positions without testing.
 
+When implementing effects with script edit boxes (EDITTEXT), always check `res.rc` for accompanying LTEXT labels. Script dialogs typically have labels like "init", "frame", "beat", "point" next to their edit boxes:
+```cpp
+// From res.rc - note the LTEXT labels
+LTEXT           "init",IDC_STATIC,0,20,10,8
+EDITTEXT        IDC_EDIT1,29,0,204,52,...
+
+// Must include both in ui_layout:
+{.id = "init_label", .text = "init", .type = ControlType::LABEL, .x = 0, .y = 20, ...},
+{.id = "init_script", .text = "", .type = ControlType::EDITTEXT, .x = 29, .y = 0, ...},
+```
+
+**Expression Help Text**
+Scripted effects often have a help button (IDC_HELPBTN) that shows variable documentation. When implementing such effects:
+
+1. Check `g_DlgProc` for `IDC_HELPBTN` handler - it calls `compilerfunctionlist(hwndDlg, text)` with effect-specific help
+2. Extract the help text (null-separated: title + content) and add to PluginInfo:
+```cpp
+.help_text =
+    "Effect Name\n"
+    "\n"
+    "Variables:\n"
+    "x, y = position (read/write)\n"
+    "w, h = dimensions (read-only)\n"
+```
+3. The shared expression help (General, Operators, Functions, Constants) is in `core/expression_help.h`
+4. Document the help text in EFFECTS.md under a **Help Text** section
+
 ---
 
 ## 6. Housekeeping

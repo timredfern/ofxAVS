@@ -48,6 +48,8 @@ add_library(avs_core_test STATIC
     ${AVS_LIB_ROOT}/effects/custom_bpm_effect.cpp
     ${AVS_LIB_ROOT}/effects/moving_particle_effect.cpp
     ${AVS_LIB_ROOT}/effects/interferences_effect.cpp
+    ${AVS_LIB_ROOT}/effects/scatter_effect.cpp
+    ${AVS_LIB_ROOT}/effects/shift_effect.cpp
 )
 
 target_include_directories(avs_core_test PUBLIC 

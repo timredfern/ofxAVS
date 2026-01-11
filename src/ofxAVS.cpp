@@ -251,6 +251,7 @@ void ofxAVS::draw(int x, int y, int w, int h) {
 void ofxAVS::drawUI() {
     drawChainPanel();
     drawParametersPanel();
+    avs_ui::renderExpressionHelpPopup();  // Render help popup if open
 }
 
 void ofxAVS::addEffect(const std::string& effectName, avs::EffectContainer* parent) {

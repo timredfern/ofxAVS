@@ -24,7 +24,7 @@ For reference when examining original AVS implementation:
 - **Movement**: `r_trans.cpp`
 - **Dynamic Movement**: `r_dmove.cpp`
 - **Dynamic Distance Modifier**: `r_ddm.cpp`
-- **Dynamic Shift**: (part of r_dmove.cpp)
+- **Dynamic Shift**: `r_shift.cpp`
 - **Roto Blitter**: `r_rotblit.cpp`
 - **Scatter**: `r_scat.cpp`
 - **Blur**: `r_blur.cpp`
@@ -529,22 +529,46 @@ Effects that move or distort existing pixels.
   - Beat duration (Shorter/Longer): SLIDER, Position(44, 196), Size(67, 11), ID(IDC_BEATDUR)
   - OnBeat Depth (Flat/Bumpy): SLIDER, Position(114, 196), Size(67, 11), ID(IDC_DEPTH2)
 
-22. ### Shift
-- **Purpose**: Pixel shifting based on user-defined scripts.
+22. ### Shift (Dynamic Shift)
+- **Purpose**: Pixel shifting based on user-defined scripts. Shifts entire image by x,y amounts.
 - **Source File**: `r_shift.cpp`
+- **Legacy Index**: 42
 - **Inputs**:
   - Framebuffer
-  - Audio input
   - Beat signal
 - **Outputs**: Shifted pixels
-- **Blend Modes**: Optional blend
+- **Blend Modes**: Optional alpha blend with original
+- **Script Variables**:
+  - `x` - Horizontal shift in pixels (read/write)
+  - `y` - Vertical shift in pixels (read/write)
+  - `w` - Frame width in pixels (read-only)
+  - `h` - Frame height in pixels (read-only)
+  - `b` - Beat flag, 1.0 on beat, 0.0 otherwise (read-only)
+  - `alpha` - Blend alpha 0.0-1.0 when blend enabled (read/write, default 0.5)
+- **Default Scripts**:
+  - Init: `d=0;`
+  - Frame: `x=sin(d)*1.4; y=1.4*cos(d); d=d+0.01;`
+  - Beat: `d=d+2.0`
 - **Controls**:
+  - init: LTEXT, Position(0, 20), Size(10, 8)
   - Init script: EDITTEXT, Position(29, 0), Size(204, 52), ID(IDC_EDIT1)
+  - frame: LTEXT, Position(0, 83), Size(18, 8)
   - Frame script: EDITTEXT, Position(29, 52), Size(204, 70), ID(IDC_EDIT2)
+  - beat: LTEXT, Position(0, 150), Size(15, 8)
   - Beat script: EDITTEXT, Position(29, 123), Size(204, 63), ID(IDC_EDIT3)
-  - Blend: CHECKBOX, Position(0, 194), Size(34, 10), ID(IDC_CHECK1)
-  - Bilinear filtering: CHECKBOX, Position(35, 194), Size(63, 10), ID(IDC_CHECK2)
+  - Blend: CHECKBOX, Position(0, 194), Size(34, 10), ID(IDC_CHECK1), Default(0)
+  - Bilinear filtering: CHECKBOX, Position(35, 194), Size(63, 10), ID(IDC_CHECK2), Default(1)
   - Expression help: BUTTON, Position(162, 196), Size(71, 12), ID(IDC_HELPBTN)
+- **Help Text** (IDC_HELPBTN):
+  ```
+  Dynamic Shift
+  Variables:
+  x,y = amount to shift (in pixels - set these)
+  w,h = width, height (in pixels)
+  b = isBeat
+  alpha = alpha value (0.0-1.0) for blend
+  ```
+  Plus standard expression function list via `compilerfunctionlist()`.
 
 23. ### Roto Blitter
 - **Purpose**: Rotating bitmap blitter with zoom
@@ -571,14 +595,15 @@ Effects that move or distort existing pixels.
   - Bilinear filtering (subpixel) provides smoother output
 
 24. ### Scatter
-- **Purpose**: Scatters pixels randomly
+- **Purpose**: Scatters pixels randomly using 8x8 grid offset pattern (±4 pixels)
 - **Source File**: `r_scat.cpp`
+- **Legacy Index**: 16
 - **Inputs**:
   - Framebuffer
-- **Outputs**: Scattered pixels
+- **Outputs**: Scattered pixels (top/bottom 4 rows copied, middle scattered)
 - **Blend Modes**: None
 - **Controls**:
-  - Enable scatter effect: CHECKBOX, Position(0, 0), Size(81, 10), ID(IDC_CHECK1)
+  - Enable scatter effect: CHECKBOX, Position(0, 0), Size(81, 10), ID(IDC_CHECK1), Default(1)
 
 25. ### Texer/Texer II
 - **Purpose**: Particle-based texture mapper (no dedicated UI dialog found). Keywords for this effect in the codebase mostly point to the "Moving Particle" effect.
