@@ -542,22 +542,28 @@ Effects that move or distort existing pixels.
   - Expression help: BUTTON, Position(162, 196), Size(71, 12), ID(IDC_HELPBTN)
 
 23. ### Roto Blitter
-- **Purpose**: Rotating bitmap blitter
+- **Purpose**: Rotating bitmap blitter with zoom
 - **Source File**: `r_rotblit.cpp`
+- **Legacy Index**: 9
 - **Inputs**:
-  - Framebuffer
-  - Bitmap image
-- **Outputs**: Rotated/scaled bitmap
-- **Blend Modes**: Multiple blend modes
+  - Framebuffer (source and destination)
+- **Outputs**: Rotated/scaled framebuffer
+- **Blend Modes**: 50/50 blend optional
 - **Controls**:
-  - Zoom scale: SLIDER, Position(4, 10), Size(128, 15), ID(IDC_SLIDER1)
-  - Enable on-beat zoom change: CHECKBOX, Position(5, 28), Size(90, 10), ID(IDC_CHECK6)
-  - Zoom scale on-beat: SLIDER, Position(4, 37), Size(128, 13), ID(IDC_SLIDER6)
-  - Rotation speed: SLIDER, Position(4, 78), Size(128, 15), ID(IDC_SLIDER2)
-  - Enable on-beat reversal: CHECKBOX, Position(7, 107), Size(91, 10), ID(IDC_CHECK1)
-  - On-beat reversal speed: SLIDER, Position(4, 115), Size(128, 15), ID(IDC_SLIDER5)
-  - Blend blitter: CHECKBOX, Position(0, 147), Size(53, 10), ID(IDC_BLEND)
-  - Bilinear filtering: CHECKBOX, Position(55, 147), Size(63, 10), ID(IDC_CHECK2)
+  - Zoom scale: SLIDER, Position(48, 4), Size(140, 14), ID(IDC_SLIDER1), Range(0, 256), Default(31)
+  - Rotation speed: SLIDER, Position(48, 20), Size(140, 14), ID(IDC_SLIDER2), Range(0, 64), Default(31)
+  - 50/50 blend: CHECKBOX, Position(4, 40), Size(60, 10), ID(IDC_BLEND), Default(false)
+  - Subpixel (bilinear): CHECKBOX, Position(4, 52), Size(60, 10), ID(IDC_CHECK2), Default(true)
+  - On beat reverse: CHECKBOX, Position(4, 68), Size(80, 10), ID(IDC_CHECK1), Default(false)
+  - Reverse speed: SLIDER, Position(48, 82), Size(140, 14), ID(IDC_SLIDER5), Range(0, 8), Default(0)
+  - On beat zoom: CHECKBOX, Position(4, 100), Size(80, 10), ID(IDC_CHECK6), Default(false)
+  - On beat zoom target: SLIDER, Position(48, 114), Size(140, 14), ID(IDC_SLIDER6), Range(0, 256), Default(31)
+- **Notes**:
+  - Zoom value 31 = no zoom (zoom = 1.0), formula: `zoom = 1.0 + (value - 31) / 31.0`
+  - Rotation value 32 = no rotation, formula: `theta = (value - 32) * direction`
+  - Direction smoothly interpolates between -1 and +1 on beat reverse
+  - Uses fixed-point 16.16 arithmetic for rotation transform
+  - Bilinear filtering (subpixel) provides smoother output
 
 24. ### Scatter
 - **Purpose**: Scatters pixels randomly
@@ -1052,20 +1058,36 @@ Utility and control effects.
 53. ### Custom BPM
 - **Purpose**: Override automatic BPM detection
 - **Source File**: `r_bpm.cpp`
+- **Legacy Index**: 33
 - **Inputs**:
-  - Manual BPM value
-- **Outputs**: Beat signals
+  - Beat signal (isBeat)
+- **Outputs**: Modified beat signal (SET_BEAT=0x10000000 or CLR_BEAT=0x20000000)
 - **Blend Modes**: N/A
+- **Return Values**:
+  - `SET_BEAT` (0x10000000): Force a beat this frame
+  - `CLR_BEAT` (0x20000000): Cancel/clear any beat this frame
+  - `0`: Pass through beat signal unchanged
 - **Controls**:
-  - Enable BPM Customizer: CHECKBOX, Position(0, 0), Size(137, 10), ID(IDC_CHECK1)
-  - Arbitrary mode: RADIO_BUTTON, Position(0, 14), Size(41, 10), ID(IDC_ARBITRARY)
-  - Arbitrary value (ms): SLIDER, Position(38, 14), Size(65, 11), ID(IDC_ARBVAL)
-  - Skip mode: RADIO_BUTTON, Position(0, 24), Size(30, 10), ID(IDC_SKIP)
-  - Skip value (beats): SLIDER, Position(38, 24), Size(65, 11), ID(IDC_SKIPVAL)
-  - Reverse mode: RADIO_BUTTON, Position(0, 34), Size(43, 10), ID(IDC_INVERT)
-  - First skip (beats): SLIDER, Position(38, 45), Size(65, 11), ID(IDC_SKIPFIRST)
-  - In (Visual only): SLIDER, Position(13, 56), Size(124, 11), ID(IDC_IN)
-  - Out (Visual only): SLIDER, Position(13, 66), Size(124, 11), ID(IDC_OUT)
+  - Enable BPM Customizer: CHECKBOX, Position(0, 0), Size(137, 10), ID(IDC_CHECK1), Default(true)
+  - Arbitrary mode: CHECKBOX, Position(0, 14), Size(41, 10), ID(IDC_ARBITRARY), Default(true)
+  - Arbitrary value (ms): SLIDER, Position(38, 14), Size(65, 11), ID(IDC_ARBVAL), Range(200, 10000), Default(500)
+  - Skip mode: CHECKBOX, Position(0, 24), Size(30, 10), ID(IDC_SKIP), Default(false)
+  - Skip value (beats): SLIDER, Position(38, 24), Size(65, 11), ID(IDC_SKIPVAL), Range(1, 16), Default(1)
+  - Reverse/Invert mode: CHECKBOX, Position(0, 34), Size(43, 10), ID(IDC_INVERT), Default(false)
+  - Skip first N beats: SLIDER, Position(0, 48), Size(100, 11), ID(IDC_SKIPFIRST), Range(0, 64), Default(0)
+- **Mode Behavior**:
+  - **Arbitrary**: Generate beats at fixed intervals (ignores incoming beats)
+    - Value is milliseconds between beats (200ms = 300 BPM, 500ms = 120 BPM)
+  - **Skip**: Pass through every Nth beat, cancel others
+    - Value of 1 = pass every 2nd beat, value of 2 = pass every 3rd beat, etc.
+  - **Invert/Reverse**: Swap beats and non-beats
+    - Returns CLR_BEAT on beats, SET_BEAT on non-beats
+  - **Skip First**: Initial beat suppression
+    - First N incoming beats are cancelled regardless of other modes
+- **Notes**:
+  - Modes are mutually exclusive (arbitrary overrides skip, skip overrides invert)
+  - Effect does not render pixels, only modifies beat signal
+  - In/Out sliders in original UI are visual-only feedback (not functional parameters)
 
 54. ### Effect List
 - **Purpose**: Container for grouping effects with optional scripted control

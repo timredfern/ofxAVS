@@ -28,6 +28,12 @@ enum class AudioChannel { LEFT = 0, RIGHT = 1, CENTER = 2 };
 enum class VerticalPosition { TOP = 0, BOTTOM = 1, CENTER = 2 };
 enum class RenderMode { SPECTRUM = 0, OSCILLOSCOPE = 1 };
 
+// Render return value flags (from original r_defs.h / r_bpm.cpp)
+// Effects can return these to modify the beat signal for subsequent effects
+constexpr int RENDER_SWAP_BUFFER = 0x00000001;  // Output is in fbout, swap buffers
+constexpr int RENDER_SET_BEAT    = 0x10000000;  // Force beat for subsequent effects
+constexpr int RENDER_CLR_BEAT    = 0x20000000;  // Clear beat for subsequent effects
+
 // Base class for all AVS effects
 class EffectBase : public Configurable {
 public:

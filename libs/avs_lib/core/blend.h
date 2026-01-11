@@ -62,4 +62,41 @@ static inline uint32_t BLEND_SUB(uint32_t a, uint32_t b) {
     return t;
 }
 
+// Bilinear interpolation of a 2x2 pixel block
+// src points to top-left pixel, w is stride
+// lerp_x and lerp_y are 0-255 interpolation factors (fractional position * 256)
+static inline uint32_t blend_bilinear_2x2(const uint32_t* src, int w,
+                                          uint8_t lerp_x, uint8_t lerp_y) {
+    // Get the 4 source pixels
+    uint32_t p00 = src[0];       // top-left
+    uint32_t p10 = src[1];       // top-right
+    uint32_t p01 = src[w];       // bottom-left
+    uint32_t p11 = src[w + 1];   // bottom-right
+
+    // Inverse lerp factors
+    uint32_t inv_x = 256 - lerp_x;
+    uint32_t inv_y = 256 - lerp_y;
+
+    // Interpolate each channel separately
+    // Red (bits 0-7)
+    uint32_t r = ((p00 & 0xff) * inv_x * inv_y +
+                  (p10 & 0xff) * lerp_x * inv_y +
+                  (p01 & 0xff) * inv_x * lerp_y +
+                  (p11 & 0xff) * lerp_x * lerp_y) >> 16;
+
+    // Green (bits 8-15)
+    uint32_t g = (((p00 >> 8) & 0xff) * inv_x * inv_y +
+                  ((p10 >> 8) & 0xff) * lerp_x * inv_y +
+                  ((p01 >> 8) & 0xff) * inv_x * lerp_y +
+                  ((p11 >> 8) & 0xff) * lerp_x * lerp_y) >> 16;
+
+    // Blue (bits 16-23)
+    uint32_t b = (((p00 >> 16) & 0xff) * inv_x * inv_y +
+                  ((p10 >> 16) & 0xff) * lerp_x * inv_y +
+                  ((p01 >> 16) & 0xff) * inv_x * lerp_y +
+                  ((p11 >> 16) & 0xff) * lerp_x * lerp_y) >> 16;
+
+    return (r & 0xff) | ((g & 0xff) << 8) | ((b & 0xff) << 16);
+}
+
 } // namespace avs

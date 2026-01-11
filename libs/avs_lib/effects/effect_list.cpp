@@ -42,8 +42,16 @@ int EffectList::render(AudioData visdata, int isBeat,
         // Call child's render
         int result = child->render(visdata, isBeat, current_in, current_out, w, h);
 
-        // If result is 1, child wrote to fbout - swap buffers for next effect
-        if (result == 1) {
+        // Handle beat signal modification (from Custom BPM and similar effects)
+        if (result & RENDER_SET_BEAT) {
+            isBeat = 1;
+        }
+        if (result & RENDER_CLR_BEAT) {
+            isBeat = 0;
+        }
+
+        // If result has swap flag, child wrote to fbout - swap buffers for next effect
+        if (result & RENDER_SWAP_BUFFER) {
             std::swap(current_in, current_out);
         }
     }

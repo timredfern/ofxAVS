@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include "../core/effect_base.h"
 #include "../core/effect_container.h"
 #include "../core/plugin_manager.h"
 #include "../core/preset.h"
@@ -41,7 +42,16 @@ public:
 
             int result = child->render(visdata, isBeat, current_in, current_out, w, h);
 
-            if (result == 1) {
+            // Handle beat signal modification (from Custom BPM and similar effects)
+            if (result & RENDER_SET_BEAT) {
+                isBeat = 1;
+            }
+            if (result & RENDER_CLR_BEAT) {
+                isBeat = 0;
+            }
+
+            // If result has swap flag, child wrote to fbout - swap buffers
+            if (result & RENDER_SWAP_BUFFER) {
                 std::swap(current_in, current_out);
             }
         }
