@@ -304,15 +304,25 @@ public:
 ## Development Status
 
 ### Completed ✅
-- Core rendering pipeline with double-buffering
-- Parameter system with typed values
-- Plugin architecture with legacy index mapping
-- Binary .avs preset loading
-- Custom script engine (EEL-compatible subset)
+
+**Core Infrastructure:**
+- Rendering pipeline with double-buffering and buffer swapping
+- Parameter system with typed values, enums, and color arrays
+- Plugin architecture with legacy index mapping for preset compatibility
+- Binary .avs preset loading (original AVS format)
+- Custom script engine (EEL-compatible subset with multi-phase execution)
+- Effect help text system with per-effect documentation
+- `avs2json` CLI tool for preset inspection and debugging
+
+**Rendering Features:**
+- Line drawing module with Bresenham and Wu's anti-aliased algorithms
+- Variable line width (1-256 pixels) with multiple blend modes
+- Set Render Mode with dynamic scripting for beat-reactive line styles
+- Unsupported effect placeholders (graceful handling of unimplemented effects)
+
+**Effects:**
 - 23+ effects implemented (see Available Effects table)
-- Line drawing infrastructure with Wu's anti-aliased algorithm
-- Set Render Mode with dynamic scripting for line style control
-- Standalone example and test suite
+- Standalone example and Catch2 test suite (500+ assertions)
 
 ### In Progress 🚧
 - Remaining ~30 AVS effects

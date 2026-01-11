@@ -100,8 +100,9 @@ libs/avs_lib/
 │   ├── water_effect.cpp            # Trans/Water (ripple effect)
 │   └── ...                         # See EFFECTS.md for full list
 ├── example/                     # Standalone example (no OpenFrameworks)
-├── tools/                       # CLI utilities (avs2json)
-└── tests/                       # Catch2 unit tests
+├── tools/                       # CLI utilities
+│   └── avs2json.cpp            # Convert .avs presets to JSON for debugging
+└── tests/                       # Catch2 unit tests (500+ assertions)
 ```
 
 **Rationale for changes:**
@@ -166,6 +167,22 @@ The original AVS used Windows dialog resources (`.rc` files) with absolute pixel
 **EDITTEXT `.text` field:** For EDITTEXT controls, the `.text` field should be empty (`""`). The label is a separate LABEL control. Do NOT put the label text in the EDITTEXT's `.text` field.
 
 See `src/ARCHITECTURE.md` in ofxAVS for the reference ImGui renderer implementation.
+
+### Effect Help Text
+
+Scripted effects can provide expression help documentation via `EffectUILayout::help_text`. This is displayed in the UI to assist users writing expressions:
+
+```cpp
+.ui_layout = EffectUILayout({
+    // controls...
+}, R"(Variables:
+  n = number of points
+  i = current point index
+  v = audio value at point
+  ...)")
+```
+
+The help text uses the original AVS format with variable names and descriptions.
 
 ### RADIO_GROUP Control
 Radio button groups use explicit coordinates per option rather than computed layouts:
@@ -671,11 +688,12 @@ This adds a scripting layer at the container level that runs before child effect
 
 Binary format starting with signature `"Nullsoft AVS Preset 0.2\x1a"`:
 - Each effect serializes its own config blob via `save_config()`/`load_config()`
-- Effect index (4 bytes) maps to effect type
+- Effect index (4 bytes) maps to effect type via `legacy_index`
 - Nested effect lists serialize recursively
 - APE (third-party) effects use 32-byte string identifiers
+- Unimplemented effects are loaded as `UnsupportedEffect` placeholders
 
-**Status:** Not implemented. Required for loading existing .avs presets.
+**Status:** ✅ Implemented in `core/preset.cpp`. The `avs2json` tool can dump presets to JSON for debugging.
 
 ### Transitions System
 
@@ -702,3 +720,25 @@ The magic number 576 appears throughout AVS. It originates from Winamp's VIS API
 - Total: 576 samples per channel
 
 This is Winamp-specific, not a standard audio buffer size.
+
+## Tools
+
+### avs2json
+
+Command-line tool for converting binary `.avs` presets to JSON format:
+
+```bash
+cd libs/avs_lib/tools/build
+cmake .. && make
+./avs2json path/to/preset.avs
+```
+
+Output includes:
+- Effect chain hierarchy with nested effect lists
+- All parameter values for each effect
+- Unsupported effects are marked with their original type name
+
+Useful for:
+- Debugging preset loading issues
+- Understanding preset structure
+- Comparing original vs loaded parameters
