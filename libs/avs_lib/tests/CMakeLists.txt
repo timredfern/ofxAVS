@@ -72,6 +72,7 @@ add_executable(avs_tests
     test_semicolon_check.cpp
     test_color_format.cpp
     test_preset_binary.cpp
+    test_load_parameters_colors.cpp
 )
 
 target_link_libraries(avs_tests PRIVATE 

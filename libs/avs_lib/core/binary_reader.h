@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include "color.h"
 #include <cstdint>
 #include <cstring>
 #include <string>
@@ -86,12 +87,16 @@ public:
         return std::memcmp(&data_[pos_], pattern, len) == 0;
     }
 
-    // Convert BGR color (0x00BBGGRR) to ARGB (0xAARRGGBB)
+    // Delegate to color:: utilities - see core/color.h for documentation
+    static uint32_t bgr_add_alpha(uint32_t bgr) { return color::bgr_add_alpha(bgr); }
+    static uint32_t abgr_to_argb(uint32_t abgr) { return color::abgr_to_argb(abgr); }
+    static uint32_t argb_to_abgr(uint32_t argb) { return color::argb_to_abgr(argb); }
+
+    // Legacy alias - converts BGR to ARGB (not internal format!)
+    // Deprecated: Use bgr_add_alpha() for binary loading
+    [[deprecated("Use bgr_add_alpha() for binary loading")]]
     static uint32_t bgr_to_argb(uint32_t bgr) {
-        uint32_t r = bgr & 0xFF;
-        uint32_t g = (bgr >> 8) & 0xFF;
-        uint32_t b = (bgr >> 16) & 0xFF;
-        return 0xFF000000 | (r << 16) | (g << 8) | b;
+        return color::abgr_to_argb(color::bgr_add_alpha(bgr));
     }
 
 private:

@@ -101,7 +101,7 @@ void DotGridEffect::load_parameters(const std::vector<uint8_t>& data) {
     parameters().set_int("num_colors", num_colors);
 
     for (int i = 0; i < num_colors && reader.remaining() >= 4; i++) {
-        uint32_t color = BinaryReader::bgr_to_argb(reader.read_u32());
+        uint32_t color = BinaryReader::bgr_add_alpha(reader.read_u32());
         parameters().set_color("color_" + std::to_string(i), color);
     }
 

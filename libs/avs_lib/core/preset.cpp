@@ -4,6 +4,7 @@
 
 #include "preset.h"
 #include "binary_reader.h"
+#include "color.h"
 #include "json.h"
 #include "plugin_manager.h"
 #include "effect_container.h"
@@ -40,9 +41,11 @@ static JsonValue param_to_json(const Parameter& param) {
         case ParameterType::BOOL:
             return param.as_bool();
         case ParameterType::COLOR: {
-            // Store as hex string for readability (e.g., "#FF0000FF")
+            // Convert internal ABGR to standard ARGB for human-readable hex
+            // Internal: 0xAABBGGRR -> JSON: "#AARRGGBB"
+            uint32_t argb = color::abgr_to_argb(param.as_color());
             char hex[10];
-            snprintf(hex, sizeof(hex), "#%08X", param.as_color());
+            snprintf(hex, sizeof(hex), "#%08X", argb);
             return std::string(hex);
         }
         case ParameterType::STRING:
@@ -66,10 +69,12 @@ static void json_to_param(const JsonValue& json, Parameter& param) {
             break;
         case ParameterType::COLOR:
             if (json.is_string()) {
-                // Parse hex string like "#FF0000FF"
+                // Parse hex string like "#FFFF8000" (ARGB format)
+                // Convert to internal ABGR format
                 std::string s = json.as_string();
                 if (!s.empty() && s[0] == '#') {
-                    param.set_value(static_cast<uint32_t>(std::stoul(s.substr(1), nullptr, 16)));
+                    uint32_t argb = static_cast<uint32_t>(std::stoul(s.substr(1), nullptr, 16));
+                    param.set_value(color::argb_to_abgr(argb));
                 }
             }
             break;

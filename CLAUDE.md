@@ -156,6 +156,39 @@ Mismatch causes "unsupported control type" errors.
 **Use Shared Code**
 Blend operations are in `core/blend.h`. Never duplicate them in effect files.
 
+**Implementing load_parameters()**
+Every effect needs `load_parameters()` to load binary AVS preset data. Without it, presets won't restore effect settings.
+
+1. **Research the binary format** - Read the original `r_*.cpp` file's `load_config()` function. Note the order and types of fields.
+
+2. **Implement the override**:
+```cpp
+// In header:
+void load_parameters(const std::vector<uint8_t>& data) override;
+
+// In cpp:
+void MyEffect::load_parameters(const std::vector<uint8_t>& data) {
+    if (data.size() < 4) return;
+    BinaryReader reader(data);
+
+    // Read fields in same order as original load_config()
+    int some_value = reader.read_u32();
+    parameters().set_int("some_param", some_value);
+
+    // For colors: use bgr_add_alpha (NOT bgr_to_argb)
+    uint32_t color = BinaryReader::bgr_add_alpha(reader.read_u32());
+    parameters().set_color("color", color);
+
+    // For scripts: length-prefixed strings
+    std::string script = reader.read_length_prefixed_string();
+    parameters().set_string("script", script);
+}
+```
+
+3. **Color conversion** - Binary AVS stores colors as BGR (`0x00BBGGRR`). Use `bgr_add_alpha()` to add alpha while preserving byte order for internal ABGR format. Do NOT use `bgr_to_argb()` which swaps bytes.
+
+4. **Write tests** - Add tests in `test_load_parameters_colors.cpp` to verify color loading works correctly.
+
 ---
 
 ## 5. Technical Reference
@@ -199,8 +232,27 @@ output_buffer[i] = static_cast<uint32_t>(temp_buffer[i]) | 0xFF000000;
 
 **Do NOT** add `| 0xFF000000` inside effect code - alpha should propagate through the chain for effects that use it.
 
-**Color Conversion**
-Colors are stored as `0xAABBGGRR` everywhere in avs_lib. The only format conversion happens in `src/AVSui.cpp` when interfacing with ImGui color pickers. Never add conversions inside render loops or effect code.
+**Color Format and Conversion**
+Internal format is ABGR: `0xAABBGGRR` (Alpha, Blue, Green, Red). Use `core/color.h` utilities:
+
+```cpp
+#include "core/color.h"
+
+// Extract components
+uint8_t r = avs::color::red(color);    // bits 0-7
+uint8_t g = avs::color::green(color);  // bits 8-15
+uint8_t b = avs::color::blue(color);   // bits 16-23
+
+// Build color
+uint32_t c = avs::color::make(r, g, b);
+
+// Format conversions
+avs::color::bgr_add_alpha(bgr);   // Binary loading: BGR → ABGR
+avs::color::abgr_to_argb(abgr);   // JSON output: ABGR → ARGB
+avs::color::argb_to_abgr(argb);   // JSON loading: ARGB → ABGR
+```
+
+JSON uses standard ARGB (`#AARRGGBB`) for human readability. Conversion happens automatically in `preset.cpp`.
 
 **UI Layout**
 Dialog coordinates come from original `res.rc`. The 2x position scaling is intentional. Don't adjust sizes or positions without testing.

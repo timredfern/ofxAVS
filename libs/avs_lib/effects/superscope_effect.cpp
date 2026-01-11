@@ -545,7 +545,7 @@ void SuperScopeEffect::load_parameters(const std::vector<uint8_t>& data) {
     for (int i = 0; i < num_colors && reader.remaining() >= 4; i++) {
         uint32_t color = reader.read_u32();
         std::string color_param = "color_" + std::to_string(i);
-        parameters().set_color(color_param, BinaryReader::bgr_to_argb(color));
+        parameters().set_color(color_param, BinaryReader::bgr_add_alpha(color));
     }
 
     // mode (0=dots, 1=lines)

@@ -169,7 +169,7 @@ void BrightnessEffect::load_parameters(const std::vector<uint8_t>& data) {
     }
 
     if (reader.remaining() >= 4) {
-        uint32_t color = BinaryReader::bgr_to_argb(reader.read_u32());
+        uint32_t color = BinaryReader::bgr_add_alpha(reader.read_u32());
         parameters().set_color("exclude_color", color);
     }
 

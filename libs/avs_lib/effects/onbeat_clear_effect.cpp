@@ -49,7 +49,7 @@ void OnBeatClearEffect::load_parameters(const std::vector<uint8_t>& data) {
     // color (int32, BGR format)
     // blend (int32)
     // nf (int32) - every N beats
-    uint32_t color = BinaryReader::bgr_to_argb(reader.read_u32());
+    uint32_t color = BinaryReader::bgr_add_alpha(reader.read_u32());
     parameters().set_color("color", color);
 
     if (reader.remaining() >= 4) {
