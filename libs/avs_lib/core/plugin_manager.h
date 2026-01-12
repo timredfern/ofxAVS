@@ -32,7 +32,8 @@ struct PluginInfo {
     int version;
     int legacy_index = LEGACY_INDEX_NONE;   // Original AVS effect index for preset loading
     EffectFactory factory;
-    EffectUILayout ui_layout;  // Contains controls and help_text
+    EffectUILayout ui_layout;
+    std::string help_text;     // Expression help for scripted effects (empty if none)
 };
 
 class PluginManager {

@@ -323,7 +323,9 @@ const PluginInfo DynamicMovementEffect::effect_info {
                 .x = 94, .y = 204, .w = 63, .h = 10,
                 .default_val = 1
             }
-        },
+        }
+    },
+    .help_text =
         "Dynamic Movement\n"
         "\n"
         "Variables (polar mode):\n"
@@ -343,7 +345,6 @@ const PluginInfo DynamicMovementEffect::effect_info {
         "frame: runs once per frame\n"
         "beat: runs on beat\n"
         "pixel: runs for each grid point\n"
-    }
 };
 
 // Register effect at startup

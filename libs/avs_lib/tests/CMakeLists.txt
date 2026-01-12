@@ -5,6 +5,9 @@ project(AVSTests VERSION 1.0.0 LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+# Enable AVS extensions
+add_compile_definitions(AVS_LINE_DRAWING_EXTENSIONS)
+
 # Fetch Catch2
 include(FetchContent)
 FetchContent_Declare(
@@ -113,6 +116,23 @@ endif()
 include(CTest)
 include(Catch)
 catch_discover_tests(avs_tests)
+
+# Compatibility build test (without extensions)
+# This ensures the library compiles in original AVS compatibility mode
+add_library(avs_compat_test STATIC
+    ${AVS_LIB_ROOT}/core/effect_base.cpp
+    ${AVS_LIB_ROOT}/core/parameter.cpp
+    ${AVS_LIB_ROOT}/core/blend.cpp
+    ${AVS_LIB_ROOT}/effects/set_render_mode_effect.cpp
+)
+target_include_directories(avs_compat_test PUBLIC
+    ${AVS_LIB_ROOT}
+    ${AVS_LIB_ROOT}/core
+)
+# Note: AVS_LINE_DRAWING_EXTENSIONS is NOT defined for this target
+set_target_properties(avs_compat_test PROPERTIES
+    COMPILE_DEFINITIONS ""
+)
 
 # Custom test targets for development
 add_custom_target(test_lexer

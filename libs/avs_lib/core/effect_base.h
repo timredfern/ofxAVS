@@ -52,6 +52,7 @@ public:
     // Configurable interface implementation
     std::string get_display_name() const override;
     const EffectUILayout& get_ui_layout() const override;
+    std::string get_help_text() const override;
 
     // Parameter system
     ParameterGroup& parameters() override { return parameters_; }

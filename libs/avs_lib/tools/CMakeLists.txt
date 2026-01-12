@@ -4,6 +4,9 @@ project(AVSTools VERSION 1.0.0 LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+# Enable AVS extensions
+add_compile_definitions(AVS_LINE_DRAWING_EXTENSIONS)
+
 # Path to avs_lib root
 set(AVS_LIB_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/..")
 

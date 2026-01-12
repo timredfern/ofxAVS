@@ -170,16 +170,19 @@ See `src/ARCHITECTURE.md` in ofxAVS for the reference ImGui renderer implementat
 
 ### Effect Help Text
 
-Scripted effects can provide expression help documentation via `EffectUILayout::help_text`. This is displayed in the UI to assist users writing expressions:
+Scripted effects can provide expression help documentation via `PluginInfo::help_text`. This is displayed in the UI to assist users writing expressions:
 
 ```cpp
-.ui_layout = EffectUILayout({
-    // controls...
-}, R"(Variables:
+const PluginInfo MyEffect::effect_info {
+    .name = "My Effect",
+    // ... other fields ...
+    .ui_layout = { /* controls */ },
+    .help_text = R"(Variables:
   n = number of points
   i = current point index
   v = audio value at point
-  ...)")
+  ...)"
+};
 ```
 
 The help text uses the original AVS format with variable names and descriptions.

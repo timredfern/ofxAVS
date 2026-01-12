@@ -327,7 +327,9 @@ const PluginInfo ShiftEffect::effect_info {
                 .x = 35, .y = 194, .w = 63, .h = 10,
                 .default_val = 1
             }
-        },
+        }
+    },
+    .help_text =
         "Dynamic Shift\n"
         "\n"
         "Variables:\n"
@@ -335,7 +337,6 @@ const PluginInfo ShiftEffect::effect_info {
         "w, h = width, height (in pixels)\n"
         "b = isBeat (1 if beat, 0 otherwise)\n"
         "alpha = alpha value (0.0-1.0) for blend\n"
-    }
 };
 
 // Register effect at startup

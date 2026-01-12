@@ -24,6 +24,9 @@ public:
     // UI layout defining the controls to show in the parameters panel
     virtual const EffectUILayout& get_ui_layout() const = 0;
 
+    // Expression help text for scripted effects (empty if none)
+    virtual std::string get_help_text() const { return ""; }
+
     // Parameter storage for reading/writing values
     virtual ParameterGroup& parameters() = 0;
     virtual const ParameterGroup& parameters() const = 0;

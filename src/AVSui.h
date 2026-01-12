@@ -14,7 +14,7 @@ namespace avs_ui {
  * Render a Configurable's UI layout using ImGui
  * This function provides the ImGui-specific rendering for avs::EffectUILayout
  * Works with any Configurable: effects, beat detector, and other settings
- * If layout.help_text is non-empty, an "Expression Help" button is rendered.
+ * If configurable->get_help_text() is non-empty, an "Expression Help" button is rendered.
  *
  * @param layout The UI layout describing the controls
  * @param configurable The Configurable instance to read/write parameters from

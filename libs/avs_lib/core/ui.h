@@ -64,14 +64,6 @@ struct ControlLayout {
 class EffectUILayout {
 public:
     std::vector<ControlLayout> controls;
-    std::string help_text;  // Expression help text for scripted effects (empty if none)
-
-    // Constructor for easy initialization
-    EffectUILayout(const std::vector<ControlLayout>& ctrls, const std::string& help = "")
-        : controls(ctrls), help_text(help) {}
-
-    // Default constructor
-    EffectUILayout() = default;
 
     // Accessor methods
     const std::vector<ControlLayout>& getControls() const { return controls; }

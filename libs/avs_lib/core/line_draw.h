@@ -4,11 +4,15 @@
 // Modern C++ port Copyright (C) 2025 Tim Redfern
 // Licensed under MIT License
 
-// Line drawing with blend mode, line width, and style support
-// Includes Wu's anti-aliased algorithm and angle-corrected thickness
+// Line drawing with blend mode and line width support
+// Extensions (controlled by AVS_EXTENSION_ANTIALIASED_LINES):
+//   - Wu's anti-aliased algorithm
+//   - Angle-corrected thickness
+//   - Rounded endpoints
 
 #pragma once
 
+#include "avs_config.h"
 #include "blend.h"
 #include <algorithm>
 #include <cmath>
@@ -23,6 +27,7 @@ inline int get_line_width() {
     return (lw < 1) ? 1 : lw;
 }
 
+#ifdef AVS_LINE_DRAWING_EXTENSIONS
 // Blend a pixel with alpha (0-255) for anti-aliased drawing
 inline void blend_pixel_alpha(uint32_t* fb, uint32_t color, int alpha) {
     if (alpha <= 0) return;
@@ -34,6 +39,7 @@ inline void blend_pixel_alpha(uint32_t* fb, uint32_t color, int alpha) {
     uint32_t blended = BLEND_ADJ(color, *fb, alpha);
     BLEND_LINE(fb, blended);
 }
+#endif // AVS_LINE_DRAWING_EXTENSIONS
 
 // Draw a single point with current blend mode
 inline void draw_point(uint32_t* fb, int x, int y, int width, int height, uint32_t color) {
@@ -42,6 +48,7 @@ inline void draw_point(uint32_t* fb, int x, int y, int width, int height, uint32
     }
 }
 
+#ifdef AVS_LINE_DRAWING_EXTENSIONS
 // Draw a filled circle (for rounded endpoints)
 inline void draw_filled_circle(uint32_t* fb, int cx, int cy, int radius,
                                 int width, int height, uint32_t color) {
@@ -158,6 +165,34 @@ inline void draw_line_wu(uint32_t* fb, int x0, int y0, int x1, int y1,
     }
 }
 
+// Thick anti-aliased line using Wu's algorithm with perpendicular coverage
+inline void draw_line_wu_thick(uint32_t* fb, int x0, int y0, int x1, int y1,
+                                int width, int height, uint32_t color, float thickness) {
+    float dx = static_cast<float>(x1 - x0);
+    float dy = static_cast<float>(y1 - y0);
+    float len = std::sqrt(dx * dx + dy * dy);
+
+    if (len < 0.001f) {
+        draw_filled_circle(fb, x0, y0, static_cast<int>(thickness / 2), width, height, color);
+        return;
+    }
+
+    // Perpendicular unit vector
+    float px = -dy / len;
+    float py = dx / len;
+    float half_w = thickness / 2.0f;
+
+    // Draw multiple parallel Wu lines to create thickness
+    int num_lines = static_cast<int>(thickness) + 1;
+    for (int i = 0; i < num_lines; i++) {
+        float offset = -half_w + (thickness * i) / (num_lines - 1 + 0.001f);
+        int ox = static_cast<int>(offset * px);
+        int oy = static_cast<int>(offset * py);
+        draw_line_wu(fb, x0 + ox, y0 + oy, x1 + ox, y1 + oy, width, height, color);
+    }
+}
+#endif // AVS_LINE_DRAWING_EXTENSIONS
+
 // Original Bresenham-style thick line (from AVS linedraw.cpp)
 inline void draw_line_bresenham(uint32_t* fb, int x1, int y1, int x2, int y2,
                                  int width, int height, uint32_t color, int lw) {
@@ -266,37 +301,12 @@ inline void draw_line_bresenham(uint32_t* fb, int x1, int y1, int x2, int y2,
     }
 }
 
-// Thick anti-aliased line using Wu's algorithm with perpendicular coverage
-inline void draw_line_wu_thick(uint32_t* fb, int x0, int y0, int x1, int y1,
-                                int width, int height, uint32_t color, float thickness) {
-    float dx = static_cast<float>(x1 - x0);
-    float dy = static_cast<float>(y1 - y0);
-    float len = std::sqrt(dx * dx + dy * dy);
-
-    if (len < 0.001f) {
-        draw_filled_circle(fb, x0, y0, static_cast<int>(thickness / 2), width, height, color);
-        return;
-    }
-
-    // Perpendicular unit vector
-    float px = -dy / len;
-    float py = dx / len;
-    float half_w = thickness / 2.0f;
-
-    // Draw multiple parallel Wu lines to create thickness
-    int num_lines = static_cast<int>(thickness) + 1;
-    for (int i = 0; i < num_lines; i++) {
-        float offset = -half_w + (thickness * i) / (num_lines - 1 + 0.001f);
-        int ox = static_cast<int>(offset * px);
-        int oy = static_cast<int>(offset * py);
-        draw_line_wu(fb, x0 + ox, y0 + oy, x1 + ox, y1 + oy, width, height, color);
-    }
-}
-
 // Main line drawing function - dispatches based on style flags
 inline void draw_line(uint32_t* fb, int x1, int y1, int x2, int y2,
                       int width, int height, uint32_t color) {
     int lw = get_line_width();
+
+#ifdef AVS_LINE_DRAWING_EXTENSIONS
     int style = get_line_style();
 
     bool aa = (style & LINE_STYLE_AA) != 0;
@@ -339,6 +349,10 @@ inline void draw_line(uint32_t* fb, int x1, int y1, int x2, int y2,
         draw_line_bresenham(fb, x1, y1, x2, y2, width, height, color,
                             static_cast<int>(effective_width + 0.5f));
     }
+#else
+    // Original AVS behavior - just Bresenham
+    draw_line_bresenham(fb, x1, y1, x2, y2, width, height, color, lw);
+#endif
 }
 
 } // namespace avs

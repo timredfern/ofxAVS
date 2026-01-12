@@ -17,4 +17,8 @@ const EffectUILayout& EffectBase::get_ui_layout() const {
     return get_plugin_info().ui_layout;
 }
 
+std::string EffectBase::get_help_text() const {
+    return get_plugin_info().help_text;
+}
+
 } // namespace avs
