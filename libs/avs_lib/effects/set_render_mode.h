@@ -4,15 +4,12 @@
 // Modern C++ port Copyright (C) 2025 Tim Redfern
 // Licensed under MIT License
 
+// Port of r_linemode.cpp from original AVS
+
 #pragma once
 
 #include "core/effect_base.h"
 #include "core/plugin_manager.h"
-#include "core/avs_config.h"
-
-#ifdef AVS_LINE_DRAWING_EXTENSIONS
-#include "core/script/script_engine.h"
-#endif
 
 namespace avs {
 
@@ -21,8 +18,6 @@ namespace avs {
  *
  * Sets global line blend mode and line width for subsequent
  * rendering effects (SuperScope, etc.)
- *
- * With AVS_LINE_DRAWING_EXTENSIONS: includes scripting and extended line styles.
  */
 class SetRenderModeEffect : public EffectBase {
 public:
@@ -33,10 +28,6 @@ public:
                int w, int h) override;
 
     void load_parameters(const std::vector<uint8_t>& data) override;
-
-#ifdef AVS_LINE_DRAWING_EXTENSIONS
-    void on_parameter_changed(const std::string& param_name) override;
-#endif
 
     const PluginInfo& get_plugin_info() const override { return effect_info; }
 
@@ -55,12 +46,6 @@ public:
         BLEND_XOR = 8,
         BLEND_MINIMUM = 9
     };
-
-private:
-#ifdef AVS_LINE_DRAWING_EXTENSIONS
-    ScriptEngine engine_;
-    bool inited_ = false;
-#endif
 };
 
 } // namespace avs

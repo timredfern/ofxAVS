@@ -56,6 +56,7 @@ add_library(avs_core_test STATIC
     ${AVS_LIB_ROOT}/effects/shift.cpp
     ${AVS_LIB_ROOT}/effects/mirror.cpp
     ${AVS_LIB_ROOT}/effects/set_render_mode.cpp
+    ${AVS_LIB_ROOT}/effects/set_render_mode_ext.cpp
     ${AVS_LIB_ROOT}/effects/dot_fountain.cpp
     ${AVS_LIB_ROOT}/effects/water.cpp
 )

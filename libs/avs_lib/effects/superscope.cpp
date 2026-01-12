@@ -8,7 +8,7 @@
 #include "core/binary_reader.h"
 #include "core/plugin_manager.h"
 #include "core/ui.h"
-#include "core/line_draw.h"
+#include "core/line_draw_ext.h"
 #include <algorithm>
 #include <cmath>
 
@@ -265,11 +265,11 @@ int SuperScopeEffect::render(AudioData visdata, int isBeat,
 
                 if (current_drawmode < 0.00001) {
                     // Dots mode
-                    draw_point(framebuffer, px, py, w, h, point_color);
+                    draw_point_styled(framebuffer, px, py, w, h, point_color);
                 } else {
                     // Lines mode
                     if (can_draw) {
-                        draw_line(framebuffer, last_x, last_y, px, py, w, h, point_color);
+                        draw_line_styled(framebuffer, last_x, last_y, px, py, w, h, point_color);
                     }
                 }
             }

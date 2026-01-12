@@ -7,7 +7,7 @@
 #include "oscilloscope.h"
 #include "core/plugin_manager.h"
 #include "core/binary_reader.h"
-#include "core/line_draw.h"
+#include "core/line_draw_ext.h"
 #include "core/ui.h"
 #include <algorithm>
 #include <cmath>
@@ -122,7 +122,7 @@ int OscilloscopeEffect::render(AudioData visdata, int isBeat,
                        sample_to_unsigned(audio_data[idx + 1]) * frac;
             int y = y_base + static_cast<int>(yr * y_scale);
 
-            draw_line(framebuffer, x, y_center, x, y, w, h, color);
+            draw_line_styled(framebuffer, x, y_center, x, y, w, h, color);
         }
     } else if (draw_style == DrawStyle::LINES) {
         // Line scope: draw connected line segments
@@ -134,7 +134,7 @@ int OscilloscopeEffect::render(AudioData visdata, int isBeat,
             int ox = static_cast<int>(i * xs);
             int oy = y_base + static_cast<int>(sample_to_unsigned(audio_data[i]) * y_scale);
 
-            draw_line(framebuffer, lx, ly, ox, oy, w, h, color);
+            draw_line_styled(framebuffer, lx, ly, ox, oy, w, h, color);
 
             lx = ox;
             ly = oy;
@@ -151,7 +151,7 @@ int OscilloscopeEffect::render(AudioData visdata, int isBeat,
                        sample_to_unsigned(audio_data[idx + 1]) * frac;
             int y = y_base + static_cast<int>(yr * y_scale);
 
-            draw_point(framebuffer, x, y, w, h, color);
+            draw_point_styled(framebuffer, x, y, w, h, color);
         }
     }
 
