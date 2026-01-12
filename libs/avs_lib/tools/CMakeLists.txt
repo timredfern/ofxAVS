@@ -46,6 +46,7 @@ add_library(avs_core STATIC
     ${AVS_LIB_ROOT}/effects/shift.cpp
     ${AVS_LIB_ROOT}/effects/scatter.cpp
     ${AVS_LIB_ROOT}/effects/dot_fountain.cpp
+    ${AVS_LIB_ROOT}/effects/dot_plane.cpp
     ${AVS_LIB_ROOT}/effects/water.cpp
     ${AVS_LIB_ROOT}/effects/moving_particle.cpp
     ${AVS_LIB_ROOT}/effects/interferences.cpp
