@@ -5,8 +5,8 @@ A comprehensive catalogue of all AVS effects with their inputs, outputs, blend m
 ## Original Source File Mapping
 
 For reference when examining original AVS implementation:
-- **Clear**: `r_clear.cpp`
-- **Simple (Oscilloscope)**: `r_simple.cpp` 
+- **Clear Screen**: `r_clear.cpp`
+- **Simple**: `r_simple.cpp` 
 - **SuperScope**: `r_sscope.cpp`
 - **Dot Grid**: `r_dotgrid.cpp`
 - **Dot Plane**: `r_dotpln.cpp`
@@ -14,7 +14,7 @@ For reference when examining original AVS implementation:
 - **Moving Particle**: `r_parts.cpp`
 - **OnBeat Clear**: `r_nfclr.cpp`
 - **Picture/Picture II**: `r_picture.cpp`
-- **Oscilliscope Star**: `r_oscstar.cpp`
+- **Oscilloscope Star**: `r_oscstar.cpp`
 - **Ring**: `r_oscring.cpp`
 - **Rotating Stars**: `r_rotstar.cpp`
 - **Spectrum Analyzer**: (built into main rendering)
@@ -33,8 +33,8 @@ For reference when examining original AVS implementation:
 - **Channel Shift**: `r_chanshift.cpp`
 - **Color Modifier**: `r_dcolormod.cpp`
 - **Color Reduction**: `r_colorreduction.cpp`
-- **Contrast**: `r_contrast.cpp`
-- **Convolution Filter**: `r_blit.cpp`
+- **Color Clip**: `r_contrast.cpp`
+- **Blitter Feedback**: `r_blit.cpp`
 - **Grain**: `r_grain.cpp`
 - **Interferences**: `r_interf.cpp`
 - **Interleave**: `r_interleave.cpp`
@@ -43,7 +43,7 @@ For reference when examining original AVS implementation:
 - **Mosaic**: `r_mosaic.cpp`
 - **Multi Delay**: `r_multidelay.cpp`
 - **Multiplier**: `r_multiplier.cpp`
-- **Unique Tone**: `r_onetone.cpp`
+- **Unique tone**: `r_onetone.cpp`
 - **Video Delay**: `r_videodelay.cpp`
 - **Water**: `r_water.cpp`
 - **Water Bump**: `r_waterbump.cpp`
@@ -52,19 +52,19 @@ For reference when examining original AVS implementation:
 - **Transition**: `r_transition.cpp`
 - **Bump**: `r_bump.cpp`
 - **Fadeout**: `r_fadeout.cpp`
-- **Color Fade**: `r_colorfade.cpp`
+- **Colorfade**: `r_colorfade.cpp`
 - **Bass Spin**: `r_bspin.cpp`
 - **Shift**: `r_shift.cpp`
 - **Stack**: `r_stack.cpp`
-- **AVI Player**: `r_avi.cpp`
-- **Line Mode**: `r_linemode.cpp`
-- **Color Replace**: `r_colorreplace.cpp`
-- **Stars**: `r_stars.cpp`
+- **AVI**: `r_avi.cpp`
+- **Set Render Mode**: `r_linemode.cpp`
+- **Color Clip**: `r_colorreplace.cpp` (duplicate of r_contrast.cpp)
+- **Starfield**: `r_stars.cpp`
 
 ## Render Effects
 Effects that generate new visual content from audio data or clear the screen.
 
-1. ### Clear
+1. ### Clear Screen
 - **Purpose**: Clears or blends framebuffer with a color to create trails/feedback
 - **Source File**: `r_clear.cpp`
 - **Inputs**: 
@@ -86,8 +86,8 @@ Effects that generate new visual content from audio data or clear the screen.
   - Blend 50/50 mode: RADIO_BUTTON, Position(0, 61), Size(55, 10), ID(IDC_5050)
   - Default render blend mode: RADIO_BUTTON, Position(0, 71), Size(99, 10), ID(IDC_DEFRENDBLEND)
 
-2. ### Oscilloscope
-- **Purpose**: Renders audio waveform or spectrum visualization.
+2. ### Simple
+- **Purpose**: Basic oscilloscope - renders audio waveform or spectrum visualization.
 - **Source File**: `r_simple.cpp`
 - **Inputs**:
   - Audio waveform (576 samples per channel)
@@ -272,7 +272,7 @@ Effects that generate new visual content from audio data or clear the screen.
   - Aspect ratio On X-Axis: RADIO_BUTTON, Position(20, 136), Size(47, 10), ID(IDC_X_RATIO)
   - Aspect ratio On Y-Axis: RADIO_BUTTON, Position(20, 147), Size(47, 10), ID(IDC_Y_RATIO)
 
-9. ### Oscilliscope Star
+9. ### Oscilloscope Star
 - **Purpose**: Renders an oscilloscope-like star pattern, reacting to audio
 - **Source File**: `r_oscstar.cpp`
 - **Inputs**:
@@ -348,7 +348,7 @@ Effects that generate new visual content from audio data or clear the screen.
   - Filled Triangles: RADIO_BUTTON, Position(0, 23), Size(63, 10), ID(IDC_TRI)
   - Lines: RADIO_BUTTON, Position(0, 32), Size(33, 10), ID(IDC_LINES)
 
-13. ### AVI Player
+13. ### AVI
 - **Purpose**: Plays AVI video streams as a visual background or overlay.
 - **Source File**: `r_avi.cpp`
 - **Inputs**:
@@ -734,24 +734,12 @@ Effects that modify pixel colors or apply filters.
 - **Controls**:
   - Color levels: SLIDER, Position(10, 15), Size(185, 20), ID(IDC_LEVELS)
 
-33. ### Contrast
-- **Purpose**: Adjust image contrast
-- **Source File**: `r_contrast.cpp`
-- **Inputs**:
-  - Framebuffer
-- **Outputs**: Contrast-adjusted pixels
-- **Blend Modes**: None
-- **Controls**:
-  - Off: RADIO_BUTTON, Position(0, 0), Size(25, 10), ID(IDC_OFF)
-  - Below: RADIO_BUTTON, Position(0, 10), Size(35, 10), ID(IDC_BELOW)
-  - Above: RADIO_BUTTON, Position(0, 20), Size(37, 10), ID(IDC_ABOVE)
-  - Near: RADIO_BUTTON, Position(0, 30), Size(31, 10), ID(IDC_NEAR)
-  - Clipping distance: SLIDER, Position(36, 29), Size(101, 13), ID(IDC_DISTANCE)
-  - Input color: COLOR_BUTTON, Position(0, 46), Size(26, 10), ID(IDC_LC)
-  - Copy input to output color: BUTTON, Position(28, 46), Size(17, 10), ID(IDC_BUTTON1)
-  - Output color: COLOR_BUTTON, Position(47, 46), Size(37, 10), ID(IDC_LC2)
+33. ### Color Clip (alternate)
+- **Purpose**: Clip colors to a specified range (duplicate of #29 Color Clip)
+- **Source File**: `r_contrast.cpp` (same effect as `r_colorreplace.cpp`)
+- **Note**: This is the same effect as #29 Color Clip - both files implement "Trans / Color Clip"
 
-34. ### Convolution Filter
+34. ### Blitter Feedback
 - **Purpose**: Apply convolution kernels
 - **Source File**: `r_blit.cpp`
 - **Inputs**:
@@ -788,7 +776,7 @@ Effects that modify pixel colors or apply filters.
   - Fade velocity: SLIDER, Position(3, 9), Size(129, 13), ID(IDC_SLIDER1)
   - Fade to color: COLOR_BUTTON, Position(0, 51), Size(78, 20), ID(IDC_LC)
 
-37. ### Color Fade
+37. ### Colorfade
 - **Purpose**: Fades colors toward dominant channel, with options for beat-triggered changes.
 - **Source File**: `r_colorfade.cpp`
 - **Inputs**:
@@ -984,7 +972,7 @@ Effects that modify pixel colors or apply filters.
   - Infinite root: RADIO_BUTTON, Position(10, 16), Size(60, 10), ID(IDC_XI)
   - Infinite square: RADIO_BUTTON, Position(10, 107), Size(60, 10), ID(IDC_XS)
 
-46. ### Unique Tone
+46. ### Unique tone
 - **Purpose**: Posterize with unique colors
 - **Source File**: `r_onetone.cpp`
 - **Inputs**:
