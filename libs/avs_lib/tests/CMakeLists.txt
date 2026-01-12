@@ -60,6 +60,7 @@ add_library(avs_core_test STATIC
     ${AVS_LIB_ROOT}/effects/dot_fountain.cpp
     ${AVS_LIB_ROOT}/effects/dot_plane.cpp
     ${AVS_LIB_ROOT}/effects/water.cpp
+    ${AVS_LIB_ROOT}/effects/timescope.cpp
 )
 
 target_include_directories(avs_core_test PUBLIC 

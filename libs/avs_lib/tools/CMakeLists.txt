@@ -50,6 +50,7 @@ add_library(avs_core STATIC
     ${AVS_LIB_ROOT}/effects/water.cpp
     ${AVS_LIB_ROOT}/effects/moving_particle.cpp
     ${AVS_LIB_ROOT}/effects/interferences.cpp
+    ${AVS_LIB_ROOT}/effects/timescope.cpp
 )
 
 target_include_directories(avs_core PUBLIC
