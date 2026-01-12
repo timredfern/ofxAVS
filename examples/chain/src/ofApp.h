@@ -47,6 +47,7 @@ private:
     bool isPlaying = false;
     std::string loadedFileName;
     std::string loadedFilePath;  // Full path for persistence
+    float micGain = 1.0f;  // Microphone gain (1x to 100x)
 
     void loadSoundFile(const std::string& path);
     void drawAudioControls();

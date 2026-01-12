@@ -237,7 +237,10 @@ void ofApp::drawAudioControls() {
             ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Drop audio file here");
         }
     } else {
-        ImGui::TextColored(ImVec4(0.5f, 1.0f, 0.5f, 1.0f), "Listening to microphone...");
+        ImGui::Text("Mic");
+        ImGui::SameLine();
+        ImGui::SetNextItemWidth(120);
+        ImGui::SliderFloat("##micgain", &micGain, 1.0f, 100.0f, "Gain: %.0fx");
     }
 
     ImGui::End();
@@ -284,7 +287,16 @@ void ofApp::audioIn(ofSoundBuffer& buffer) {
     }
     // Use mic input when not playing file
     if (!useFileInput || !isPlaying) {
-        avs.audioIn(buffer);
+        // Apply mic gain if not 1.0
+        if (micGain != 1.0f) {
+            ofSoundBuffer amplified = buffer;
+            for (size_t i = 0; i < amplified.size(); i++) {
+                amplified[i] = ofClamp(amplified[i] * micGain, -1.0f, 1.0f);
+            }
+            avs.audioIn(amplified);
+        } else {
+            avs.audioIn(buffer);
+        }
     }
 }
 
@@ -363,6 +375,10 @@ void ofApp::loadAppSettings() {
                 isPlaying = false;  // Don't auto-play on startup
             }
         }
+        if (json.contains("mic_gain")) {
+            micGain = json["mic_gain"].get<float>();
+            micGain = ofClamp(micGain, 1.0f, 100.0f);
+        }
         ofLogNotice("ofApp") << "Loaded app settings from " << path;
     } catch (const std::exception& e) {
         ofLogWarning("ofApp") << "Failed to load app settings: " << e.what();
@@ -373,6 +389,7 @@ void ofApp::loadAppSettings() {
 void ofApp::saveAppSettings() {
     ofJson json;
     json["sound_file"] = loadedFilePath;
+    json["mic_gain"] = micGain;
 
     std::string path = getAppSettingsPath();
     if (ofSaveJson(path, json)) {
