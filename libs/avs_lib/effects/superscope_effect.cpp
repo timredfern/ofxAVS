@@ -454,7 +454,7 @@ const PluginInfo SuperScopeEffect::effect_info {
 
 void SuperScopeEffect::on_parameter_changed(const std::string& param_name) {
     // Re-run init script when it changes
-    if (param_name == "init") {
+    if (param_name == "init_script") {
         inited_ = false;
     }
 }
