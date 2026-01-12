@@ -89,14 +89,15 @@ static inline uint32_t BLEND_MUL(uint32_t a, uint32_t b) {
 //   bits 0-7: blend mode
 extern int g_line_blend_mode;
 
-// Line style flags (bits 24-26 of g_line_blend_mode)
+// Line style flags (bits 24-27 of g_line_blend_mode)
 constexpr int LINE_STYLE_AA           = 0x01;  // Anti-aliased (Wu's algorithm)
 constexpr int LINE_STYLE_ANGLE_CORRECT = 0x02;  // Angle-corrected thickness
 constexpr int LINE_STYLE_ROUNDED      = 0x04;  // Rounded endpoints
+constexpr int LINE_STYLE_POINTSIZE    = 0x08;  // Apply line width to points
 
 // Helper to extract line style from g_line_blend_mode
 inline int get_line_style() {
-    return (g_line_blend_mode >> 24) & 0x07;
+    return (g_line_blend_mode >> 24) & 0x0F;
 }
 
 // BLEND_LINE - writes a pixel using the current global line blend mode

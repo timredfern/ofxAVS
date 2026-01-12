@@ -22,9 +22,6 @@ SetRenderModeEffect::SetRenderModeEffect() {
     engine_.set_variable("lw", 1.0);      // line width
     engine_.set_variable("bm", 0.0);      // blend mode
     engine_.set_variable("a", 128.0);     // alpha
-    engine_.set_variable("aa", 0.0);      // anti-aliased
-    engine_.set_variable("ac", 0.0);      // angle-corrected
-    engine_.set_variable("rd", 0.0);      // rounded endpoints
 #endif
 }
 
@@ -46,6 +43,7 @@ int SetRenderModeEffect::render(AudioData visdata, int isBeat,
     if (parameters().get_bool("anti_aliased")) line_style |= LINE_STYLE_AA;
     if (parameters().get_bool("angle_corrected")) line_style |= LINE_STYLE_ANGLE_CORRECT;
     if (parameters().get_bool("rounded_ends")) line_style |= LINE_STYLE_ROUNDED;
+    if (parameters().get_bool("point_size")) line_style |= LINE_STYLE_POINTSIZE;
 
     // Get scripts (extension)
     std::string init_script = parameters().get_string("init_script");
@@ -66,9 +64,6 @@ int SetRenderModeEffect::render(AudioData visdata, int isBeat,
             engine_.set_variable("lw", static_cast<double>(line_width));
             engine_.set_variable("bm", static_cast<double>(blend_mode));
             engine_.set_variable("a", static_cast<double>(alpha));
-            engine_.set_variable("aa", (line_style & LINE_STYLE_AA) ? 1.0 : 0.0);
-            engine_.set_variable("ac", (line_style & LINE_STYLE_ANGLE_CORRECT) ? 1.0 : 0.0);
-            engine_.set_variable("rd", (line_style & LINE_STYLE_ROUNDED) ? 1.0 : 0.0);
 
             // Run init script if present
             if (!init_script.empty()) {
@@ -91,12 +86,6 @@ int SetRenderModeEffect::render(AudioData visdata, int isBeat,
         line_width = static_cast<int>(std::clamp(engine_.get_variable("lw"), 1.0, 255.0));
         blend_mode = static_cast<int>(std::clamp(engine_.get_variable("bm"), 0.0, 9.0));
         alpha = static_cast<int>(std::clamp(engine_.get_variable("a"), 0.0, 255.0));
-
-        // Get style flags from script
-        line_style = 0;
-        if (engine_.get_variable("aa") >= 0.5) line_style |= LINE_STYLE_AA;
-        if (engine_.get_variable("ac") >= 0.5) line_style |= LINE_STYLE_ANGLE_CORRECT;
-        if (engine_.get_variable("rd") >= 0.5) line_style |= LINE_STYLE_ROUNDED;
     }
 #endif
 
@@ -219,6 +208,13 @@ static const std::vector<ControlLayout> ui_controls = {
         .x = 5, .y = 98, .w = 80, .h = 10,
         .default_val = 0
     },
+    {
+        .id = "point_size",
+        .text = "Apply size to points",
+        .type = ControlType::CHECKBOX,
+        .x = 70, .y = 78, .w = 65, .h = 10,
+        .default_val = 0
+    },
     // Scripting section (extension)
     {
         .id = "script_group",
@@ -271,9 +267,6 @@ static const char* ui_help =
     "  lw   Line width (1-255)\n"
     "  bm   Blend mode (0-9)\n"
     "  a    Alpha for adjustable blend (0-255)\n"
-    "  aa   Anti-aliasing (0/1)\n"
-    "  ac   Angle-corrected thickness (0/1)\n"
-    "  rd   Rounded endpoints (0/1)\n"
     "  b    Beat (1 on beat, else 0)\n"
     "  w,h  Screen size\n"
     "\n"
@@ -284,7 +277,7 @@ static const char* ui_help =
     "Examples:\n"
     "  init: lw=1; dir=1\n"
     "  frame: lw=lw+dir; if(lw>10,dir=-1,0)\n"
-    "  beat: bm=rand(10); aa=1-aa\n";
+    "  beat: bm=rand(10)\n";
 #else
 // Base UI controls only (original AVS)
 static const std::vector<ControlLayout> ui_controls = {

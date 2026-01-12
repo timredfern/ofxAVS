@@ -41,19 +41,19 @@ inline void blend_pixel_alpha(uint32_t* fb, uint32_t color, int alpha) {
 }
 #endif // AVS_LINE_DRAWING_EXTENSIONS
 
-// Draw a single point with current blend mode
-inline void draw_point(uint32_t* fb, int x, int y, int width, int height, uint32_t color) {
+// Draw a single pixel with current blend mode
+inline void draw_pixel(uint32_t* fb, int x, int y, int width, int height, uint32_t color) {
     if (x >= 0 && x < width && y >= 0 && y < height) {
         BLEND_LINE(&fb[y * width + x], color);
     }
 }
 
 #ifdef AVS_LINE_DRAWING_EXTENSIONS
-// Draw a filled circle (for rounded endpoints)
+// Draw a filled circle (for rounded endpoints and points)
 inline void draw_filled_circle(uint32_t* fb, int cx, int cy, int radius,
                                 int width, int height, uint32_t color) {
     if (radius <= 0) {
-        draw_point(fb, cx, cy, width, height, color);
+        draw_pixel(fb, cx, cy, width, height, color);
         return;
     }
 
@@ -72,6 +72,90 @@ inline void draw_filled_circle(uint32_t* fb, int cx, int cy, int radius,
         }
     }
 }
+
+// Draw a filled square (for block-style points)
+inline void draw_filled_square(uint32_t* fb, int cx, int cy, int size,
+                                int width, int height, uint32_t color) {
+    int half = size / 2;
+    int y1 = std::max(0, cy - half);
+    int y2 = std::min(height - 1, cy + half);
+    int x1 = std::max(0, cx - half);
+    int x2 = std::min(width - 1, cx + half);
+
+    for (int py = y1; py <= y2; py++) {
+        uint32_t* p = fb + py * width + x1;
+        for (int px = x1; px <= x2; px++) {
+            BLEND_LINE(p, color);
+            p++;
+        }
+    }
+}
+
+// Draw an anti-aliased filled circle
+inline void draw_aa_circle(uint32_t* fb, int cx, int cy, int radius,
+                           int width, int height, uint32_t color) {
+    if (radius <= 0) {
+        draw_pixel(fb, cx, cy, width, height, color);
+        return;
+    }
+
+    float r = static_cast<float>(radius) + 0.5f;
+    float r2 = r * r;
+
+    for (int y = -radius - 1; y <= radius + 1; y++) {
+        int py = cy + y;
+        if (py < 0 || py >= height) continue;
+
+        for (int x = -radius - 1; x <= radius + 1; x++) {
+            int px = cx + x;
+            if (px < 0 || px >= width) continue;
+
+            float dist2 = static_cast<float>(x * x + y * y);
+            if (dist2 <= r2) {
+                float dist = std::sqrt(dist2);
+                float edge_dist = r - dist;
+                if (edge_dist >= 1.0f) {
+                    // Fully inside
+                    BLEND_LINE(&fb[py * width + px], color);
+                } else if (edge_dist > 0.0f) {
+                    // Anti-aliased edge
+                    blend_pixel_alpha(&fb[py * width + px], color,
+                                     static_cast<int>(edge_dist * 255.0f));
+                }
+            }
+        }
+    }
+}
+#endif // AVS_LINE_DRAWING_EXTENSIONS (helper functions)
+
+// Draw a point with current style settings
+inline void draw_point(uint32_t* fb, int x, int y, int width, int height, uint32_t color) {
+#ifdef AVS_LINE_DRAWING_EXTENSIONS
+    int style = get_line_style();
+    if (style & LINE_STYLE_POINTSIZE) {
+        int size = get_line_width();
+        if (size > 1) {
+            bool rounded = (style & LINE_STYLE_ROUNDED) != 0;
+            bool aa = (style & LINE_STYLE_AA) != 0;
+            int radius = (size - 1) / 2;
+
+            if (rounded) {
+                if (aa) {
+                    draw_aa_circle(fb, x, y, radius, width, height, color);
+                } else {
+                    draw_filled_circle(fb, x, y, radius, width, height, color);
+                }
+            } else {
+                draw_filled_square(fb, x, y, size, width, height, color);
+            }
+            return;
+        }
+    }
+#endif
+    draw_pixel(fb, x, y, width, height, color);
+}
+
+#ifdef AVS_LINE_DRAWING_EXTENSIONS
 
 // Wu's anti-aliased line algorithm (single pixel width)
 // Based on: Xiaolin Wu, "An Efficient Antialiasing Technique",
