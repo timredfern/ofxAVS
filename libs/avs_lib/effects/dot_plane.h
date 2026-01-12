@@ -29,6 +29,7 @@ public:
                int w, int h) override;
 
     void load_parameters(const std::vector<uint8_t>& data) override;
+    void on_parameter_changed(const std::string& name) override;
 
     const PluginInfo& get_plugin_info() const override { return effect_info; }
 

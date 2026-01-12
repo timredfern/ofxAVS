@@ -162,6 +162,7 @@ void renderImGui(const avs::EffectUILayout& layout, avs::Configurable* configura
                     // Normal slider
                     if (ImGui::SliderInt(unique_label.c_str(), &value, min_val, max_val)) {
                         params.set_int(control.id, value);
+                        configurable->on_parameter_changed(control.id);
                     }
                 }
                 break;
@@ -223,12 +224,16 @@ void renderImGui(const avs::EffectUILayout& layout, avs::Configurable* configura
 
                 std::string unique_label = control.text + "##" + control.id + "_" + std::to_string(reinterpret_cast<uintptr_t>(configurable));
                 std::string popup_id = "ColorPicker##" + control.id + "_" + std::to_string(reinterpret_cast<uintptr_t>(configurable));
-                if (ImGui::ColorButton(unique_label.c_str(), ImVec4(col[0], col[1], col[2], col[3]))) {
+                // Force alpha to 1.0 for display - legacy AVS colors have alpha=0 (from Windows RGB() macro)
+                if (ImGui::ColorButton(unique_label.c_str(), ImVec4(col[0], col[1], col[2], 1.0f))) {
                     ImGui::OpenPopup(popup_id.c_str());
                 }
                 if (ImGui::BeginPopup(popup_id.c_str())) {
-                    if (ImGui::ColorPicker4("Color", col)) {
+                    // Use ColorPicker3 (RGB only) - AVS color params don't use alpha
+                    if (ImGui::ColorPicker3("Color", col)) {
+                        col[3] = 1.0f;  // Store with full alpha for proper display
                         params.set_color(control.id, imgui_to_color(col));
+                        configurable->on_parameter_changed(control.id);
                     }
                     ImGui::EndPopup();
                 }
@@ -248,6 +253,7 @@ void renderImGui(const avs::EffectUILayout& layout, avs::Configurable* configura
                         if (value < control.range.min) value = control.range.min;
                         if (value > control.range.max) value = control.range.max;
                         params.set_int(control.id, value);
+                        configurable->on_parameter_changed(control.id);
                     }
                 } else {
                     // String input
@@ -258,6 +264,7 @@ void renderImGui(const avs::EffectUILayout& layout, avs::Configurable* configura
                     ImGui::SetNextItemWidth(control.w); // * 2.0f);
                     if (ImGui::InputText(unique_label.c_str(), buffer, sizeof(buffer))) {
                         params.set_string(control.id, std::string(buffer));
+                        configurable->on_parameter_changed(control.id);
                     }
                 }
                 break;
@@ -390,6 +397,7 @@ void renderImGui(const avs::EffectUILayout& layout, avs::Configurable* configura
                     if (ImGui::ColorPicker3(("Color " + std::to_string(edit_idx + 1)).c_str(), col)) {
                         col[3] = 1.0f;  // Ensure alpha stays 1.0
                         params.set_color(color_param, imgui_to_color(col));
+                        configurable->on_parameter_changed(color_param);
                     }
                     ImGui::EndPopup();
                 }

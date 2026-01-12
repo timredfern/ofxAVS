@@ -199,6 +199,13 @@ void DotPlaneEffect::load_parameters(const std::vector<uint8_t>& data) {
     init_color_table();
 }
 
+void DotPlaneEffect::on_parameter_changed(const std::string& name) {
+    // Rebuild color gradient when any color parameter changes
+    if (name.find("color_") == 0) {
+        init_color_table();
+    }
+}
+
 // UI controls from res.rc IDD_CFG_DOTPLANE
 static const std::vector<ControlLayout> ui_controls = {
     {

@@ -242,6 +242,13 @@ void DotFountainEffect::load_parameters(const std::vector<uint8_t>& data) {
     init_color_table();
 }
 
+void DotFountainEffect::on_parameter_changed(const std::string& name) {
+    // Rebuild color gradient when any color parameter changes
+    if (name.find("color_") == 0) {
+        init_color_table();
+    }
+}
+
 const PluginInfo DotFountainEffect::effect_info{
     .name = "Dot Fountain",
     .category = "Render",
