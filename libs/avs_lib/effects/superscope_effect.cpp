@@ -449,7 +449,36 @@ const PluginInfo SuperScopeEffect::effect_info {
                 .max_items = 16
             }
         }
-    }
+    },
+    .help_text =
+        "SuperScope - Scripted Oscilloscope\n"
+        "\n"
+        "Scripts run in order: init (once), frame,\n"
+        "beat, then point (for each point).\n"
+        "\n"
+        "Read-only variables:\n"
+        "  n     Number of points (set in init)\n"
+        "  i     Point index (0 to 1)\n"
+        "  v     Audio sample (-1 to 1)\n"
+        "  b     Beat flag (1 on beat, else 0)\n"
+        "  w,h   Screen dimensions\n"
+        "\n"
+        "Output variables (set in point script):\n"
+        "  x,y   Position (-1 to 1, center=0)\n"
+        "  red,green,blue  Color (0 to 1)\n"
+        "  skip  Set >0 to skip this point\n"
+        "  drawmode  0=dots, 1=lines\n"
+        "\n"
+        "Constants: $PI (3.14159...)\n"
+        "\n"
+        "Functions: sin,cos,tan,sqrt,pow,log,\n"
+        "abs,min,max,if,rand,sqr,sign,atan,\n"
+        "atan2,floor,ceil,invsqrt,equal,\n"
+        "above,below,assign\n"
+        "\n"
+        "Example (circle):\n"
+        "  init: n=100\n"
+        "  point: r=i*$PI*2; x=cos(r); y=sin(r)\n"
 };
 
 void SuperScopeEffect::on_parameter_changed(const std::string& param_name) {
