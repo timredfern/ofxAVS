@@ -359,12 +359,19 @@ const PluginInfo SuperScopeEffect::effect_info {
                 .type = ControlType::EDITTEXT,
                 .x = 25, .y = 110, .w = 208, .h = 56
             },
+            // Help button - positioned left of example dropdown
+            {
+                .id = "help_button",
+                .text = "?",
+                .type = ControlType::HELP_BUTTON,
+                .x = 60, .y = 165, .w = 73, .h = 14
+            },
             // Example preset dropdown - IDC_BUTTON1 (was "Load example..." button)
             {
                 .id = "example_preset",
                 .text = "",
                 .type = ControlType::DROPDOWN,
-                .x = 176, .y = 170, .w = 57, .h = 14,
+                .x = 145, .y = 170, .w = 88, .h = 14,
                 .default_val = 0,
                 .options = {"(select)", "Spiral", "3D Scope Dish", "Rotating Bow Thing",
                             "Vertical Bouncing Scope", "Spiral Graph Fun",

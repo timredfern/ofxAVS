@@ -28,7 +28,8 @@ enum class ControlType {
     DROPDOWN,
     LISTBOX,         // Multi-row selection list (like DROPDOWN but shows multiple items)
     LABEL,           // Static text label (LTEXT in Windows)
-    GROUPBOX         // Visual grouping box with title
+    GROUPBOX,        // Visual grouping box with title
+    HELP_BUTTON      // Expression help button (only renders if effect has help_text)
 };
 
 struct RadioOption {

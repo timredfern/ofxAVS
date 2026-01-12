@@ -75,7 +75,13 @@ void renderImGui(const avs::EffectUILayout& layout, avs::Configurable* configura
         is_standard_mode = (mode_param->as_int() == 0);
     }
 
+    // Track if layout has its own HELP_BUTTON (so we don't double-render)
+    bool has_help_button_control = false;
+
     for (const auto& control : layout.getControls()) {
+        if (control.type == avs::ControlType::HELP_BUTTON) {
+            has_help_button_control = true;
+        }
 
         // Absolute positioning from original Windows dialog coordinates
         float scale=2.0f;
@@ -453,6 +459,20 @@ void renderImGui(const avs::EffectUILayout& layout, avs::Configurable* configura
                 break;
             }
 
+            case avs::ControlType::HELP_BUTTON: {
+                // Expression help button - only renders if effect has help_text
+                std::string help = configurable->get_help_text();
+                if (!help.empty()) {
+                    std::string eff_name = help;
+                    size_t nl = eff_name.find('\n');
+                    if (nl != std::string::npos) {
+                        eff_name = eff_name.substr(0, nl);
+                    }
+                    renderExpressionHelpButton(eff_name, help, controlwidth, 13 * scale);
+                }
+                break;
+            }
+
             default:
                 ImGui::Text("%s (unsupported)", control.text.c_str());
                 break;
@@ -466,21 +486,23 @@ void renderImGui(const avs::EffectUILayout& layout, avs::Configurable* configura
     // Pop universal styling
     ImGui::PopStyleColor(5);
 
-    // Render expression help button if effect has help text
-    std::string help_text = configurable->get_help_text();
-    if (!help_text.empty()) {
-        // Position at bottom-right area (typical position from res.rc dialogs)
-        float scale = 2.0f;
-        ImGui::SetCursorPos(ImVec2(158 * scale, 200 * scale));
+    // Render expression help button if effect has help text (fallback if no HELP_BUTTON control)
+    if (!has_help_button_control) {
+        std::string help_text = configurable->get_help_text();
+        if (!help_text.empty()) {
+            // Position at bottom-right area (typical position from res.rc dialogs)
+            float scale = 2.0f;
+            ImGui::SetCursorPos(ImVec2(158 * scale, 200 * scale));
 
-        // Extract effect name from first line of help text (format: "Effect Name\n...")
-        std::string effect_name = help_text;
-        size_t newline = effect_name.find('\n');
-        if (newline != std::string::npos) {
-            effect_name = effect_name.substr(0, newline);
+            // Extract effect name from first line of help text (format: "Effect Name\n...")
+            std::string effect_name = help_text;
+            size_t newline = effect_name.find('\n');
+            if (newline != std::string::npos) {
+                effect_name = effect_name.substr(0, newline);
+            }
+
+            renderExpressionHelpButton(effect_name, help_text, 73 * scale, 13 * scale);
         }
-
-        renderExpressionHelpButton(effect_name, help_text, 73 * scale, 13 * scale);
     }
 
     ImGui::EndChild();
