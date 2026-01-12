@@ -87,12 +87,17 @@ int SetRenderModeEffect::render(AudioData visdata, int isBeat,
         blend_mode = static_cast<int>(std::clamp(engine_.get_variable("bm"), 0.0, 9.0));
         alpha = static_cast<int>(std::clamp(engine_.get_variable("a"), 0.0, 255.0));
     }
-#endif
 
     // Format: 0x80000000 | (line_style << 24) | (line_width << 16) | (alpha << 8) | blend_mode
     g_line_blend_mode = 0x80000000 | (line_style << 24) |
                        ((line_width & 0xFF) << 16) |
                        ((alpha & 0xFF) << 8) | (blend_mode & 0xFF);
+#else
+    // Original AVS format: 0x80000000 | (line_width << 16) | (alpha << 8) | blend_mode
+    g_line_blend_mode = 0x80000000 |
+                       ((line_width & 0xFF) << 16) |
+                       ((alpha & 0xFF) << 8) | (blend_mode & 0xFF);
+#endif
 
     return 0;  // No framebuffer modification
 }
