@@ -4,7 +4,7 @@
 // Modern C++ port Copyright (C) 2025 Tim Redfern
 // Licensed under MIT License
 
-#include "unsupported_effect.h"
+#include "unsupported.h"
 
 namespace avs {
 

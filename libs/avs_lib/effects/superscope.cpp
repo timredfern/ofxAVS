@@ -4,7 +4,7 @@
 // Modern C++ port Copyright (C) 2025 Tim Redfern
 // Licensed under MIT License
 
-#include "superscope_effect.h"
+#include "superscope.h"
 #include "core/binary_reader.h"
 #include "core/plugin_manager.h"
 #include "core/ui.h"

@@ -4,7 +4,7 @@
 // Modern C++ port Copyright (C) 2025 Tim Redfern
 // Licensed under MIT License
 
-#include "brightness_effect.h"
+#include "brightness.h"
 #include "core/plugin_manager.h"
 #include "core/binary_reader.h"
 #include "core/blend.h"

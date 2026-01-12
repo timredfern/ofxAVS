@@ -4,7 +4,7 @@
 // Modern C++ port Copyright (C) 2025 Tim Redfern
 // Licensed under MIT License
 
-#include "color_fade_effect.h"
+#include "color_fade.h"
 #include "core/plugin_manager.h"
 #include "core/binary_reader.h"
 #include <algorithm>

@@ -4,7 +4,7 @@
 // Modern C++ port Copyright (C) 2025 Tim Redfern
 // Licensed under MIT License
 
-#include "clear_effect.h"
+#include "clear.h"
 #include "core/plugin_manager.h"
 #include "core/blend.h"
 #include "core/binary_reader.h"

@@ -4,7 +4,7 @@
 // Modern C++ port Copyright (C) 2025 Tim Redfern
 // Licensed under MIT License
 
-#include "dot_fountain_effect.h"
+#include "dot_fountain.h"
 #include "core/binary_reader.h"
 #include "core/plugin_manager.h"
 #include "core/blend.h"

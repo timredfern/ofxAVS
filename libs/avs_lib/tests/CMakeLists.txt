@@ -33,31 +33,31 @@ add_library(avs_core_test STATIC
     ${AVS_LIB_ROOT}/core/script/parser.cpp
     ${AVS_LIB_ROOT}/core/coordinate_grid.cpp
     ${AVS_LIB_ROOT}/core/blend.cpp
-    ${AVS_LIB_ROOT}/effects/movement_effect.cpp
-    ${AVS_LIB_ROOT}/effects/dynamic_movement_effect.cpp
-    ${AVS_LIB_ROOT}/effects/brightness_effect.cpp
-    ${AVS_LIB_ROOT}/effects/blur_effect.cpp
-    ${AVS_LIB_ROOT}/effects/clear_effect.cpp
-    ${AVS_LIB_ROOT}/effects/onbeat_clear_effect.cpp
-    ${AVS_LIB_ROOT}/effects/dot_grid_effect.cpp
-    ${AVS_LIB_ROOT}/effects/superscope_effect.cpp
-    ${AVS_LIB_ROOT}/effects/oscilloscope_effect.cpp
-    ${AVS_LIB_ROOT}/effects/color_fade_effect.cpp
-    ${AVS_LIB_ROOT}/effects/ddm_effect.cpp
-    ${AVS_LIB_ROOT}/effects/fadeout_effect.cpp
-    ${AVS_LIB_ROOT}/effects/bump_effect.cpp
+    ${AVS_LIB_ROOT}/effects/movement.cpp
+    ${AVS_LIB_ROOT}/effects/dynamic_movement.cpp
+    ${AVS_LIB_ROOT}/effects/brightness.cpp
+    ${AVS_LIB_ROOT}/effects/blur.cpp
+    ${AVS_LIB_ROOT}/effects/clear.cpp
+    ${AVS_LIB_ROOT}/effects/onbeat_clear.cpp
+    ${AVS_LIB_ROOT}/effects/dot_grid.cpp
+    ${AVS_LIB_ROOT}/effects/superscope.cpp
+    ${AVS_LIB_ROOT}/effects/oscilloscope.cpp
+    ${AVS_LIB_ROOT}/effects/color_fade.cpp
+    ${AVS_LIB_ROOT}/effects/ddm.cpp
+    ${AVS_LIB_ROOT}/effects/fadeout.cpp
+    ${AVS_LIB_ROOT}/effects/bump.cpp
     ${AVS_LIB_ROOT}/effects/effect_list.cpp
-    ${AVS_LIB_ROOT}/effects/unsupported_effect.cpp
-    ${AVS_LIB_ROOT}/effects/rotoblitter_effect.cpp
-    ${AVS_LIB_ROOT}/effects/custom_bpm_effect.cpp
-    ${AVS_LIB_ROOT}/effects/moving_particle_effect.cpp
-    ${AVS_LIB_ROOT}/effects/interferences_effect.cpp
-    ${AVS_LIB_ROOT}/effects/scatter_effect.cpp
-    ${AVS_LIB_ROOT}/effects/shift_effect.cpp
-    ${AVS_LIB_ROOT}/effects/mirror_effect.cpp
-    ${AVS_LIB_ROOT}/effects/set_render_mode_effect.cpp
-    ${AVS_LIB_ROOT}/effects/dot_fountain_effect.cpp
-    ${AVS_LIB_ROOT}/effects/water_effect.cpp
+    ${AVS_LIB_ROOT}/effects/unsupported.cpp
+    ${AVS_LIB_ROOT}/effects/rotoblitter.cpp
+    ${AVS_LIB_ROOT}/effects/custom_bpm.cpp
+    ${AVS_LIB_ROOT}/effects/moving_particle.cpp
+    ${AVS_LIB_ROOT}/effects/interferences.cpp
+    ${AVS_LIB_ROOT}/effects/scatter.cpp
+    ${AVS_LIB_ROOT}/effects/shift.cpp
+    ${AVS_LIB_ROOT}/effects/mirror.cpp
+    ${AVS_LIB_ROOT}/effects/set_render_mode.cpp
+    ${AVS_LIB_ROOT}/effects/dot_fountain.cpp
+    ${AVS_LIB_ROOT}/effects/water.cpp
 )
 
 target_include_directories(avs_core_test PUBLIC 
@@ -123,7 +123,7 @@ add_library(avs_compat_test STATIC
     ${AVS_LIB_ROOT}/core/effect_base.cpp
     ${AVS_LIB_ROOT}/core/parameter.cpp
     ${AVS_LIB_ROOT}/core/blend.cpp
-    ${AVS_LIB_ROOT}/effects/set_render_mode_effect.cpp
+    ${AVS_LIB_ROOT}/effects/set_render_mode.cpp
 )
 target_include_directories(avs_compat_test PUBLIC
     ${AVS_LIB_ROOT}

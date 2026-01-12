@@ -7,7 +7,7 @@
 #include "core/preset.h"
 #include "core/plugin_manager.h"
 #include "core/builtin_effects.h"
-#include "effects/oscilloscope_effect.h"
+#include "effects/oscilloscope.h"
 #include "effects/effect_list_root.h"
 #include <vector>
 #include <cstdint>

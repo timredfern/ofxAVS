@@ -4,7 +4,7 @@
 // Modern C++ port Copyright (C) 2025 Tim Redfern
 // Licensed under MIT License
 
-#include "movement_effect.h"
+#include "movement.h"
 #include "core/binary_reader.h"
 #include "core/parameter.h"
 #include "core/plugin_manager.h"

@@ -4,7 +4,7 @@
 // Modern C++ port Copyright (C) 2025 Tim Redfern
 // Licensed under MIT License - see LICENSE file in repository root
 
-#include "onbeat_clear_effect.h"
+#include "onbeat_clear.h"
 #include "core/plugin_manager.h"
 #include "core/binary_reader.h"
 #include "core/blend.h"

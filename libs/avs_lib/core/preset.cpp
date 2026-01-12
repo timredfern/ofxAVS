@@ -8,7 +8,7 @@
 #include "json.h"
 #include "plugin_manager.h"
 #include "effect_container.h"
-#include "effects/unsupported_effect.h"
+#include "effects/unsupported.h"
 #include <fstream>
 #include <sstream>
 #include <cstring>

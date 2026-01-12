@@ -1,6 +1,6 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_approx.hpp>
-#include "effects/movement_effect.h"
+#include "effects/movement.h"
 
 using namespace avs;
 

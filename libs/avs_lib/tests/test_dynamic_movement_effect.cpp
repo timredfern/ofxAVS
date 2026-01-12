@@ -1,6 +1,6 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_approx.hpp>
-#include "effects/dynamic_movement_effect.h"
+#include "effects/dynamic_movement.h"
 #include "core/plugin_manager.h"
 #include <cstring>
 

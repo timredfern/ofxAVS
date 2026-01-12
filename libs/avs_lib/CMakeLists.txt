@@ -25,21 +25,21 @@ target_include_directories(avs_core PUBLIC . core)
 # Built-in effects library
 add_library(avs_effects STATIC
     core/builtin_effects.cpp
-    effects/clear_effect.cpp
-    effects/onbeat_clear_effect.cpp
-    effects/oscilloscope_effect.cpp
-    effects/superscope_effect.cpp
-    effects/blur_effect.cpp
-    effects/brightness_effect.cpp
-    effects/movement_effect.cpp
-    effects/dynamic_movement_effect.cpp
-    effects/dot_grid_effect.cpp
-    effects/color_fade_effect.cpp
-    effects/ddm_effect.cpp
-    effects/fadeout_effect.cpp
-    effects/bump_effect.cpp
+    effects/clear.cpp
+    effects/onbeat_clear.cpp
+    effects/oscilloscope.cpp
+    effects/superscope.cpp
+    effects/blur.cpp
+    effects/brightness.cpp
+    effects/movement.cpp
+    effects/dynamic_movement.cpp
+    effects/dot_grid.cpp
+    effects/color_fade.cpp
+    effects/ddm.cpp
+    effects/fadeout.cpp
+    effects/bump.cpp
     effects/effect_list.cpp
-    effects/unsupported_effect.cpp
+    effects/unsupported.cpp
 )
 
 target_link_libraries(avs_effects PUBLIC avs_core)

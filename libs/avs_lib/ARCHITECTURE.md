@@ -56,6 +56,61 @@ The custom parser supports the subset of EEL syntax used by AVS effects (arithme
 
 **Rationale for change:** The full-resolution table was inlined into `MovementEffect` rather than extracted to a separate class. This keeps the simpler effect self-contained while the more complex grid-based interpolation in `DynamicMovementEffect` benefits from the separate `CoordinateGrid` utility class.
 
+## File Naming Convention
+
+### Effect Files
+
+Effect source files are named to match the effect name as it appears in the UI:
+
+| Effect Name (UI) | Source File | Original AVS File |
+|------------------|-------------|-------------------|
+| Blur | `blur.cpp` | `r_blur.cpp` |
+| Brightness | `brightness.cpp` | `r_bright.cpp` |
+| SuperScope | `superscope.cpp` | `r_sscope.cpp` |
+| Set Render Mode | `set_render_mode.cpp` | `r_linemode.cpp` |
+| Dynamic Movement | `dynamic_movement.cpp` | `r_dmove.cpp` |
+
+**Rationale:** Anyone can find the code for an effect by looking for a file matching its name. No need to memorize the original AVS naming scheme (`r_` prefix, abbreviated names).
+
+**Original AVS reference:** Each effect file includes a comment at the top referencing the original source:
+```cpp
+// Port of r_linemode.cpp from original AVS
+```
+
+### Extension Files
+
+Files containing functionality that extends beyond original AVS use the `_ext` suffix:
+
+| File | Purpose |
+|------|---------|
+| `set_render_mode.cpp` | Original AVS effect (blend mode, line width, alpha) |
+| `set_render_mode_ext.cpp` | Extended version with scripting, AA lines, point sizes |
+| `line_draw.h` | Original Bresenham line drawing |
+| `line_draw_ext.h` | Extended with Wu's AA algorithm, thick lines, AA circles |
+
+**Rationale:** Clear attribution - anyone browsing the codebase immediately knows:
+- No `_ext` suffix = port of original AVS code
+- `_ext` suffix = our extension, not in original Winamp AVS
+
+### Core Files
+
+Core infrastructure files use descriptive names:
+
+| File | Purpose |
+|------|---------|
+| `blend.h` | Blend mode macros (from `r_defs.h`) |
+| `effect_base.h` | Base effect interface |
+| `parameter.cpp` | Parameter system |
+| `preset.cpp` | Binary preset loading |
+| `script_engine.cpp` | Expression evaluation |
+
+### Current Status
+
+**Note:** The current codebase uses `_effect` suffix (e.g., `superscope_effect.cpp`). This convention documents the target naming scheme. Files will be renamed as part of a future refactor to:
+1. Remove `_effect` suffix from original AVS ports
+2. Split extended functionality into `_ext` files
+3. Remove `#ifdef AVS_LINE_DRAWING_EXTENSIONS` in favor of separate extension files
+
 ## Directory Structure
 
 **Original Plan:**

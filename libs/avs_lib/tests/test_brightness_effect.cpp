@@ -1,7 +1,7 @@
 // Tests for BrightnessEffect lookup tables and rendering
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_approx.hpp>
-#include "effects/brightness_effect.h"
+#include "effects/brightness.h"
 #include "core/plugin_manager.h"
 #include <vector>
 #include <cstdio>
