@@ -52,6 +52,7 @@ add_library(avs_core STATIC
     ${AVS_LIB_ROOT}/effects/interferences.cpp
     ${AVS_LIB_ROOT}/effects/timescope.cpp
     ${AVS_LIB_ROOT}/effects/picture.cpp
+    ${AVS_LIB_ROOT}/effects/oscstar.cpp
     ${AVS_LIB_ROOT}/third_party/stb_image_impl.cpp
 )
 
