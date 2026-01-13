@@ -40,6 +40,15 @@ private:
     bool hasAudioInput = false;
     ofxImGui::Gui gui;
 
+    // Audio device selection
+    std::vector<ofSoundDevice> audioDevices;
+    std::vector<int> inputDeviceIndices;   // Indices into audioDevices for input-capable devices
+    std::vector<int> outputDeviceIndices;  // Indices into audioDevices for output-capable devices
+    int selectedInputDevice = -1;   // Index into inputDeviceIndices (-1 = none)
+    int selectedOutputDevice = -1;  // Index into outputDeviceIndices
+    std::string selectedInputDeviceName;   // For persistence
+    std::string selectedOutputDeviceName;  // For persistence
+
     // Sound file playback
     ofSoundBuffer audioFileBuffer;
     size_t playbackPos = 0;
@@ -51,6 +60,8 @@ private:
 
     void loadSoundFile(const std::string& path);
     void drawAudioControls();
+    void setupAudioDevices();
+    void restartAudio();
 
     // App settings persistence (separate from AVS preset)
     void loadAppSettings();
