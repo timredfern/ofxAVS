@@ -29,8 +29,16 @@ enum class ControlType {
     LISTBOX,         // Multi-row selection list (like DROPDOWN but shows multiple items)
     LABEL,           // Static text label (LTEXT in Windows)
     GROUPBOX,        // Visual grouping box with title
-    HELP_BUTTON      // Expression help button (only renders if effect has help_text)
+    HELP_BUTTON,     // Expression help button (only renders if effect has help_text)
+    FILE_DROPDOWN    // Dropdown populated by scanning resource_path for files (text = glob pattern like "*.bmp")
 };
+
+// Global resource path for FILE_DROPDOWN controls
+// Set this to the directory containing AVS resources (images, etc.)
+inline std::string& resource_path() {
+    static std::string path = ".";
+    return path;
+}
 
 struct RadioOption {
     std::string label;

@@ -7,6 +7,7 @@
 #include "core/plugin_manager.h"
 #include "core/builtin_effects.h"
 #include "core/preset.h"
+#include "core/ui.h"  // For resource_path()
 #include <cmath>
 #include <map>
 
@@ -57,6 +58,10 @@ ofxAVS::~ofxAVS() {
 void ofxAVS::setup() {
     width = 600;
     height = 600;
+
+    // Set resource path for FILE_DROPDOWN controls (Picture effect, etc.)
+    // This looks for resources in bin/data/avs/
+    avs::resource_path() = ofToDataPath("avs");
 
     // Initialize FFT
 #ifdef AVS_ENHANCED_FFT

@@ -139,6 +139,10 @@ protected:
                     parameters_.add_parameter(std::make_shared<Parameter>(
                         control.id, ParameterType::STRING, get_string()));
                     break;
+                case ControlType::FILE_DROPDOWN:
+                    parameters_.add_parameter(std::make_shared<Parameter>(
+                        control.id, ParameterType::STRING, get_string()));
+                    break;
                 case ControlType::DROPDOWN:
                     parameters_.add_parameter(std::make_shared<Parameter>(
                         control.id, ParameterType::ENUM, get_int(), control.options));

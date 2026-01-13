@@ -9,6 +9,8 @@
 #include <array>
 #include <unordered_map>
 #include <cstring>
+#include <filesystem>
+#include <algorithm>
 
 namespace avs_ui {
 
@@ -477,6 +479,97 @@ void renderImGui(const avs::EffectUILayout& layout, avs::Configurable* configura
                         eff_name = eff_name.substr(0, nl);
                     }
                     renderExpressionHelpButton(eff_name, help, controlwidth, 13 * scale);
+                }
+                break;
+            }
+
+            case avs::ControlType::FILE_DROPDOWN: {
+                // Dropdown populated by scanning resource_path for files
+                // control.text contains glob pattern like "*.bmp" or "*.png;*.jpg;*.bmp"
+                static std::unordered_map<std::string, std::vector<std::string>> file_cache;
+                static std::unordered_map<std::string, std::string> last_path_cache;
+
+                std::string cache_key = control.id + "_" + std::to_string(reinterpret_cast<uintptr_t>(configurable));
+                std::string& base_path = avs::resource_path();
+
+                // Rescan if path changed
+                if (last_path_cache[cache_key] != base_path) {
+                    last_path_cache[cache_key] = base_path;
+                    file_cache[cache_key].clear();
+
+                    // Parse extensions from control.text (e.g., "*.bmp;*.png;*.jpg")
+                    std::vector<std::string> extensions;
+                    std::string pattern = control.text;
+                    size_t pos = 0;
+                    while ((pos = pattern.find(';')) != std::string::npos) {
+                        std::string ext = pattern.substr(0, pos);
+                        if (ext.size() > 2 && ext[0] == '*' && ext[1] == '.') {
+                            extensions.push_back(ext.substr(1));  // Store ".bmp"
+                        }
+                        pattern.erase(0, pos + 1);
+                    }
+                    if (pattern.size() > 2 && pattern[0] == '*' && pattern[1] == '.') {
+                        extensions.push_back(pattern.substr(1));
+                    }
+
+                    // Scan directory
+                    try {
+                        if (std::filesystem::exists(base_path) && std::filesystem::is_directory(base_path)) {
+                            for (const auto& entry : std::filesystem::directory_iterator(base_path)) {
+                                if (entry.is_regular_file()) {
+                                    std::string ext = entry.path().extension().string();
+                                    // Convert to lowercase for comparison
+                                    std::transform(ext.begin(), ext.end(), ext.begin(), ::tolower);
+                                    for (const auto& match_ext : extensions) {
+                                        std::string match_lower = match_ext;
+                                        std::transform(match_lower.begin(), match_lower.end(), match_lower.begin(), ::tolower);
+                                        if (ext == match_lower) {
+                                            file_cache[cache_key].push_back(entry.path().filename().string());
+                                            break;
+                                        }
+                                    }
+                                }
+                            }
+                            std::sort(file_cache[cache_key].begin(), file_cache[cache_key].end());
+                        }
+                    } catch (...) {
+                        // Ignore filesystem errors
+                    }
+                }
+
+                const auto& files = file_cache[cache_key];
+                std::string current_file = params.get_string(control.id);
+
+                // Find current selection index
+                int current_idx = -1;
+                for (int i = 0; i < static_cast<int>(files.size()); i++) {
+                    if (files[i] == current_file) {
+                        current_idx = i;
+                        break;
+                    }
+                }
+
+                const char* preview = current_idx >= 0 ? files[current_idx].c_str() : "(none)";
+                std::string unique_label = "##" + control.id + "_" + std::to_string(reinterpret_cast<uintptr_t>(configurable));
+
+                ImGui::SetNextItemWidth(controlwidth);
+                if (ImGui::BeginCombo(unique_label.c_str(), preview)) {
+                    // Add "(none)" option
+                    if (ImGui::Selectable("(none)", current_idx < 0)) {
+                        params.set_string(control.id, "");
+                        configurable->on_parameter_changed(control.id);
+                    }
+                    for (int i = 0; i < static_cast<int>(files.size()); i++) {
+                        bool is_selected = (current_idx == i);
+                        if (ImGui::Selectable(files[i].c_str(), is_selected)) {
+                            params.set_string(control.id, files[i]);
+                            configurable->on_parameter_changed(control.id);
+                        }
+                        if (is_selected) {
+                            ImGui::SetItemDefaultFocus();
+                        }
+                    }
+                    ImGui::EndCombo();
                 }
                 break;
             }

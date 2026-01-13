@@ -11,3 +11,12 @@ endif
 
 # call the project makefile!
 include $(OF_ROOT)/libs/openFrameworksCompiled/project/makefileCommon/compile.project.mk
+
+# Copy AVS resources to data folder
+AVS_RESOURCES = ../../libs/avs_lib/resources
+DATA_AVS = bin/data/avs
+
+copy-resources:
+	@mkdir -p $(DATA_AVS)
+	@cp -r $(AVS_RESOURCES)/* $(DATA_AVS)/ 2>/dev/null || true
+	@echo "Copied AVS resources to $(DATA_AVS)"
