@@ -18,29 +18,35 @@ void ofApp::setup(){
     gui.setup();
     avs.setup();
 
-    // Setup audio - configure for both input (mic) and output (file playback)
-    vector<ofSoundDevice> devices = soundStream.getDeviceList();
+    // Load app settings first (to get saved device names)
+    loadAppSettings();
+
+    // Setup audio devices
+    setupAudioDevices();
+}
+
+//--------------------------------------------------------------
+void ofApp::setupAudioDevices() {
+    // Get device list
+    audioDevices = soundStream.getDeviceList();
+    inputDeviceIndices.clear();
+    outputDeviceIndices.clear();
 
     ofLogNotice() << "Available audio devices:";
-    for (auto& device : devices) {
+    for (size_t i = 0; i < audioDevices.size(); i++) {
+        auto& device = audioDevices[i];
         std::string rates;
         for (auto r : device.sampleRates) rates += std::to_string(r) + " ";
         ofLogNotice() << "  " << device.deviceID << ": " << device.name
                       << " (in:" << device.inputChannels << " out:" << device.outputChannels << ")"
                       << (rates.empty() ? "" : " rates: " + rates);
-    }
 
-    // Find devices - prefer combo device, otherwise separate
-    ofSoundDevice* comboDevice = nullptr;
-    ofSoundDevice* outputOnlyDevice = nullptr;
-    ofSoundDevice* inputOnlyDevice = nullptr;
-
-    // First pass: find output device (prefer stereo, but accept mono)
-    for (auto& device : devices) {
-        if (device.inputChannels > 0 && device.outputChannels >= 1) {
-            if (!comboDevice) comboDevice = &device;
-        } else if (device.outputChannels >= 1) {
-            if (!outputOnlyDevice) outputOnlyDevice = &device;
+        // Build device index lists
+        if (device.inputChannels > 0) {
+            inputDeviceIndices.push_back(i);
+        }
+        if (device.outputChannels > 0) {
+            outputDeviceIndices.push_back(i);
         }
     }
 
@@ -56,26 +62,68 @@ void ofApp::setup(){
         return false;
     };
 
-    // Second pass: find input device that works with our output
-    for (auto& device : devices) {
-        if (device.inputChannels > 0 && device.outputChannels == 0) {
-            // Skip if same name as output device (e.g., Sony XM4 mic when using Sony XM4 output)
-            if (outputOnlyDevice && device.name == outputOnlyDevice->name) {
-                continue;
+    // Select devices based on saved names or auto-detect
+    selectedInputDevice = -1;
+    selectedOutputDevice = -1;
+
+    // Try to find saved input device
+    if (!selectedInputDeviceName.empty()) {
+        for (size_t i = 0; i < inputDeviceIndices.size(); i++) {
+            if (audioDevices[inputDeviceIndices[i]].name == selectedInputDeviceName) {
+                selectedInputDevice = i;
+                break;
             }
-            // Skip if doesn't support standard sample rates (e.g., Bluetooth mics)
-            if (!supportsStandardRates(device)) {
-                ofLogNotice() << "  Skipping " << device.name << " (no standard sample rates)";
-                continue;
-            }
-            if (!inputOnlyDevice) inputOnlyDevice = &device;
         }
+    }
+
+    // Try to find saved output device
+    if (!selectedOutputDeviceName.empty()) {
+        for (size_t i = 0; i < outputDeviceIndices.size(); i++) {
+            if (audioDevices[outputDeviceIndices[i]].name == selectedOutputDeviceName) {
+                selectedOutputDevice = i;
+                break;
+            }
+        }
+    }
+
+    // Auto-select output if not found
+    if (selectedOutputDevice < 0 && !outputDeviceIndices.empty()) {
+        selectedOutputDevice = 0;  // First available output
+    }
+
+    // Auto-select input if not found (prefer one with standard sample rates)
+    if (selectedInputDevice < 0 && !inputDeviceIndices.empty()) {
+        for (size_t i = 0; i < inputDeviceIndices.size(); i++) {
+            auto& device = audioDevices[inputDeviceIndices[i]];
+            if (supportsStandardRates(device)) {
+                selectedInputDevice = i;
+                break;
+            }
+        }
+    }
+
+    // Initialize audio stream
+    restartAudio();
+}
+
+//--------------------------------------------------------------
+void ofApp::restartAudio() {
+    // Stop existing stream
+    if (audioInitialized) {
+        soundStream.stop();
+        soundStream.close();
+        audioInitialized = false;
+        hasAudioInput = false;
+    }
+
+    if (selectedOutputDevice < 0 || outputDeviceIndices.empty()) {
+        ofLogWarning() << "No output device selected";
+        return;
     }
 
     // Helper to find a common sample rate between two devices
     auto findCommonRate = [](const ofSoundDevice* dev1, const ofSoundDevice* dev2) -> unsigned int {
         std::vector<unsigned int> commonRates = {44100, 48000, 96000, 22050, 16000, 8000};
-
         for (unsigned int rate : commonRates) {
             bool dev1Ok = !dev1 || dev1->sampleRates.empty() ||
                 std::find(dev1->sampleRates.begin(), dev1->sampleRates.end(), rate) != dev1->sampleRates.end();
@@ -86,73 +134,45 @@ void ofApp::setup(){
         return 44100;  // fallback
     };
 
+    ofSoundDevice* outputDevice = &audioDevices[outputDeviceIndices[selectedOutputDevice]];
+    ofSoundDevice* inputDevice = (selectedInputDevice >= 0 && selectedInputDevice < (int)inputDeviceIndices.size())
+        ? &audioDevices[inputDeviceIndices[selectedInputDevice]]
+        : nullptr;
+
     ofSoundStreamSettings settings;
     settings.bufferSize = 576;
     settings.setOutListener(this);
+    settings.sampleRate = findCommonRate(outputDevice, inputDevice);
+    settings.numOutputChannels = std::min(2u, outputDevice->outputChannels);
+    settings.setOutDevice(*outputDevice);
 
-    // Strategy 1: Use combo device (same device for in+out)
-    if (comboDevice) {
-        settings.sampleRate = findCommonRate(comboDevice, nullptr);
-        settings.numOutputChannels = std::min(2u, comboDevice->outputChannels);
+    if (inputDevice) {
         settings.numInputChannels = 1;
-        settings.setOutDevice(*comboDevice);
-        settings.setInDevice(*comboDevice);
+        settings.setInDevice(*inputDevice);
         settings.setInListener(this);
-        try {
-            soundStream.setup(settings);
-            audioInitialized = true;
-            hasAudioInput = true;
-            ofLogNotice() << "Audio setup (combo): " << comboDevice->name
-                          << " @ " << settings.sampleRate << "Hz, " << settings.numOutputChannels << "ch";
-        } catch (...) {
-            ofLogWarning() << "Failed with combo device: " << comboDevice->name;
-        }
-    }
-
-    // Strategy 2: Output + separate mic
-    if (!audioInitialized && outputOnlyDevice && inputOnlyDevice) {
-        settings.sampleRate = findCommonRate(outputOnlyDevice, inputOnlyDevice);
-        settings.numOutputChannels = std::min(2u, outputOnlyDevice->outputChannels);
-        settings.numInputChannels = 1;
-        settings.setOutDevice(*outputOnlyDevice);
-        settings.setInDevice(*inputOnlyDevice);
-        settings.setInListener(this);
-
-        try {
-            soundStream.setup(settings);
-            audioInitialized = true;
-            hasAudioInput = true;
-            ofLogNotice() << "Audio setup @ " << settings.sampleRate << "Hz, " << settings.numOutputChannels << "ch out";
-            ofLogNotice() << "  out: " << outputOnlyDevice->name;
-            ofLogNotice() << "  in: " << inputOnlyDevice->name;
-        } catch (...) {
-            ofLogWarning() << "Failed with output + input";
-        }
-    }
-
-    // Strategy 3: Output only
-    if (!audioInitialized && outputOnlyDevice) {
-        settings.sampleRate = findCommonRate(outputOnlyDevice, nullptr);
-        settings.numOutputChannels = std::min(2u, outputOnlyDevice->outputChannels);
+    } else {
         settings.numInputChannels = 0;
-        settings.setOutDevice(*outputOnlyDevice);
-        try {
-            soundStream.setup(settings);
-            audioInitialized = true;
-            hasAudioInput = false;
-            ofLogNotice() << "Audio setup (output only): " << outputOnlyDevice->name
-                          << " @ " << settings.sampleRate << "Hz, " << settings.numOutputChannels << "ch";
-        } catch (...) {
-            ofLogWarning() << "Failed with output device";
+    }
+
+    try {
+        soundStream.setup(settings);
+        audioInitialized = true;
+        hasAudioInput = (inputDevice != nullptr);
+
+        // Update saved device names
+        selectedOutputDeviceName = outputDevice->name;
+        if (inputDevice) {
+            selectedInputDeviceName = inputDevice->name;
         }
-    }
 
-    if (!audioInitialized) {
-        ofLogWarning() << "No audio device available";
+        ofLogNotice() << "Audio setup @ " << settings.sampleRate << "Hz";
+        ofLogNotice() << "  Output: " << outputDevice->name;
+        if (inputDevice) {
+            ofLogNotice() << "  Input: " << inputDevice->name;
+        }
+    } catch (...) {
+        ofLogError() << "Failed to setup audio stream";
     }
-
-    // Load app settings (sound file, etc.) after audio is ready
-    loadAppSettings();
 }
 
 //--------------------------------------------------------------
@@ -173,13 +193,71 @@ void ofApp::draw(){
 
 //--------------------------------------------------------------
 void ofApp::drawAudioControls() {
-    // Position at bottom left
-    ImGui::SetNextWindowPos(ImVec2(10, 640 - 80));
-    ImGui::SetNextWindowSize(ImVec2(400, 70));
+    // Position at bottom left - larger window for device selectors
+    ImGui::SetNextWindowPos(ImVec2(10, 640 - 135));
+    ImGui::SetNextWindowSize(ImVec2(550, 75));
 
     ImGui::PushStyleColor(ImGuiCol_TitleBg, ImVec4(0.2f, 0.2f, 0.2f, 1.0f));
     ImGui::PushStyleColor(ImGuiCol_TitleBgActive, ImVec4(0.2f, 0.2f, 0.2f, 1.0f));
     ImGui::Begin("Audio", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse);
+
+    // Device selection row
+    ImGui::Text("Output:");
+    ImGui::SameLine();
+    ImGui::SetNextItemWidth(200);
+    if (ImGui::BeginCombo("##output_device",
+        (selectedOutputDevice >= 0 && selectedOutputDevice < (int)outputDeviceIndices.size())
+            ? audioDevices[outputDeviceIndices[selectedOutputDevice]].name.c_str()
+            : "None")) {
+        for (size_t i = 0; i < outputDeviceIndices.size(); i++) {
+            bool isSelected = ((int)i == selectedOutputDevice);
+            if (ImGui::Selectable(audioDevices[outputDeviceIndices[i]].name.c_str(), isSelected)) {
+                if ((int)i != selectedOutputDevice) {
+                    selectedOutputDevice = i;
+                    restartAudio();
+                }
+            }
+            if (isSelected) ImGui::SetItemDefaultFocus();
+        }
+        ImGui::EndCombo();
+    }
+
+    ImGui::SameLine();
+    ImGui::Text("Input:");
+    ImGui::SameLine();
+    ImGui::SetNextItemWidth(200);
+
+    // Build input device label (with "None" option)
+    const char* inputLabel = "None";
+    if (selectedInputDevice >= 0 && selectedInputDevice < (int)inputDeviceIndices.size()) {
+        inputLabel = audioDevices[inputDeviceIndices[selectedInputDevice]].name.c_str();
+    }
+
+    if (ImGui::BeginCombo("##input_device", inputLabel)) {
+        // None option
+        if (ImGui::Selectable("None", selectedInputDevice < 0)) {
+            if (selectedInputDevice >= 0) {
+                selectedInputDevice = -1;
+                restartAudio();
+            }
+        }
+        if (selectedInputDevice < 0) ImGui::SetItemDefaultFocus();
+
+        // Input devices
+        for (size_t i = 0; i < inputDeviceIndices.size(); i++) {
+            bool isSelected = ((int)i == selectedInputDevice);
+            if (ImGui::Selectable(audioDevices[inputDeviceIndices[i]].name.c_str(), isSelected)) {
+                if ((int)i != selectedInputDevice) {
+                    selectedInputDevice = i;
+                    restartAudio();
+                }
+            }
+            if (isSelected) ImGui::SetItemDefaultFocus();
+        }
+        ImGui::EndCombo();
+    }
+
+    ImGui::Separator();
 
     // Audio source toggle
     if (hasAudioInput) {
@@ -237,10 +315,10 @@ void ofApp::drawAudioControls() {
             ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Drop audio file here");
         }
     } else {
-        ImGui::Text("Mic");
+        ImGui::Text("Mic Gain:");
         ImGui::SameLine();
-        ImGui::SetNextItemWidth(120);
-        ImGui::SliderFloat("##micgain", &micGain, 1.0f, 100.0f, "Gain: %.0fx");
+        ImGui::SetNextItemWidth(150);
+        ImGui::SliderFloat("##micgain", &micGain, 1.0f, 100.0f, "%.0fx");
     }
 
     ImGui::End();
@@ -368,6 +446,16 @@ void ofApp::loadAppSettings() {
 
     try {
         ofJson json = ofLoadJson(path);
+
+        // Load audio device names (before setupAudioDevices is called)
+        if (json.contains("input_device") && !json["input_device"].is_null()) {
+            selectedInputDeviceName = json["input_device"].get<std::string>();
+        }
+        if (json.contains("output_device") && !json["output_device"].is_null()) {
+            selectedOutputDeviceName = json["output_device"].get<std::string>();
+        }
+
+        // Load sound file
         if (json.contains("sound_file") && !json["sound_file"].is_null()) {
             std::string soundPath = json["sound_file"].get<std::string>();
             if (!soundPath.empty() && ofFile::doesFileExist(soundPath)) {
@@ -390,6 +478,8 @@ void ofApp::saveAppSettings() {
     ofJson json;
     json["sound_file"] = loadedFilePath;
     json["mic_gain"] = micGain;
+    json["input_device"] = selectedInputDeviceName;
+    json["output_device"] = selectedOutputDeviceName;
 
     std::string path = getAppSettingsPath();
     if (ofSaveJson(path, json)) {
