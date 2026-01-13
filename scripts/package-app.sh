@@ -81,17 +81,27 @@ else
     log_warn "Executable may have issues"
 fi
 
-# Create DMG
+# Create DMG with Applications symlink
 log_info "Creating DMG..."
 DMG_PATH="$RELEASE_DIR/${APP_NAME}.dmg"
+DMG_STAGING="$RELEASE_DIR/.dmg-staging"
 rm -f "$DMG_PATH"
+rm -rf "$DMG_STAGING"
+
+# Create staging directory with app and Applications symlink
+mkdir -p "$DMG_STAGING"
+cp -R "$RELEASE_DIR/${APP_NAME}.app" "$DMG_STAGING/"
+ln -s /Applications "$DMG_STAGING/Applications"
 
 hdiutil create \
     -volname "$APP_NAME" \
-    -srcfolder "$RELEASE_DIR/${APP_NAME}.app" \
+    -srcfolder "$DMG_STAGING" \
     -ov \
     -format UDZO \
     "$DMG_PATH" 2>/dev/null
+
+# Clean up staging directory
+rm -rf "$DMG_STAGING"
 
 if [ -f "$DMG_PATH" ]; then
     DMG_SIZE=$(du -h "$DMG_PATH" | cut -f1)
