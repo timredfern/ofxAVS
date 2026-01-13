@@ -9,20 +9,14 @@ ifndef OF_ROOT
 	OF_ROOT=$(realpath ../../../..)
 endif
 
-# Universal binary for Release builds only (Intel + Apple Silicon)
-ifneq (,$(findstring Release,$(MAKECMDGOALS)))
-    PROJECT_CFLAGS += -arch x86_64 -arch arm64
-    PROJECT_LDFLAGS += -arch x86_64 -arch arm64
-endif
-
 # call the project makefile!
 include $(OF_ROOT)/libs/openFrameworksCompiled/project/makefileCommon/compile.project.mk
 
 # Show available targets
 help:
 	@echo "Available targets:"
-	@echo "  make                 - Build debug version (native arch)"
-	@echo "  make Release         - Build release version (universal binary)"
+	@echo "  make                 - Build debug version"
+	@echo "  make Release         - Build release version"
 	@echo "  make clean           - Clean build artifacts"
 	@echo "  make help            - Show this help"
 	@echo ""
