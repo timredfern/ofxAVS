@@ -81,11 +81,22 @@ else
     log_warn "Executable may have issues"
 fi
 
-# Create DMG with Applications symlink
+# Create styled DMG with Applications symlink
 log_info "Creating DMG..."
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 DMG_PATH="$RELEASE_DIR/${APP_NAME}.dmg"
+DMG_TEMP="$RELEASE_DIR/.dmg-temp.dmg"
 DMG_STAGING="$RELEASE_DIR/.dmg-staging"
-rm -f "$DMG_PATH"
+VOLUME_NAME="$APP_NAME"
+DMG_WINDOW_WIDTH=540
+DMG_WINDOW_HEIGHT=380
+ICON_SIZE=128
+APP_ICON_X=135
+APP_ICON_Y=170
+APPLICATIONS_ICON_X=405
+APPLICATIONS_ICON_Y=170
+
+rm -f "$DMG_PATH" "$DMG_TEMP"
 rm -rf "$DMG_STAGING"
 
 # Create staging directory with app and Applications symlink
@@ -93,14 +104,101 @@ mkdir -p "$DMG_STAGING"
 cp -R "$RELEASE_DIR/${APP_NAME}.app" "$DMG_STAGING/"
 ln -s /Applications "$DMG_STAGING/Applications"
 
-hdiutil create \
-    -volname "$APP_NAME" \
-    -srcfolder "$DMG_STAGING" \
-    -ov \
-    -format UDZO \
-    "$DMG_PATH" 2>/dev/null
+# Create background image
+BACKGROUND_DIR="$DMG_STAGING/.background"
+mkdir -p "$BACKGROUND_DIR"
+log_info "Generating background image..."
+"$SCRIPT_DIR/create-dmg-background.sh" "$BACKGROUND_DIR/background.png" $DMG_WINDOW_WIDTH $DMG_WINDOW_HEIGHT 2>/dev/null || {
+    log_warn "Could not create custom background, using plain DMG"
+    rm -rf "$BACKGROUND_DIR"
+}
 
-# Clean up staging directory
+# Calculate DMG size (app size + 20MB buffer)
+DMG_SIZE_MB=$(( $(du -sm "$DMG_STAGING" | cut -f1) + 20 ))
+
+# Create read-write DMG
+log_info "Creating DMG image..."
+hdiutil create \
+    -volname "$VOLUME_NAME" \
+    -srcfolder "$DMG_STAGING" \
+    -fs HFS+ \
+    -fsargs "-c c=64,a=16,e=16" \
+    -format UDRW \
+    -size ${DMG_SIZE_MB}m \
+    "$DMG_TEMP" 2>/dev/null
+
+# Mount the DMG
+log_info "Configuring DMG appearance..."
+MOUNT_DIR="/Volumes/$VOLUME_NAME"
+
+# Unmount if already mounted
+hdiutil detach "$MOUNT_DIR" 2>/dev/null || true
+
+# Mount the temp DMG
+hdiutil attach "$DMG_TEMP" -mountpoint "$MOUNT_DIR" -nobrowse -quiet
+
+# Use AppleScript to configure the DMG window
+if [ -d "$MOUNT_DIR/.background" ]; then
+    # With background image
+    osascript << APPLESCRIPT
+    tell application "Finder"
+        tell disk "$VOLUME_NAME"
+            open
+            set current view of container window to icon view
+            set toolbar visible of container window to false
+            set statusbar visible of container window to false
+            set bounds of container window to {100, 100, $((100 + DMG_WINDOW_WIDTH)), $((100 + DMG_WINDOW_HEIGHT))}
+            set viewOptions to the icon view options of container window
+            set arrangement of viewOptions to not arranged
+            set icon size of viewOptions to $ICON_SIZE
+            set background picture of viewOptions to file ".background:background.png"
+            set position of item "$APP_NAME.app" of container window to {$APP_ICON_X, $APP_ICON_Y}
+            set position of item "Applications" of container window to {$APPLICATIONS_ICON_X, $APPLICATIONS_ICON_Y}
+            close
+            open
+            update without registering applications
+            delay 1
+            close
+        end tell
+    end tell
+APPLESCRIPT
+else
+    # Without background image (fallback)
+    osascript << APPLESCRIPT
+    tell application "Finder"
+        tell disk "$VOLUME_NAME"
+            open
+            set current view of container window to icon view
+            set toolbar visible of container window to false
+            set statusbar visible of container window to false
+            set bounds of container window to {100, 100, $((100 + DMG_WINDOW_WIDTH)), $((100 + DMG_WINDOW_HEIGHT))}
+            set viewOptions to the icon view options of container window
+            set arrangement of viewOptions to not arranged
+            set icon size of viewOptions to $ICON_SIZE
+            set position of item "$APP_NAME.app" of container window to {$APP_ICON_X, $APP_ICON_Y}
+            set position of item "Applications" of container window to {$APPLICATIONS_ICON_X, $APPLICATIONS_ICON_Y}
+            close
+            open
+            update without registering applications
+            delay 1
+            close
+        end tell
+    end tell
+APPLESCRIPT
+fi
+
+# Give Finder time to update
+sleep 2
+
+# Unmount
+hdiutil detach "$MOUNT_DIR" -quiet
+
+# Convert to compressed read-only DMG
+log_info "Compressing DMG..."
+hdiutil convert "$DMG_TEMP" -format UDZO -imagekey zlib-level=9 -o "$DMG_PATH" -quiet
+
+# Clean up
+rm -f "$DMG_TEMP"
 rm -rf "$DMG_STAGING"
 
 if [ -f "$DMG_PATH" ]; then
