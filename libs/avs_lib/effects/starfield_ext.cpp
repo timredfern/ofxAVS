@@ -1,25 +1,27 @@
 // avs_lib - Portable Advanced Visualization Studio library
-// Based on Advanced Visualization Studio by Nullsoft, Inc.
-// Original AVS Copyright (C) 2005 Nullsoft, Inc.
-// Modern C++ port Copyright (C) 2025 Tim Redfern
+// Extended Starfield - NOT part of original AVS
+// Copyright (C) 2025 Tim Redfern
 // Licensed under MIT License
 
-#include "starfield.h"
+// Extensions: Uses styled point drawing from Set Render Mode
+// for large/circular star points.
+
+#include "starfield_ext.h"
 #include "core/plugin_manager.h"
 #include "core/binary_reader.h"
-#include "core/blend.h"
+#include "core/line_draw_ext.h"
 #include <cstdlib>
 #include <algorithm>
 #include <cstring>
 
 namespace avs {
 
-StarfieldEffect::StarfieldEffect() {
+StarfieldExtEffect::StarfieldExtEffect() {
     init_parameters_from_layout(effect_info.ui_layout);
     current_speed_ = 6.0f;
 }
 
-void StarfieldEffect::initialize_stars() {
+void StarfieldExtEffect::initialize_stars() {
     int max_stars_set = parameters().get_int("maxStars");
 
     // Scale star count by screen size
@@ -34,13 +36,13 @@ void StarfieldEffect::initialize_stars() {
     }
 }
 
-void StarfieldEffect::create_star(int index) {
+void StarfieldExtEffect::create_star(int index) {
     stars_[index].x = (std::rand() % width_) - x_off_;
     stars_[index].y = (std::rand() % height_) - y_off_;
     stars_[index].z = static_cast<float>(z_off_);
 }
 
-int StarfieldEffect::render(AudioData visdata, int isBeat,
+int StarfieldExtEffect::render(AudioData visdata, int isBeat,
                              uint32_t* framebuffer, uint32_t* fbout,
                              int w, int h) {
     int enabled = parameters().get_int("enabled");
@@ -51,7 +53,6 @@ int StarfieldEffect::render(AudioData visdata, int isBeat,
     int dur_frames = parameters().get_int("durFrames");
     int onbeat = parameters().get_int("onbeat");
     uint32_t color = parameters().get_color("color");
-    int blend_mode = parameters().get_int("blend");
 
     // Handle beat speed change
     if (onbeat && isBeat) {
@@ -97,14 +98,7 @@ int StarfieldEffect::render(AudioData visdata, int isBeat,
                     star_color = c | (c << 8) | (c << 16);
                 }
 
-                int idx = ny * w + nx;
-                if (blend_mode == 1) {
-                    framebuffer[idx] = BLEND(framebuffer[idx], star_color);
-                } else if (blend_mode == 2) {
-                    framebuffer[idx] = BLEND_AVG(framebuffer[idx], star_color);
-                } else {
-                    framebuffer[idx] = star_color;
-                }
+                draw_point_styled(framebuffer, nx, ny, w, h, star_color);
 
                 stars_[i].ox = nx;
                 stars_[i].oy = ny;
@@ -128,7 +122,7 @@ int StarfieldEffect::render(AudioData visdata, int isBeat,
     return 0;
 }
 
-void StarfieldEffect::load_parameters(const std::vector<uint8_t>& data) {
+void StarfieldExtEffect::load_parameters(const std::vector<uint8_t>& data) {
     if (data.size() < 4) return;
 
     BinaryReader reader(data);
@@ -142,18 +136,11 @@ void StarfieldEffect::load_parameters(const std::vector<uint8_t>& data) {
         parameters().set_color("color", color);
     }
 
-    if (reader.remaining() >= 4) {
-        int blend = reader.read_u32();
-        parameters().set_int("blend", blend);
-    }
+    // Skip blend and blendavg - not used in extended version
+    if (reader.remaining() >= 4) reader.read_u32();
+    if (reader.remaining() >= 4) reader.read_u32();
 
     if (reader.remaining() >= 4) {
-        int blendavg = reader.read_u32();
-        parameters().set_int("blendavg", blendavg);
-    }
-
-    if (reader.remaining() >= 4) {
-        // Original stores speed as integer (scaled by 10)
         int speed = reader.read_u32();
         parameters().set_int("warpSpeed", speed);
         current_speed_ = speed / 10.0f;
@@ -180,16 +167,16 @@ void StarfieldEffect::load_parameters(const std::vector<uint8_t>& data) {
     }
 }
 
-// Static member definition - UI layout from res.rc IDD_CFG_STARFIELD
-const PluginInfo StarfieldEffect::effect_info {
-    .name = "Starfield",
+// Static member definition
+const PluginInfo StarfieldExtEffect::effect_info {
+    .name = "Starfield (extended)",
     .category = "Render",
-    .description = "3D starfield flying through space",
+    .description = "3D starfield with styled point drawing from Set Render Mode",
     .author = "",
     .version = 1,
-    .legacy_index = 14,  // R_StarField from rlib.cpp
+    .legacy_index = -1,  // No legacy index - extension only
     .factory = []() -> std::unique_ptr<avs::EffectBase> {
-        return std::make_unique<StarfieldEffect>();
+        return std::make_unique<StarfieldExtEffect>();
     },
     .ui_layout = {
         {
@@ -241,36 +228,24 @@ const PluginInfo StarfieldEffect::effect_info {
                 .x = 103, .y = 42, .w = 34, .h = 8
             },
             {
-                .id = "blend",
-                .text = "",
-                .type = ControlType::RADIO_GROUP,
-                .x = 0, .y = 52, .w = 100, .h = 30,
-                .radio_options = {
-                    {"Replace", 0, 0, 43, 10},
-                    {"Additive blend", 0, 10, 61, 10},
-                    {"Blend 50/50", 0, 20, 55, 10}
-                },
-                .default_val = 0
-            },
-            {
                 .id = "color",
-                .text = "",
+                .text = "Color",
                 .type = ControlType::COLOR_BUTTON,
-                .x = 100, .y = 57, .w = 37, .h = 15,
+                .x = 0, .y = 52, .w = 37, .h = 15,
                 .default_val = static_cast<int>(0xFFFFFFFF)
             },
             {
                 .id = "onbeat",
                 .text = "OnBeat Speed changes",
                 .type = ControlType::CHECKBOX,
-                .x = 0, .y = 82, .w = 92, .h = 10,
+                .x = 0, .y = 72, .w = 92, .h = 10,
                 .default_val = 0
             },
             {
                 .id = "spdBeat",
                 .text = "",
                 .type = ControlType::SLIDER,
-                .x = 0, .y = 93, .w = 137, .h = 11,
+                .x = 0, .y = 83, .w = 137, .h = 11,
                 .range = {1, 500, 1},
                 .default_val = 40
             },
@@ -278,19 +253,19 @@ const PluginInfo StarfieldEffect::effect_info {
                 .id = "beat_slower_label",
                 .text = "Slower",
                 .type = ControlType::LABEL,
-                .x = 0, .y = 103, .w = 22, .h = 8
+                .x = 0, .y = 93, .w = 22, .h = 8
             },
             {
                 .id = "beat_faster_label",
                 .text = "Faster",
                 .type = ControlType::LABEL,
-                .x = 117, .y = 103, .w = 20, .h = 8
+                .x = 117, .y = 93, .w = 20, .h = 8
             },
             {
                 .id = "durFrames",
                 .text = "",
                 .type = ControlType::SLIDER,
-                .x = 0, .y = 112, .w = 137, .h = 11,
+                .x = 0, .y = 102, .w = 137, .h = 11,
                 .range = {1, 100, 1},
                 .default_val = 15
             },
@@ -298,21 +273,27 @@ const PluginInfo StarfieldEffect::effect_info {
                 .id = "dur_shorter_label",
                 .text = "Shorter",
                 .type = ControlType::LABEL,
-                .x = 0, .y = 122, .w = 24, .h = 8
+                .x = 0, .y = 112, .w = 24, .h = 8
             },
             {
                 .id = "dur_longer_label",
                 .text = "Longer",
                 .type = ControlType::LABEL,
-                .x = 114, .y = 122, .w = 23, .h = 8
+                .x = 114, .y = 112, .w = 23, .h = 8
+            },
+            {
+                .id = "render_mode_note",
+                .text = "Use Set Render Mode (extended) for point style",
+                .type = ControlType::LABEL,
+                .x = 0, .y = 125, .w = 137, .h = 8
             }
         }
     }
 };
 
 // Register effect at startup
-static bool register_starfield = []() {
-    PluginManager::instance().register_effect(StarfieldEffect::effect_info);
+static bool register_starfield_ext = []() {
+    PluginManager::instance().register_effect(StarfieldExtEffect::effect_info);
     return true;
 }();
 

@@ -264,7 +264,7 @@ static const std::vector<ControlLayout> ui_controls = {
 
 // Static member definition
 const PluginInfo SetRenderModeExtEffect::effect_info {
-    .name = "Set Render Mode (Extended)",
+    .name = "Set Render Mode (extended)",
     .category = "Misc",
     .description = "Control rendering pipeline with scripting",
     .author = "",

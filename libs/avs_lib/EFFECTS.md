@@ -60,6 +60,7 @@ For reference when examining original AVS implementation:
 - **Set Render Mode**: `r_linemode.cpp`
 - **Color Clip**: `r_colorreplace.cpp` (duplicate of r_contrast.cpp)
 - **Starfield**: `r_stars.cpp`
+- **Starfield (extended)**: `starfield_ext.cpp` (EXTENSION - not in original AVS)
 
 ## Render Effects
 Effects that generate new visual content from audio data or clear the screen.
@@ -324,14 +325,53 @@ Effects that generate new visual content from audio data or clear the screen.
 - **Controls**:
   - Enable Starfield: CHECKBOX, Position(0, 0), Size(65, 10), ID(IDC_CHECK1)
   - Speed: SLIDER, Position(0, 13), Size(137, 11), ID(IDC_SPEED)
+  - "Slow" label: LTEXT, Position(0, 23), Size(16, 8)
+  - "Fast" label: LTEXT, Position(123, 23), Size(14, 8)
   - Number of stars: SLIDER, Position(0, 32), Size(137, 11), ID(IDC_NUMSTARS)
+  - "Fewer stars" label: LTEXT, Position(0, 42), Size(37, 8)
+  - "More stars" label: LTEXT, Position(103, 42), Size(34, 8)
   - Replace blend mode: RADIO_BUTTON, Position(0, 52), Size(43, 10), ID(IDC_REPLACE)
   - Additive blend mode: RADIO_BUTTON, Position(0, 62), Size(61, 10), ID(IDC_ADDITIVE)
   - Blend 50/50 mode: RADIO_BUTTON, Position(0, 72), Size(55, 10), ID(IDC_5050)
   - Color: COLOR_BUTTON, Position(100, 57), Size(37, 15), ID(IDC_DEFCOL)
   - OnBeat Speed changes: CHECKBOX, Position(0, 82), Size(92, 10), ID(IDC_ONBEAT2)
   - OnBeat Speed Change: SLIDER, Position(0, 93), Size(137, 11), ID(IDC_SPDCHG)
+  - "Slower" label: LTEXT, Position(0, 103), Size(22, 8)
+  - "Faster" label: LTEXT, Position(117, 103), Size(20, 8)
   - OnBeat Duration: SLIDER, Position(0, 112), Size(137, 11), ID(IDC_SPDDUR)
+  - "Shorter" label: LTEXT, Position(0, 122), Size(24, 8)
+  - "Longer" label: LTEXT, Position(114, 122), Size(23, 8)
+
+11a. ### Starfield (extended) [EXTENSION]
+- **Purpose**: Starfield with styled point drawing from Set Render Mode (extended)
+- **Source File**: `starfield_ext.cpp` (NOT part of original AVS)
+- **Inputs**:
+  - Audio input
+  - Beat signal
+- **Outputs**: Starfield rendered with styled points
+- **Blend Modes**: Uses Set Render Mode (extended) styling (no local blend controls)
+- **Notes**:
+  - Extension effect - uses `draw_point_styled()` for large/circular star points
+  - Respects point size and style from Set Render Mode (extended) effect
+  - No blend mode radio buttons (blend handled by render mode)
+  - Otherwise identical controls to original Starfield
+- **Controls**:
+  - Enable Starfield: CHECKBOX, Position(0, 0), Size(65, 10)
+  - Speed: SLIDER, Position(0, 13), Size(137, 11)
+  - "Slow" label: LTEXT, Position(0, 23), Size(16, 8)
+  - "Fast" label: LTEXT, Position(123, 23), Size(14, 8)
+  - Number of stars: SLIDER, Position(0, 32), Size(137, 11)
+  - "Fewer stars" label: LTEXT, Position(0, 42), Size(37, 8)
+  - "More stars" label: LTEXT, Position(103, 42), Size(34, 8)
+  - Color: COLOR_BUTTON, Position(0, 52), Size(37, 15)
+  - OnBeat Speed changes: CHECKBOX, Position(0, 72), Size(92, 10)
+  - OnBeat Speed Change: SLIDER, Position(0, 83), Size(137, 11)
+  - "Slower" label: LTEXT, Position(0, 93), Size(22, 8)
+  - "Faster" label: LTEXT, Position(117, 93), Size(20, 8)
+  - OnBeat Duration: SLIDER, Position(0, 102), Size(137, 11)
+  - "Shorter" label: LTEXT, Position(0, 112), Size(24, 8)
+  - "Longer" label: LTEXT, Position(114, 112), Size(23, 8)
+  - Render mode note: LTEXT, Position(0, 125), Size(137, 8), Text="Use Set Render Mode (extended) for point style"
 
 12. ### Bass Spin
 - **Purpose**: Creates spinning visual effects synchronized with bass.
@@ -376,9 +416,10 @@ Effects that generate new visual content from audio data or clear the screen.
 - **Controls**:
   - No dedicated UI for configuration. Spectrum rendering is typically handled by effects like "Oscilloscope" (when set to Spectrum mode).
 
-15. ### SVP (Simple Visualization Plugin)
-- **Purpose**: Loads external Simple Visualization Plugins (.SVP or .UVS files)
+15. ### SVP (Sonique Visual Plugin Loader)
+- **Purpose**: Loads external Sonique Visual Plugins (.SVP files) - a plugin format from the Sonique media player (~2000)
 - **Source File**: `r_svp.cpp`
+- **Port Status**: **NOT PORTING** - Windows-only (requires DLL loading)
 - **Inputs**: (Depends on loaded plugin)
 - **Outputs**: (Depends on loaded plugin)
 - **Blend Modes**: (Depends on loaded plugin)
@@ -386,8 +427,14 @@ Effects that generate new visual content from audio data or clear the screen.
   - SVP/UVS library selection: DROPDOWN, Position(4, 12), Size(225, 222), ID(IDC_COMBO1)
 
 16. ### Text
-- **Purpose**: Renders text messages
+- **Purpose**: Renders text messages with user-selectable fonts, outline/shadow effects, and dynamic variables
 - **Source File**: `r_text.cpp`
+- **Port Status**: **NOT PORTING** - Deeply Windows-dependent:
+  - Uses Windows GDI for text rendering (`DrawText`, `CreateFontIndirect`, bitmap DCs)
+  - Font selection via Windows `ChooseFont` dialog
+  - Binary preset format stores raw Windows `LOGFONT` structure - existing presets cannot be loaded on other platforms
+  - Dynamic variables (`$(title)`, `$(playpos)`) require Winamp integration
+  - A portable implementation would require FreeType/stb_truetype and couldn't load existing presets
 - **Inputs**:
   - Text string
   - Beat signal
@@ -606,16 +653,9 @@ Effects that move or distort existing pixels.
   - Enable scatter effect: CHECKBOX, Position(0, 0), Size(81, 10), ID(IDC_CHECK1), Default(1)
 
 25. ### Texer/Texer II
-- **Purpose**: Particle-based texture mapper (no dedicated UI dialog found). Keywords for this effect in the codebase mostly point to the "Moving Particle" effect.
-- **Source File**: `N/A - No dedicated source file`
-- **Inputs**:
-  - Framebuffer
-  - Texture image
-  - Audio input
-- **Outputs**: Textured particles
-- **Blend Modes**: Additive or replace
-- **Controls**:
-  - No dedicated UI dialog found. Functionality may be integrated into other scripting-capable effects or not exposed via a standard AVS UI.
+- **Purpose**: Scriptable particle system that stamps texture images at calculated positions (like Superscope but with images instead of dots)
+- **Source File**: `N/A` - **NOT IN ORIGINAL AVS SOURCE**
+- **Port Status**: **NOT IN CODEBASE** - Texer and Texer II were third-party APEs (AVS Plugin Effects) created by Steven Wittens, distributed separately. They were later bundled with Winamp 5 and eventually integrated into the grandchild/vis_avs fork. Source available in grandchild fork as `e_texer.cpp` and `e_texer2.cpp` if porting is desired.
 
 ## Trans Effects (Color/Filter)
 Effects that modify pixel colors or apply filters.
@@ -732,7 +772,9 @@ Effects that modify pixel colors or apply filters.
 - **Outputs**: Quantized colors
 - **Blend Modes**: None
 - **Controls**:
+  - "Color levels" groupbox: GROUPBOX, Position(5, 5), Size(220, 35)
   - Color levels: SLIDER, Position(10, 15), Size(185, 20), ID(IDC_LEVELS)
+  - Level display: LTEXT, Position(200, 17), Size(20, 10), ID(IDC_LEVELTEXT), Text="Static"
 
 33. ### Color Clip (alternate)
 - **Purpose**: Clip colors to a specified range (duplicate of #29 Color Clip)
@@ -740,16 +782,22 @@ Effects that modify pixel colors or apply filters.
 - **Note**: This is the same effect as #29 Color Clip - both files implement "Trans / Color Clip"
 
 34. ### Blitter Feedback
-- **Purpose**: Apply convolution kernels
+- **Purpose**: Zoom feedback effect with on-beat changes
 - **Source File**: `r_blit.cpp`
 - **Inputs**:
   - Framebuffer
-- **Outputs**: Filtered pixels
-- **Blend Modes**: None
+- **Outputs**: Zoomed pixels
+- **Blend Modes**: Optional 50/50 blend
 - **Controls**:
+  - "Blitter direction" groupbox: GROUPBOX, Position(0, 0), Size(137, 38)
   - Blitter Scale: SLIDER, Position(4, 10), Size(128, 13), ID(IDC_SLIDER1)
+  - "Zooming in" label: LTEXT, Position(8, 26), Size(36, 8)
+  - "Zooming out" label: LTEXT, Position(88, 26), Size(40, 8)
+  - "Blitter direction (onbeat)" groupbox: GROUPBOX, Position(0, 41), Size(137, 50)
   - Enable on-beat changes: CHECKBOX, Position(5, 51), Size(93, 10), ID(IDC_CHECK1)
   - Blitter Scale (on-beat): SLIDER, Position(4, 63), Size(128, 13), ID(IDC_SLIDER2)
+  - "Zooming in" label (onbeat): LTEXT, Position(8, 78), Size(36, 8)
+  - "Zooming out" label (onbeat): LTEXT, Position(88, 78), Size(40, 8)
   - Blend blitter: CHECKBOX, Position(0, 95), Size(53, 10), ID(IDC_BLEND)
   - Bilinear filtering: CHECKBOX, Position(0, 104), Size(63, 10), ID(IDC_CHECK2)
 
@@ -859,7 +907,7 @@ Effects that modify pixel colors or apply filters.
 - **Inputs**:
   - Framebuffer
 - **Outputs**: Interlaced output
-- **Blend Modes**: None
+- **Blend Modes**: Replace, 50/50, Additive
 - **Controls**:
   - Enable Interleave effect: CHECKBOX, Position(0, 0), Size(91, 10), ID(IDC_CHECK1)
   - X interleave amount: SLIDER, Position(0, 12), Size(137, 13), ID(IDC_X)
@@ -871,6 +919,7 @@ Effects that modify pixel colors or apply filters.
   - OnBeat: CHECKBOX, Position(0, 70), Size(40, 10), ID(IDC_CHECK8)
   - X interleave amount (onbeat): SLIDER, Position(0, 83), Size(137, 13), ID(IDC_X2)
   - Y interleave amount (onbeat): SLIDER, Position(0, 98), Size(137, 13), ID(IDC_Y2)
+  - "Duration" label: LTEXT, Position(3, 115), Size(32, 8)
   - Beat duration: SLIDER, Position(41, 112), Size(95, 13), ID(IDC_X3)
 
 41. ### Invert
@@ -907,16 +956,22 @@ Effects that modify pixel colors or apply filters.
 - **Inputs**:
   - Framebuffer
 - **Outputs**: Pixelated output
-- **Blend Modes**: None
+- **Blend Modes**: Replace, Additive, 50/50
 - **Controls**:
   - Enable Mosaic: CHECKBOX, Position(0, 0), Size(65, 10), ID(IDC_CHECK1)
   - Block size: SLIDER, Position(0, 13), Size(137, 11), ID(IDC_QUALITY)
+  - "Bigger squares" label: LTEXT, Position(0, 23), Size(48, 8)
+  - "Smaller squares" label: LTEXT, Position(87, 23), Size(50, 8)
   - Replace blend mode: RADIO_BUTTON, Position(0, 33), Size(43, 10), ID(IDC_REPLACE)
   - Additive blend mode: RADIO_BUTTON, Position(0, 43), Size(61, 10), ID(IDC_ADDITIVE)
   - Blend 50/50 mode: RADIO_BUTTON, Position(0, 53), Size(55, 10), ID(IDC_5050)
   - OnBeat: CHECKBOX, Position(0, 63), Size(40, 10), ID(IDC_ONBEAT)
   - OnBeat block size: SLIDER, Position(0, 74), Size(137, 11), ID(IDC_QUALITY2)
+  - "Bigger" label: LTEXT, Position(0, 84), Size(21, 8)
+  - "Smaller" label: LTEXT, Position(113, 84), Size(24, 8)
   - OnBeat duration: SLIDER, Position(0, 93), Size(137, 11), ID(IDC_BEATDUR)
+  - "Shorter" label: LTEXT, Position(0, 103), Size(24, 8)
+  - "Longer" label: LTEXT, Position(114, 103), Size(23, 8)
 
 44. ### Multi Delay
 - **Purpose**: Echo/delay effect
