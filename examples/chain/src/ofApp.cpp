@@ -195,37 +195,16 @@ void ofApp::draw(){
 void ofApp::drawAudioControls() {
     // Position at bottom left - larger window for device selectors
     ImGui::SetNextWindowPos(ImVec2(10, 640 - 135));
-    ImGui::SetNextWindowSize(ImVec2(550, 75));
+    ImGui::SetNextWindowSize(ImVec2(660, 75));
 
     ImGui::PushStyleColor(ImGuiCol_TitleBg, ImVec4(0.2f, 0.2f, 0.2f, 1.0f));
     ImGui::PushStyleColor(ImGuiCol_TitleBgActive, ImVec4(0.2f, 0.2f, 0.2f, 1.0f));
     ImGui::Begin("Audio", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse);
 
-    // Device selection row
-    ImGui::Text("Output:");
-    ImGui::SameLine();
-    ImGui::SetNextItemWidth(200);
-    if (ImGui::BeginCombo("##output_device",
-        (selectedOutputDevice >= 0 && selectedOutputDevice < (int)outputDeviceIndices.size())
-            ? audioDevices[outputDeviceIndices[selectedOutputDevice]].name.c_str()
-            : "None")) {
-        for (size_t i = 0; i < outputDeviceIndices.size(); i++) {
-            bool isSelected = ((int)i == selectedOutputDevice);
-            if (ImGui::Selectable(audioDevices[outputDeviceIndices[i]].name.c_str(), isSelected)) {
-                if ((int)i != selectedOutputDevice) {
-                    selectedOutputDevice = i;
-                    restartAudio();
-                }
-            }
-            if (isSelected) ImGui::SetItemDefaultFocus();
-        }
-        ImGui::EndCombo();
-    }
-
-    ImGui::SameLine();
+    // Device selection row - Input first, then Output
     ImGui::Text("Input:");
     ImGui::SameLine();
-    ImGui::SetNextItemWidth(200);
+    ImGui::SetNextItemWidth(270);
 
     // Build input device label (with "None" option)
     const char* inputLabel = "None";
@@ -249,6 +228,27 @@ void ofApp::drawAudioControls() {
             if (ImGui::Selectable(audioDevices[inputDeviceIndices[i]].name.c_str(), isSelected)) {
                 if ((int)i != selectedInputDevice) {
                     selectedInputDevice = i;
+                    restartAudio();
+                }
+            }
+            if (isSelected) ImGui::SetItemDefaultFocus();
+        }
+        ImGui::EndCombo();
+    }
+
+    ImGui::SameLine();
+    ImGui::Text("Output:");
+    ImGui::SameLine();
+    ImGui::SetNextItemWidth(270);
+    if (ImGui::BeginCombo("##output_device",
+        (selectedOutputDevice >= 0 && selectedOutputDevice < (int)outputDeviceIndices.size())
+            ? audioDevices[outputDeviceIndices[selectedOutputDevice]].name.c_str()
+            : "None")) {
+        for (size_t i = 0; i < outputDeviceIndices.size(); i++) {
+            bool isSelected = ((int)i == selectedOutputDevice);
+            if (ImGui::Selectable(audioDevices[outputDeviceIndices[i]].name.c_str(), isSelected)) {
+                if ((int)i != selectedOutputDevice) {
+                    selectedOutputDevice = i;
                     restartAudio();
                 }
             }
@@ -296,18 +296,20 @@ void ofApp::drawAudioControls() {
             }
             ImGui::SameLine();
 
-            // Show file name and progress
+            // Show file name (truncated if needed)
+            ImGui::SetNextItemWidth(250);
             ImGui::Text("%s", loadedFileName.c_str());
             ImGui::SameLine();
 
+            // Progress bar
             float progress = (float)playbackPos / audioFileBuffer.getNumFrames();
-            ImGui::ProgressBar(progress, ImVec2(100, 0));
+            ImGui::ProgressBar(progress, ImVec2(150, 0));
 
             // Click on progress bar to seek
             if (ImGui::IsItemClicked()) {
                 ImVec2 mousePos = ImGui::GetMousePos();
                 ImVec2 itemPos = ImGui::GetItemRectMin();
-                float seekPos = (mousePos.x - itemPos.x) / 100.0f;
+                float seekPos = (mousePos.x - itemPos.x) / 150.0f;
                 seekPos = ofClamp(seekPos, 0.0f, 1.0f);
                 playbackPos = (size_t)(seekPos * audioFileBuffer.getNumFrames());
             }
@@ -317,7 +319,7 @@ void ofApp::drawAudioControls() {
     } else {
         ImGui::Text("Mic Gain:");
         ImGui::SameLine();
-        ImGui::SetNextItemWidth(150);
+        ImGui::SetNextItemWidth(200);
         ImGui::SliderFloat("##micgain", &micGain, 1.0f, 100.0f, "%.0fx");
     }
 
@@ -326,15 +328,17 @@ void ofApp::drawAudioControls() {
 }
 
 //--------------------------------------------------------------
-void ofApp::loadSoundFile(const std::string& path) {
+void ofApp::loadSoundFile(const std::string& path, bool autoPlay) {
     ofLogNotice() << "Loading sound file: " << path;
 
     if (ofxAudioDecoder::load(audioFileBuffer, path)) {
         loadedFileName = ofFilePath::getFileName(path);
         loadedFilePath = path;  // Store full path for persistence
         playbackPos = 0;
-        useFileInput = true;
-        isPlaying = true;
+        if (autoPlay) {
+            useFileInput = true;
+            isPlaying = true;
+        }
 
         // Resample to 44100 if needed
         if (audioFileBuffer.getSampleRate() != 44100) {
@@ -455,12 +459,11 @@ void ofApp::loadAppSettings() {
             selectedOutputDeviceName = json["output_device"].get<std::string>();
         }
 
-        // Load sound file
+        // Load sound file (but don't auto-play - mic is default on startup)
         if (json.contains("sound_file") && !json["sound_file"].is_null()) {
             std::string soundPath = json["sound_file"].get<std::string>();
             if (!soundPath.empty() && ofFile::doesFileExist(soundPath)) {
-                loadSoundFile(soundPath);
-                isPlaying = false;  // Don't auto-play on startup
+                loadSoundFile(soundPath, false);  // Load but don't play, mic stays active
             }
         }
         if (json.contains("mic_gain")) {
@@ -477,6 +480,7 @@ void ofApp::loadAppSettings() {
 void ofApp::saveAppSettings() {
     ofJson json;
     json["sound_file"] = loadedFilePath;
+    json["use_file_input"] = useFileInput;
     json["mic_gain"] = micGain;
     json["input_device"] = selectedInputDeviceName;
     json["output_device"] = selectedOutputDeviceName;

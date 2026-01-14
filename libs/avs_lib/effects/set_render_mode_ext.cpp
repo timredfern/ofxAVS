@@ -169,17 +169,11 @@ static const std::vector<ControlLayout> ui_controls = {
         .default_val = 128
     },
     {
-        .id = "line_width_label",
-        .text = "Line width (pixels)",
-        .type = ControlType::LABEL,
-        .x = 0, .y = 55, .w = 100, .h = 8
-    },
-    {
         .id = "line_width",
-        .text = "",
-        .type = ControlType::TEXT_INPUT,
-        .x = 70, .y = 53, .w = 20, .h = 12,
-        .range = {1, 255},
+        .text = "Line/point width",
+        .type = ControlType::SLIDER,
+        .x = 0, .y = 53, .w = 136, .h = 13,
+        .range = {1, 100, 1},
         .default_val = 1
     },
     // Line style options (extension)
