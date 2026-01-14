@@ -65,6 +65,18 @@ add_library(avs_core_test STATIC
     ${AVS_LIB_ROOT}/effects/oscstar.cpp
     ${AVS_LIB_ROOT}/effects/ring.cpp
     ${AVS_LIB_ROOT}/effects/rotstar.cpp
+    ${AVS_LIB_ROOT}/effects/invert.cpp
+    ${AVS_LIB_ROOT}/effects/fast_brightness.cpp
+    ${AVS_LIB_ROOT}/effects/color_reduction.cpp
+    ${AVS_LIB_ROOT}/effects/multiplier.cpp
+    ${AVS_LIB_ROOT}/effects/channel_shift.cpp
+    ${AVS_LIB_ROOT}/effects/unique_tone.cpp
+    ${AVS_LIB_ROOT}/effects/grain.cpp
+    ${AVS_LIB_ROOT}/effects/mosaic.cpp
+    ${AVS_LIB_ROOT}/effects/interleave.cpp
+    ${AVS_LIB_ROOT}/effects/starfield.cpp
+    ${AVS_LIB_ROOT}/effects/bass_spin.cpp
+    ${AVS_LIB_ROOT}/effects/blitter_feedback.cpp
     ${AVS_LIB_ROOT}/third_party/stb_image_impl.cpp
 )
 
