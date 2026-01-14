@@ -7,7 +7,7 @@
 #include "starfield.h"
 #include "core/plugin_manager.h"
 #include "core/binary_reader.h"
-#include "core/blend.h"
+#include "core/line_draw_ext.h"
 #include <cstdlib>
 #include <algorithm>
 #include <cstring>
@@ -51,8 +51,6 @@ int StarfieldEffect::render(AudioData visdata, int isBeat,
     int dur_frames = parameters().get_int("durFrames");
     int onbeat = parameters().get_int("onbeat");
     uint32_t color = parameters().get_color("color");
-    int blend_mode = parameters().get_int("blend");
-    int blendavg = parameters().get_int("blendavg");
 
     // Handle beat speed change
     if (onbeat && isBeat) {
@@ -98,14 +96,7 @@ int StarfieldEffect::render(AudioData visdata, int isBeat,
                     star_color = c | (c << 8) | (c << 16);
                 }
 
-                int idx = ny * w + nx;
-                if (blend_mode) {
-                    framebuffer[idx] = BLEND(framebuffer[idx], star_color);
-                } else if (blendavg) {
-                    framebuffer[idx] = BLEND_AVG(framebuffer[idx], star_color);
-                } else {
-                    framebuffer[idx] = star_color;
-                }
+                draw_point_styled(framebuffer, nx, ny, w, h, star_color);
 
                 stars_[i].ox = nx;
                 stars_[i].oy = ny;
