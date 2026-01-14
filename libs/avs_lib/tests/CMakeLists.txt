@@ -63,6 +63,7 @@ add_library(avs_core_test STATIC
     ${AVS_LIB_ROOT}/effects/timescope.cpp
     ${AVS_LIB_ROOT}/effects/picture.cpp
     ${AVS_LIB_ROOT}/effects/oscstar.cpp
+    ${AVS_LIB_ROOT}/effects/ring.cpp
     ${AVS_LIB_ROOT}/third_party/stb_image_impl.cpp
 )
 
