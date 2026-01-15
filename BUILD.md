@@ -3,8 +3,11 @@
 ## Prerequisites
 
 - OpenFrameworks 0.12+
-- ofxImGui addon
 - C++17 compiler (Xcode Command Line Tools on macOS)
+- Required addons:
+  - [ofxImGui](https://github.com/jvcleave/ofxImGui) - UI rendering
+  - [ofxFft](https://github.com/kylemcdonald/ofxFft) - FFT audio processing
+  - [ofxAudioDecoder](https://github.com/kylemcdonald/ofxAudioDecoder) - Audio file playback
 
 ## Environment Setup
 
@@ -87,8 +90,14 @@ This creates:
 - Ensure `OF_ROOT` is set correctly
 - Verify OpenFrameworks is installed at that path
 
-**Missing ofxImGui**
-- Clone ofxImGui into `$OF_ROOT/addons/`
+**Missing addons**
+- Clone required addons into `$OF_ROOT/addons/`:
+  ```bash
+  cd $OF_ROOT/addons
+  git clone https://github.com/jvcleave/ofxImGui
+  git clone https://github.com/kylemcdonald/ofxFft
+  git clone https://github.com/kylemcdonald/ofxAudioDecoder
+  ```
 
 **Linker errors**
 - Run `make clean` and rebuild
