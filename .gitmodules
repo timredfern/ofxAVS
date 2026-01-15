@@ -1,0 +1,3 @@
+[submodule "libs/avs_lib"]
+	path = libs/avs_lib
+	url = ssh://git@git.eclectronics.org:2222/timredfern/avs_lib.git
