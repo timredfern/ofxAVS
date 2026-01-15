@@ -29,29 +29,30 @@ check_requirements() {
 
 # Get version from argument, git tag, or prompt
 get_version() {
+    local ver=""
     if [ -n "$1" ]; then
-        VERSION="$1"
+        ver="$1"
     else
         # Try to get from latest git tag
-        VERSION=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
-        if [ -z "$VERSION" ]; then
-            echo -e "${YELLOW}No git tag found.${NC}"
-            read -p "Enter version (e.g., v1.0.0): " VERSION
+        ver=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+        if [ -z "$ver" ]; then
+            echo -e "${YELLOW}No git tag found.${NC}" >&2
+            read -p "Enter version (e.g., v1.0.0): " ver
         else
-            echo -e "Latest tag: ${GREEN}$VERSION${NC}"
+            echo -e "Latest tag: ${GREEN}$ver${NC}" >&2
             read -p "Use this version? [Y/n]: " confirm
             if [[ "$confirm" =~ ^[Nn] ]]; then
-                read -p "Enter version: " VERSION
+                read -p "Enter version: " ver
             fi
         fi
     fi
 
     # Ensure version starts with 'v'
-    if [[ ! "$VERSION" =~ ^v ]]; then
-        VERSION="v$VERSION"
+    if [[ ! "$ver" =~ ^v ]]; then
+        ver="v$ver"
     fi
 
-    echo "$VERSION"
+    echo "$ver"
 }
 
 # Check if tag exists, create if not
@@ -82,17 +83,17 @@ detect_arch() {
 
 # Build the release DMG
 build_release() {
-    echo -e "${GREEN}Building release...${NC}"
+    echo -e "${GREEN}Building release...${NC}" >&2
     cd "$PROJECT_DIR/examples/chain"
-    make package
+    make package >&2
 
     local arch=$(detect_arch)
-    DMG_PATH="$PROJECT_DIR/examples/chain/bin/release/chain-${arch}.dmg"
-    if [ ! -f "$DMG_PATH" ]; then
-        echo -e "${RED}Error: DMG not found at $DMG_PATH${NC}"
+    local dmg="$PROJECT_DIR/examples/chain/bin/release/chain-${arch}.dmg"
+    if [ ! -f "$dmg" ]; then
+        echo -e "${RED}Error: DMG not found at $dmg${NC}" >&2
         exit 1
     fi
-    echo "$DMG_PATH"
+    echo "$dmg"
 }
 
 # Create Gitea release and upload asset
@@ -174,8 +175,7 @@ create_release() {
     upload_response=$(curl -s -X POST \
         "${GITEA_URL}/api/v1/repos/${REPO}/releases/${release_id}/assets?name=${dmg_name}" \
         -H "Authorization: token $token" \
-        -H "Content-Type: application/octet-stream" \
-        --data-binary "@${dmg_path}")
+        -F "attachment=@${dmg_path}")
 
     asset_id=$(echo "$upload_response" | jq -r '.id')
     if [ "$asset_id" = "null" ] || [ -z "$asset_id" ]; then
