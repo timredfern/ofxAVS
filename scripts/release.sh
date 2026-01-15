@@ -106,27 +106,20 @@ create_release() {
     local arch=$(detect_arch)
     local dmg_name="ofxAVS-${version}-macOS-${arch}.dmg"
 
-    echo -e "${GREEN}Creating release $version on Gitea...${NC}"
+    echo -e "${GREEN}Uploading $dmg_name to release $version...${NC}"
 
     # Check if release already exists
     existing=$(curl -s "${GITEA_URL}/api/v1/repos/${REPO}/releases/tags/${version}" \
         -H "Authorization: token $token" | jq -r '.id // empty')
 
     if [ -n "$existing" ]; then
-        echo -e "${YELLOW}Release $version already exists (id: $existing)${NC}"
-        read -p "Delete and recreate? [y/N]: " confirm
-        if [[ "$confirm" =~ ^[Yy] ]]; then
-            curl -s -X DELETE "${GITEA_URL}/api/v1/repos/${REPO}/releases/${existing}" \
-                -H "Authorization: token $token"
-            echo -e "${GREEN}Deleted existing release${NC}"
-        else
-            echo -e "${RED}Aborting${NC}"
-            exit 1
-        fi
-    fi
+        echo -e "${GREEN}Release $version exists (id: $existing), adding asset...${NC}"
+        release_id="$existing"
+    else
+        echo -e "${GREEN}Creating new release $version...${NC}"
 
-    # Build release body
-    local body="macOS application for AVS (Advanced Visualization Studio) - the legendary Winamp visualizer.
+        # Build release body
+        local body="macOS application for AVS (Advanced Visualization Studio) - the legendary Winamp visualizer.
 
 ## Installation
 
@@ -156,24 +149,25 @@ create_release() {
 
 - macOS 11.0 or later"
 
-    # Create the release
-    release_response=$(curl -s -X POST "${GITEA_URL}/api/v1/repos/${REPO}/releases" \
-        -H "Authorization: token $token" \
-        -H "Content-Type: application/json" \
-        -d "$(jq -n \
-            --arg tag "$version" \
-            --arg name "$release_name" \
-            --arg body "$body" \
-            '{tag_name: $tag, name: $name, body: $body, draft: false, prerelease: false}')")
+        # Create the release
+        release_response=$(curl -s -X POST "${GITEA_URL}/api/v1/repos/${REPO}/releases" \
+            -H "Authorization: token $token" \
+            -H "Content-Type: application/json" \
+            -d "$(jq -n \
+                --arg tag "$version" \
+                --arg name "$release_name" \
+                --arg body "$body" \
+                '{tag_name: $tag, name: $name, body: $body, draft: false, prerelease: false}')")
 
-    release_id=$(echo "$release_response" | jq -r '.id')
-    if [ "$release_id" = "null" ] || [ -z "$release_id" ]; then
-        echo -e "${RED}Failed to create release:${NC}"
-        echo "$release_response" | jq .
-        exit 1
+        release_id=$(echo "$release_response" | jq -r '.id')
+        if [ "$release_id" = "null" ] || [ -z "$release_id" ]; then
+            echo -e "${RED}Failed to create release:${NC}"
+            echo "$release_response" | jq .
+            exit 1
+        fi
+
+        echo -e "${GREEN}Created release (id: $release_id)${NC}"
     fi
-
-    echo -e "${GREEN}Created release (id: $release_id)${NC}"
 
     # Upload the DMG
     echo -e "${GREEN}Uploading $dmg_name...${NC}"
