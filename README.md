@@ -1,209 +1,162 @@
-# ofxAVS - Advanced Visualization Studio for OpenFrameworks
+# ofxAVS
 
-A modern C++ port of the legendary Advanced Visualization Studio (AVS) as a self-contained OpenFrameworks addon.
+OpenFrameworks addon for AVS (Advanced Visualization Studio) - bringing Nullsoft's legendary Winamp visualizer to creative coding.
 
 ## What is AVS?
 
-Advanced Visualization Studio was a groundbreaking music visualization plugin for Winamp, created by Justin Frankel. It featured:
+Advanced Visualization Studio was the iconic music visualization plugin for Winamp, created by Justin Frankel in the late 1990s. It featured modular effect chains, real-time audio reactivity, and a scripting engine that spawned thousands of community-created presets.
 
-- **Modular effect chains** - Chain together multiple visual effects
-- **Real-time audio responsiveness** - Effects react to music spectrum and beats  
-- **Scripting engine** - User-programmable effects with mathematical expressions
-- **Preset system** - Share and load complete visualizations
-- **Legendary effects** - Superscope, Dynamic Movement, and 50+ iconic effects
-
-This project ports the complete AVS system to modern C++ while maintaining compatibility with original presets and effect behavior.
+This project is a modern C++ port that maintains compatibility with original AVS presets while bringing the visualizer to macOS and creative coding platforms.
 
 ## Features
 
-### Phase 1 Complete ✅
-- **Cross-platform core library** - Pure C++17, no external dependencies
-- **Original audio format** - Perfect compatibility with AVS effect algorithms  
-- **Modern parameter system** - Type-safe parameters with UI integration
-- **Plugin architecture** - Extensible effect system
-- **3 effects ported**: Clear, Oscilloscope, Blur
-- **Standalone examples** - Test library without OpenFrameworks
+- **46+ effects ported** from the original AVS
+- **Full preset compatibility** - Load original .avs preset files
+- **Real-time audio input** - Microphone or audio file playback
+- **ImGui-based UI** - Effect chain editing with parameter controls
+- **Beat detection** - Automatic BPM detection and beat-triggered effects
+- **Session persistence** - Effect chains saved/restored between sessions
+- **Audio device selection** - Choose input/output devices at runtime
 
-### In Progress 🚧
-- **Script engine architecture** - Multi-phase execution system (init/frame/beat/pixel/point)
-- **Transform effect refactoring** - Split into MovementEffect and DynamicMovementEffect
-- **Coordinate systems** - Full-resolution vs grid-based interpolation
-- **AVS compatibility system** - Exact preset loading and effect behavior
+## Screenshots
 
-### Future Phases 📋
-- **Complete effect library** - All 54+ original effects with authentic behavior
-- **NS-EEL scripting engine** - Complete expression evaluator with all functions
-- **OpenFrameworks integration** - Real-time GUI and audio input
-- **UI architecture** - Effect chain editing and parameter controls
-
-## Architecture
-
-```
-ofxAVS/
-├── src/
-│   ├── ofxAVS.h/cpp           # 🚧 Future: OF integration layer
-├── libs/avs_lib/              # ✅ Complete embedded AVS library
-│   ├── ARCHITECTURE.md        # 📋 Complete architecture documentation
-│   ├── EFFECTS.md             # 📋 Catalog of all 54+ AVS effects
-│   ├── SCRIPT_ARCHITECTURE.md # 📋 Script engine design
-│   ├── core/                  # Core rendering engine
-│   │   ├── script/            # 🚧 Multi-phase script execution
-│   │   ├── transforms/        # 🚧 Coordinate transformation utilities
-│   │   ├── renderer.h         # Main effect chain processor
-│   │   ├── effect_base.h      # Base class for all effects
-│   │   ├── parameter.h        # Modern parameter system
-│   │   └── plugin_manager.h   # Effect registration & creation
-│   ├── effects/               # 🚧 Refactored AVS effects
-│   │   ├── movement_effect.h          # Trans/Movement (23 presets + custom)
-│   │   ├── dynamic_movement_effect.h  # Trans/Dynamic Movement (grid-based)
-│   │   ├── superscope_effect.h        # Render/SuperScope (point rendering)
-│   │   ├── clear_effect.h             # ✅ Screen clearing
-│   │   ├── oscilloscope_effect.h      # ✅ Waveform visualization
-│   │   └── blur_effect.h              # ✅ Box blur
-│   └── tests/                 # ✅ Comprehensive effect testing
-└── addon_config.mk           # OpenFrameworks addon configuration
-```
+The addon provides a complete visualization environment:
+- Effect chain panel with drag-drop reordering
+- Parameter controls matching original AVS dialogs
+- Audio controls with device selection
+- Real-time 600x600 visualization output
 
 ## Quick Start
 
-### As OpenFrameworks Addon (Future - Phase 2)
+### Prerequisites
+
+- OpenFrameworks 0.12+
+- ofxImGui addon
+- C++17 compiler
+
+### Building
+
+```bash
+# Set OpenFrameworks path
+export OF_ROOT=/path/to/openFrameworks
+
+# Clone into addons directory
+cd $OF_ROOT/addons
+git clone --recursive ssh://git@git.eclectronics.org:2222/timredfern/ofxAVS.git
+
+# Build the chain example
+cd ofxAVS/examples/chain
+make
+make run
+```
+
+### Usage
 
 ```cpp
-// ofApp.h
 #include "ofxAVS.h"
+#include "ofxImGui.h"
 
 class ofApp : public ofBaseApp {
     ofxAVS avs;
-public:
+    ofxImGui::Gui gui;
+
     void setup() {
-        avs.setup(ofGetWidth(), ofGetHeight());
-        avs.addEffect("clear");
-        avs.addEffect("oscilloscope"); 
-        avs.addEffect("blur");
+        gui.setup();
+        avs.setup();  // Loads last session automatically
     }
-    
+
+    void update() {
+        avs.update();
+    }
+
     void draw() {
-        avs.draw();
+        avs.draw(0, 0, 600, 600);
+
+        gui.begin();
+        avs.drawUI();  // Effect chain + parameter panels
+        gui.end();
     }
-    
-    void audioIn(ofSoundBuffer& input) {
-        avs.audioIn(input);
+
+    void audioIn(ofSoundBuffer& buffer) {
+        avs.audioIn(buffer);
     }
 };
 ```
 
-### As Standalone Library (Available Now)
+## Project Structure
 
-```cpp
-#include "avs_lib/core/renderer.h"
-#include "avs_lib/core/builtin_effects.h"
-
-int main() {
-    // Initialize
-    avs::register_builtin_effects();
-    avs::Renderer renderer(640, 480);
-    
-    // Build effect chain
-    auto& pm = avs::PluginManager::instance();
-    renderer.add_effect(pm.create_effect("clear"));
-    renderer.add_effect(pm.create_effect("oscilloscope"));
-    renderer.add_effect(pm.create_effect("blur"));
-    
-    // Render frame
-    char audio_data[2][2][576]; // Fill with audio data
-    uint32_t framebuffer[640 * 480];
-    renderer.render(audio_data, false, framebuffer);
-    
-    return 0;
-}
+```
+ofxAVS/
+├── src/                    # OpenFrameworks addon layer
+│   ├── ofxAVS.cpp/h        # Main addon: rendering, audio, UI
+│   └── AVSui.cpp/h         # ImGui control rendering
+├── libs/avs_lib/           # Portable AVS library (no dependencies)
+│   ├── core/               # Renderer, effects, parameters
+│   ├── effects/            # 46+ effect implementations
+│   └── tests/              # Unit tests
+├── examples/
+│   ├── chain/              # Full-featured example with UI
+│   └── simple/             # Minimal example
+└── scripts/
+    └── package-app.sh      # macOS app packaging
 ```
 
-## Building
+## Implemented Effects
 
-### Test Standalone Library
+### Rendering
+Blur, Brightness, Bump, Channel Shift, Clear, Color Fade, Color Reduction, Fast Brightness, Grain, Invert, Mosaic, Interferences, Interleave, Mirror, Multiplier, Scatter, Shift, Unique Tone
+
+### Transforms
+Dynamic Movement, Movement, Rotoblitter
+
+### Visualization
+Dot Fountain, Dot Grid, Dot Plane, Oscilloscope, OscStar, Picture, Ring, RotStar, Starfield, Starfield Extended, SuperScope, Timescope, Moving Particle, Water
+
+### Containers
+Effect List, Effect List Root
+
+### Timing
+Custom BPM, Fadeout, OnBeat Clear, Set Render Mode
+
+### Trans
+Bass Spin, Blitter Feedback, DDM
+
+## Building & Packaging
+
 ```bash
-cd src/avs_lib/examples/standalone
-mkdir build && cd build
-cmake .. && make
-./avs_example  # Generates frame_0.ppm through frame_4.ppm
+cd examples/chain
+
+# Available targets
+make help
+
+# Build and run
+make Release
+./bin/chain.app/Contents/MacOS/chain
+
+# Package for distribution
+make package          # Creates .app and .dmg
+make app-info         # Show binary info (arch, min OS)
 ```
 
-### As OpenFrameworks Addon
-```bash
-# Clone into your OF addons directory  
-cd openFrameworks/addons
-git clone [repo-url] ofxAVS
+## Architecture
 
-# IMPORTANT: Set OF_ROOT environment variable before building
-export OF_ROOT=/path/to/your/openFrameworks
+The addon is split into two layers:
 
-# Build the example
-cd ofxAVS/example
-make
+**avs_lib** (`libs/avs_lib/`) - Portable C++ library with zero dependencies. Contains the renderer, effect implementations, preset loading, and parameter system. Can be used standalone without OpenFrameworks.
 
-# For your own projects, add to addons.make
-echo "ofxAVS" >> addons.make
-```
+**ofxAVS** (`src/`) - OpenFrameworks integration layer. Handles texture rendering, ImGui UI, audio input, and session persistence.
 
-## Design Philosophy
-
-### 1. **Preserve Original Behavior**
-- Keep exact audio data format: `char visdata[2][2][576]`
-- Maintain effect render function signatures for easy porting
-- Support original preset loading and parameter values
-
-### 2. **Modern C++ Architecture**  
-- RAII memory management, no raw pointers
-- Type-safe parameter system with runtime introspection
-- Cross-platform with no external dependencies
-- Framework-agnostic core library
-
-### 3. **Community-Driven Porting**
-- Simple effect porting process (mostly copy-paste + parameter setup)
-- Automatic registration system
-- Clear separation between library and framework integration
-
-## Effect Porting Status
-
-| Effect | Status | Complexity | Notes |
-|--------|--------|------------|-------|
-| Clear | ✅ Done | Low | Screen clearing with blend modes |
-| Oscilloscope | ✅ Done | Low | Audio waveform visualization |  
-| Blur | ✅ Done | Medium | Box blur with configurable strength |
-| Movement | 🚧 In Progress | High | 23 presets + custom scripting, full-resolution lookup |
-| Dynamic Movement | 🚧 In Progress | High | Grid-based coordinate interpolation |
-| SuperScope | 🚧 In Progress | High | Point-phase audio rendering with scripting |
-| Simple Spectrum | 📋 Planned | Medium | Basic spectrum visualization |
-| Water | 📋 Planned | High | Physics simulation with scripting |
-
-**Current Focus**: Establish script engine architecture and coordinate transformation systems before expanding effect library.
-
-## Contributing
-
-The core library is designed for easy community contribution:
-
-1. **Effect Porting**: Most original effects can be ported by copy-pasting render logic
-2. **Testing**: Compare output against original Windows AVS
-3. **Documentation**: Help document the extensive AVS effect ecosystem
-4. **Presets**: Test with classic AVS preset collections
+See `libs/avs_lib/README.md` for detailed library documentation.
 
 ## Original Credits
 
-- **Justin Frankel**: Creator of Advanced Visualization Studio
-- **Nullsoft**: Original AVS development and open-source release (2005)
-- **AVS Community**: 20+ years of amazing presets and effects
+- **Justin Frankel** - Creator of AVS and Winamp
+- **Nullsoft** - Original AVS development and open-source release
+- **AVS Community** - Decades of amazing presets
 
 ## License
 
-BSD 3-Clause - matches original AVS license
+MIT License - see LICENSE file
 
-## Development Status
-
-**Phase 1 Complete** ✅ - Core library architecture and basic effects  
-**Phase 2 In Progress** 🚧 - Script engine architecture and transform effect refactoring  
-**Phase 3 Planned** 📋 - Complete effect library with authentic AVS behavior  
-**Phase 4 Future** 🔮 - OpenFrameworks integration and UI architecture  
-
----
-
-*Bringing the magic of AVS to modern creative coding platforms* ✨
+Based on original AVS source code by Nullsoft, Inc.
+Original AVS Copyright (C) 2005 Nullsoft, Inc.

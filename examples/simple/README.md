@@ -1,31 +1,49 @@
-# ofxAVS Example
+# Simple Example
+
+Minimal AVS visualization example with microphone input.
 
 ## Building
 
-**IMPORTANT**: Always use the OF_ROOT environment variable to specify the openFrameworks path:
-
 ```bash
-export OF_ROOT=/path/to/your/openFrameworks
-cd /path/to/ofxAVS/example
+export OF_ROOT=/path/to/openFrameworks
 make
+make run
 ```
 
-Do NOT modify config.make to hardcode paths - use the environment variable instead to keep the repo clean.
+## Features
 
-## Running
+- Basic effect chain with UI
+- Microphone input (auto-selects first available device)
+- Effect parameter editing
 
-The example demonstrates an oscilloscope effect combined with dynamic movement and feedback:
+This example demonstrates the minimal code needed to integrate ofxAVS. For a full-featured example with audio device selection and file playback, see the `chain` example.
 
-1. **Clear effect**: Provides feedback trails (only_first=true)
-2. **Oscilloscope**: Draws audio waveform visualization  
-3. **Dynamic Movement**: Applies grid-based transformations (default spiral effect)
+## Code
 
-### Controls
+```cpp
+#include "ofxAVS.h"
+#include "ofxImGui.h"
 
-- **d**: Reload oscilloscope + dynamic movement chain
-- **1-4**: Select individual effects
-- **c**: Clear all effects  
-- **SPACE**: Toggle auto-cycling
-- **r**: Add random effect
+class ofApp : public ofBaseApp {
+    ofxAVS avs;
+    ofxImGui::Gui gui;
+    ofSoundStream soundStream;
 
-The effect chain creates classic AVS-style visuals with stepped transformation artifacts due to the grid-based evaluation in Dynamic Movement.
+    void setup() {
+        gui.setup();
+        avs.setup();
+        // ... audio setup ...
+    }
+
+    void draw() {
+        avs.draw(0, 0, 600, 600);
+        gui.begin();
+        avs.drawUI();
+        gui.end();
+    }
+
+    void audioIn(ofSoundBuffer& buffer) {
+        avs.audioIn(buffer);
+    }
+};
+```

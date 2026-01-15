@@ -1,31 +1,46 @@
-# ofxAVS Example
+# Chain Example
+
+Full-featured AVS visualization with effect chain editing and audio controls.
 
 ## Building
 
-**IMPORTANT**: Always use the OF_ROOT environment variable to specify the openFrameworks path:
-
 ```bash
-export OF_ROOT=/path/to/your/openFrameworks
-cd /path/to/ofxAVS/example
+export OF_ROOT=/path/to/openFrameworks
 make
+make run
 ```
 
-Do NOT modify config.make to hardcode paths - use the environment variable instead to keep the repo clean.
+## Features
 
-## Running
+- **Effect Chain Panel** - View and edit the effect tree
+- **Parameter Panel** - Adjust settings for selected effect
+- **Beat Detector** - Automatic BPM detection with manual override
+- **Audio Controls** - Input/output device selection, mic gain, file playback
+- **Preset Loading** - Drag and drop .avs preset files
+- **Session Persistence** - Effect chain saved between runs
 
-The example demonstrates an oscilloscope effect combined with dynamic movement and feedback:
+## Controls
 
-1. **Clear effect**: Provides feedback trails (only_first=true)
-2. **Oscilloscope**: Draws audio waveform visualization  
-3. **Dynamic Movement**: Applies grid-based transformations (default spiral effect)
+- **Space** - Play/pause audio file
+- **Drag & Drop** - Load .avs presets or audio files
 
-### Controls
+## Audio
 
-- **d**: Reload oscilloscope + dynamic movement chain
-- **1-4**: Select individual effects
-- **c**: Clear all effects  
-- **SPACE**: Toggle auto-cycling
-- **r**: Add random effect
+Select input and output devices from the Audio panel. Supports:
+- Microphone input with adjustable gain
+- Audio file playback (drag and drop)
+- Device selection saved between sessions
 
-The effect chain creates classic AVS-style visuals with stepped transformation artifacts due to the grid-based evaluation in Dynamic Movement.
+## UI Layout
+
+```
+┌──────────────────────────────────────────────────────────────────┐
+│  Chain Panel    │  Parameters Panel         │  Visualization     │
+│  - Beat Detect  │  - Selected effect        │  600x600 output    │
+│  - Effect List  │    controls               │                    │
+│    └─ Effects   │                           │                    │
+│                 │                           │                    │
+├─────────────────┴───────────────────────────┴────────────────────┤
+│  Audio: Input [▼]  Output [▼]   ○ Mic ○ File   Gain [====]       │
+└──────────────────────────────────────────────────────────────────┘
+```
