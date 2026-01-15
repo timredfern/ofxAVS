@@ -30,6 +30,10 @@ help:
 	@echo "  make clean-release   - Remove release artifacts"
 	@echo "  Output: bin/release/chain.app, bin/release/chain.dmg"
 	@echo ""
+	@echo "Release:"
+	@echo "  make release         - Build, package, and upload to Gitea"
+	@echo "  make release VERSION=v1.0.0  - Release with specific version"
+	@echo ""
 	@echo "Info:"
 	@echo "  make app-info        - Show architectures and min OS version"
 
@@ -83,4 +87,8 @@ app-info:
 	otool -l "$$BINARY" 2>/dev/null | grep -A 2 "LC_VERSION_MIN_MACOSX" | grep "version" | sed 's/^/  /' || \
 	echo "  (not found)"
 
-.PHONY: help copy-resources package package-only run-release clean-release app-info
+# Upload release to Gitea
+release: package
+	@cd ../.. && $(SCRIPTS_DIR)/release.sh $(VERSION)
+
+.PHONY: help copy-resources package package-only run-release clean-release app-info release
