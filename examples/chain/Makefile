@@ -28,6 +28,7 @@ help:
 	@echo "  make package-only    - Package existing build (no rebuild)"
 	@echo "  make run-release     - Open the packaged app"
 	@echo "  make clean-release   - Remove release artifacts"
+	@echo "  Output: bin/release/chain.app, bin/release/chain.dmg"
 	@echo ""
 	@echo "Info:"
 	@echo "  make app-info        - Show architectures and min OS version"
