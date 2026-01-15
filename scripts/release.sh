@@ -70,13 +70,24 @@ ensure_tag() {
     fi
 }
 
+# Detect architecture
+detect_arch() {
+    local arch_raw=$(uname -m)
+    case "$arch_raw" in
+        arm64)  echo "arm64" ;;
+        x86_64) echo "intel" ;;
+        *)      echo "$arch_raw" ;;
+    esac
+}
+
 # Build the release DMG
 build_release() {
     echo -e "${GREEN}Building release...${NC}"
     cd "$PROJECT_DIR/examples/chain"
     make package
 
-    DMG_PATH="$PROJECT_DIR/examples/chain/bin/release/chain.dmg"
+    local arch=$(detect_arch)
+    DMG_PATH="$PROJECT_DIR/examples/chain/bin/release/chain-${arch}.dmg"
     if [ ! -f "$DMG_PATH" ]; then
         echo -e "${RED}Error: DMG not found at $DMG_PATH${NC}"
         exit 1
@@ -92,7 +103,8 @@ create_release() {
 
     # Release name without 'v' prefix for display
     local release_name="ofxAVS ${version}"
-    local dmg_name="ofxAVS-${version}-macOS.dmg"
+    local arch=$(detect_arch)
+    local dmg_name="ofxAVS-${version}-macOS-${arch}.dmg"
 
     echo -e "${GREEN}Creating release $version on Gitea...${NC}"
 
@@ -118,7 +130,9 @@ create_release() {
 
 ## Installation
 
-1. Download **ofxAVS-${version}-macOS.dmg** below
+1. Download the DMG for your Mac:
+   - **Apple Silicon** (M1/M2/M3): \`ofxAVS-${version}-macOS-arm64.dmg\`
+   - **Intel**: \`ofxAVS-${version}-macOS-intel.dmg\`
 2. Open the DMG and drag to Applications
 3. Run ofxAVS from Applications
 
@@ -140,8 +154,7 @@ create_release() {
 
 ## Requirements
 
-- macOS 11.0 or later
-- Apple Silicon or Intel Mac"
+- macOS 11.0 or later"
 
     # Create the release
     release_response=$(curl -s -X POST "${GITEA_URL}/api/v1/repos/${REPO}/releases" \

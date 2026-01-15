@@ -9,6 +9,14 @@ BIN_DIR="${2:-.}"
 APP_PATH="$BIN_DIR/${APP_NAME}.app"
 RELEASE_DIR="$BIN_DIR/release"
 
+# Detect architecture
+ARCH_RAW=$(uname -m)
+case "$ARCH_RAW" in
+    arm64)  ARCH="arm64" ;;
+    x86_64) ARCH="intel" ;;
+    *)      ARCH="$ARCH_RAW" ;;
+esac
+
 # Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -82,8 +90,8 @@ else
 fi
 
 # Create styled DMG with Applications symlink
-log_info "Creating DMG..."
-DMG_PATH="$RELEASE_DIR/${APP_NAME}.dmg"
+log_info "Creating DMG for $ARCH..."
+DMG_PATH="$RELEASE_DIR/${APP_NAME}-${ARCH}.dmg"
 DMG_TEMP="$RELEASE_DIR/.dmg-temp.dmg"
 DMG_STAGING="$RELEASE_DIR/.dmg-staging"
 VOLUME_NAME="$APP_NAME"
