@@ -551,6 +551,22 @@ static void drawDropZone(avs::EffectContainer* container, size_t insert_index, f
     ImGui::Unindent(indent);
 }
 
+// Helper to format effect timing for display
+static std::string formatTiming(double us) {
+    double ms = us / 1000.0;
+    char buf[32];
+    if (ms < 0.01) {
+        snprintf(buf, sizeof(buf), "(<0.01ms)");
+    } else if (ms < 1.0) {
+        snprintf(buf, sizeof(buf), "(%.2fms)", ms);
+    } else if (ms < 10.0) {
+        snprintf(buf, sizeof(buf), "(%.1fms)", ms);
+    } else {
+        snprintf(buf, sizeof(buf), "(%.0fms)", ms);
+    }
+    return buf;
+}
+
 void ofxAVS::drawEffectTree(avs::EffectContainer* container, int depth) {
     float indent = depth * 20.0f;
     float drop_width = chain_panel_width - indent - 30;
@@ -588,7 +604,8 @@ void ofxAVS::drawEffectTree(avs::EffectContainer* container, int depth) {
                 ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.4f, 0.4f, 0.6f, 1.0f));
             }
             std::string label = effect->get_plugin_info().name + id;
-            if (ImGui::Selectable(label.c_str(), is_selected, ImGuiSelectableFlags_None, ImVec2(chain_panel_width - indent - 50, 0))) {
+            float selectable_width = show_profiling_ ? chain_panel_width - indent - 120 : chain_panel_width - indent - 50;
+            if (ImGui::Selectable(label.c_str(), is_selected, ImGuiSelectableFlags_None, ImVec2(selectable_width, 0))) {
                 selected_ = effect;
             }
             if (is_selected) {
@@ -607,6 +624,12 @@ void ofxAVS::drawEffectTree(avs::EffectContainer* container, int depth) {
             if (ImGui::BeginPopupContextItem()) {
                 drawEffectContextMenu(effect);
                 ImGui::EndPopup();
+            }
+
+            // Show timing after selectable (so it doesn't affect context menu)
+            if (show_profiling_) {
+                ImGui::SameLine();
+                ImGui::TextDisabled("%s", formatTiming(effect->get_last_render_time_us()).c_str());
             }
 
             // Recurse if expanded
@@ -621,7 +644,8 @@ void ofxAVS::drawEffectTree(avs::EffectContainer* container, int depth) {
                 ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.4f, 0.4f, 0.6f, 1.0f));
             }
             std::string label = effect->get_plugin_info().name + id;
-            if (ImGui::Selectable(label.c_str(), is_selected)) {
+            float selectable_width = show_profiling_ ? chain_panel_width - indent - 100 : 0;
+            if (ImGui::Selectable(label.c_str(), is_selected, ImGuiSelectableFlags_None, ImVec2(selectable_width, 0))) {
                 selected_ = effect;
             }
             if (is_selected) {
@@ -640,6 +664,12 @@ void ofxAVS::drawEffectTree(avs::EffectContainer* container, int depth) {
             if (ImGui::BeginPopupContextItem()) {
                 drawEffectContextMenu(effect);
                 ImGui::EndPopup();
+            }
+
+            // Show timing after selectable (so it doesn't affect context menu)
+            if (show_profiling_) {
+                ImGui::SameLine();
+                ImGui::TextDisabled("%s", formatTiming(effect->get_last_render_time_us()).c_str());
             }
         }
 

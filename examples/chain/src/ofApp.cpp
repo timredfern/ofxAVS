@@ -507,6 +507,9 @@ void ofApp::keyPressed(int key){
             }
         }
     }
+    if (key == 'p' || key == 'P') {
+        avs.toggleProfiling();
+    }
 }
 
 void ofApp::keyReleased(int key){}

@@ -17,6 +17,7 @@ This project is a modern C++ port that maintains compatibility with original AVS
 - **Beat detection** - Automatic BPM detection and beat-triggered effects
 - **Session persistence** - Effect chains saved/restored between sessions
 - **Audio device selection** - Choose input/output devices at runtime
+- **Effect profiling** - Press P to show per-effect render times
 
 ## Screenshots
 

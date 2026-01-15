@@ -22,6 +22,7 @@ make run
 ## Controls
 
 - **Space** - Play/pause audio file
+- **P** - Toggle effect profiling (shows render time per effect)
 - **Drag & Drop** - Load .avs presets or audio files
 
 ## Audio

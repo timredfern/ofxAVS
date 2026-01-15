@@ -68,6 +68,10 @@ public:
     // Effect access
     const std::vector<AvailableEffectInfo>& getAvailableEffects() const { return available_effects; }
 
+    // Profiling - toggle timing display with 'P' key
+    void toggleProfiling() { show_profiling_ = !show_profiling_; }
+    bool isProfilingEnabled() const { return show_profiling_; }
+
 private:
     // Core AVS components
     std::unique_ptr<avs::DefaultRenderer> renderer;
@@ -107,6 +111,9 @@ private:
     int chain_panel_height = 480;
     int parameters_panel_width = 500;  // Fits 480-wide child + padding
     int parameters_panel_height = 480;
+
+    // Profiling
+    bool show_profiling_ = false;
 
     // Internal methods
     void initializeAvailableEffects();
