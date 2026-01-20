@@ -6,34 +6,31 @@
 
 //--------------------------------------------------------------
 void ofApp::setup(){
-    ofSetWindowTitle("AVS Simple Example");
-    ofSetWindowShape(800, 640);
+    ofSetWindowTitle("AVS Simple");
+    ofSetWindowShape(640, 480);
+    ofSetFrameRate(60);
 
-    audioInitialized = false;
-
-    gui.setup();
     avs.setup();
 
-    // Setup audio input
-    vector<ofSoundDevice> devices = soundStream.getDeviceList();
+    // Add an oscilloscope effect
+    avs.addEffect("Oscilloscope");
 
+    // Setup audio input (mic)
     ofSoundStreamSettings settings;
     settings.sampleRate = 44100;
-    settings.numInputChannels = 1;
+    settings.numInputChannels = 2;
     settings.numOutputChannels = 0;
     settings.bufferSize = 576;
     settings.setInListener(this);
 
+    auto devices = soundStream.getDeviceList();
     for (auto& device : devices) {
         if (device.inputChannels > 0) {
             settings.setInDevice(device);
-            try {
-                soundStream.setup(settings);
+            if (soundStream.setup(settings)) {
                 audioInitialized = true;
-                ofLogNotice() << "Audio setup with: " << device.name;
+                ofLogNotice() << "Audio: " << device.name;
                 break;
-            } catch (...) {
-                ofLogWarning() << "Failed: " << device.name;
             }
         }
     }
@@ -51,14 +48,7 @@ void ofApp::update(){
 //--------------------------------------------------------------
 void ofApp::draw(){
     ofBackground(0);
-    avs.draw(100, 20, 600, 600);
-
-    gui.begin();
-    avs.drawUI();
-    gui.end();
-
-    ofSetColor(255);
-    ofDrawBitmapString("FPS: " + ofToString(ofGetFrameRate(), 1), 20, ofGetHeight() - 20);
+    avs.draw(0, 0, ofGetWidth(), ofGetHeight());
 }
 
 //--------------------------------------------------------------
@@ -71,19 +61,17 @@ void ofApp::exit(){
     if (audioInitialized) {
         soundStream.stop();
         soundStream.close();
-        audioInitialized = false;
     }
 }
 
 //--------------------------------------------------------------
-void ofApp::keyPressed(int key){}
-void ofApp::keyReleased(int key){}
-void ofApp::mouseMoved(int x, int y){}
-void ofApp::mouseDragged(int x, int y, int button){}
-void ofApp::mousePressed(int x, int y, int button){}
-void ofApp::mouseReleased(int x, int y, int button){}
-void ofApp::mouseEntered(int x, int y){}
-void ofApp::mouseExited(int x, int y){}
-void ofApp::windowResized(int w, int h){}
-void ofApp::dragEvent(ofDragInfo dragInfo){}
-void ofApp::gotMessage(ofMessage msg){}
+void ofApp::keyPressed(int key){
+    if (key == 'f' || key == 'F') {
+        ofToggleFullscreen();
+    }
+}
+
+//--------------------------------------------------------------
+void ofApp::windowResized(int w, int h){
+    // AVS will adapt to new size on next draw
+}
