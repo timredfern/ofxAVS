@@ -6,19 +6,18 @@
 
 //--------------------------------------------------------------
 void ofApp::setup(){
-    ofSetWindowTitle("AVS Simple");
+    ofSetWindowTitle("AVS_simple");
     ofSetWindowShape(640, 480);
     ofSetFrameRate(60);
 
     avs.setup();
-
-    // Add an oscilloscope effect
+    avs.getRoot()->parameters().set_bool("clear_each_frame", true);
     avs.addEffect("Oscilloscope");
 
-    // Setup audio input (mic)
+    // Setup audio input (mic) - use 1 channel for compatibility
     ofSoundStreamSettings settings;
     settings.sampleRate = 44100;
-    settings.numInputChannels = 2;
+    settings.numInputChannels = 1;
     settings.numOutputChannels = 0;
     settings.bufferSize = 576;
     settings.setInListener(this);
@@ -53,7 +52,12 @@ void ofApp::draw(){
 
 //--------------------------------------------------------------
 void ofApp::audioIn(ofSoundBuffer& buffer) {
-    avs.audioIn(buffer);
+    // Apply 5x gain for better visibility
+    ofSoundBuffer amplified = buffer;
+    for (size_t i = 0; i < amplified.size(); i++) {
+        amplified[i] = ofClamp(amplified[i] * 5.0f, -1.0f, 1.0f);
+    }
+    avs.audioIn(amplified);
 }
 
 //--------------------------------------------------------------

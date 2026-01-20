@@ -1,4 +1,4 @@
-# Chain Example
+# AVS_standard
 
 Full-featured AVS visualization with effect chain editing and audio controls.
 

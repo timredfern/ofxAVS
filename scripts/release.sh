@@ -84,11 +84,11 @@ detect_arch() {
 # Build the release DMG
 build_release() {
     echo -e "${GREEN}Building release...${NC}" >&2
-    cd "$PROJECT_DIR/examples/chain"
+    cd "$PROJECT_DIR/examples/AVS_standard"
     make package >&2
 
     local arch=$(detect_arch)
-    local dmg="$PROJECT_DIR/examples/chain/bin/release/chain-${arch}.dmg"
+    local dmg="$PROJECT_DIR/examples/AVS_standard/bin/release/AVS_standard-${arch}.dmg"
     if [ ! -f "$dmg" ]; then
         echo -e "${RED}Error: DMG not found at $dmg${NC}" >&2
         exit 1

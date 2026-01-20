@@ -12,11 +12,17 @@ static std::string getAppSettingsPath() {
 
 //--------------------------------------------------------------
 void ofApp::setup(){
-    ofSetWindowTitle("AVS Chain Example");
+    ofSetWindowTitle("AVS_standard");
     ofSetWindowShape(1520, 640);  // Wider to fit SuperScope UI (233x214)
 
     gui.setup();
     avs.setup();
+
+    // Load previous AVS session (or start with empty chain)
+    if (!avs.loadSession()) {
+        avs.addEffect("Brightness");
+        avs.addEffect("Oscilloscope");
+    }
 
     // Load app settings first (to get saved device names)
     loadAppSettings();
@@ -435,6 +441,7 @@ void ofApp::audioOut(ofSoundBuffer& buffer) {
 
 //--------------------------------------------------------------
 void ofApp::exit(){
+    avs.saveSession();
     saveAppSettings();
 
     if (audioInitialized) {

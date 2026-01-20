@@ -28,7 +28,7 @@ help:
 	@echo "  make package-only    - Package existing build (no rebuild)"
 	@echo "  make run-release     - Open the packaged app"
 	@echo "  make clean-release   - Remove release artifacts"
-	@echo "  Output: bin/release/chain.app, bin/release/chain.dmg"
+	@echo "  Output: bin/release/AVS_standard.app, bin/release/AVS_standard.dmg"
 	@echo ""
 	@echo "Release:"
 	@echo "  make release         - Build, package, and upload to Gitea"

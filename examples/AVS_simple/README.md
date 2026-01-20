@@ -1,4 +1,4 @@
-# Simple Example
+# AVS_simple
 
 Minimal AVS visualization example with microphone input.
 
@@ -16,7 +16,7 @@ make run
 - Microphone input (auto-selects first available device)
 - Effect parameter editing
 
-This example demonstrates the minimal code needed to integrate ofxAVS. For a full-featured example with audio device selection and file playback, see the `chain` example.
+This example demonstrates the minimal code needed to integrate ofxAVS. For a full-featured example with audio device selection and file playback, see `AVS_standard`.
 
 ## Code
 

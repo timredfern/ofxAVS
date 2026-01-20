@@ -33,18 +33,6 @@ ofxAVS::ofxAVS() : fft(nullptr) {
 }
 
 ofxAVS::~ofxAVS() {
-    // Save session before cleanup
-    if (renderer && renderer->root()) {
-        std::string sessionPath = getSessionPath();
-        // Ensure data directory exists
-        ofDirectory::createDirectory(ofToDataPath(""), false, true);
-        if (renderer->root()->save_preset(sessionPath)) {
-            ofLogNotice("ofxAVS") << "Saved session to " << sessionPath;
-        } else {
-            ofLogWarning("ofxAVS") << "Failed to save session: " << avs::Preset::last_error();
-        }
-    }
-
     // Clear renderer to ensure proper cleanup
     renderer.reset();
 
@@ -86,23 +74,30 @@ void ofxAVS::setup() {
 
     // Initialize available effects list
     initializeAvailableEffects();
+}
 
-    // Try to load previous session, otherwise add default effects
+bool ofxAVS::loadSession() {
     std::string sessionPath = getSessionPath();
-    if (ofFile::doesFileExist(sessionPath)) {
-        if (renderer->root()->load_preset(sessionPath)) {
-            ofLogNotice("ofxAVS") << "Loaded session from " << sessionPath;
-        } else {
-            ofLogWarning("ofxAVS") << "Failed to load session: " << avs::Preset::last_error();
-            // Fall through to add defaults
-            addEffect("Brightness");
-            addEffect("Oscilloscope");
-        }
-    } else {
-        // No previous session - add default effects
-        addEffect("Brightness");
-        addEffect("Oscilloscope");
+    if (!ofFile::doesFileExist(sessionPath)) {
+        return false;
     }
+    if (renderer->root()->load_preset(sessionPath)) {
+        ofLogNotice("ofxAVS") << "Loaded session from " << sessionPath;
+        return true;
+    }
+    ofLogWarning("ofxAVS") << "Failed to load session: " << avs::Preset::last_error();
+    return false;
+}
+
+bool ofxAVS::saveSession() {
+    std::string sessionPath = getSessionPath();
+    ofDirectory::createDirectory(ofToDataPath(""), false, true);
+    if (renderer->root()->save_preset(sessionPath)) {
+        ofLogNotice("ofxAVS") << "Saved session to " << sessionPath;
+        return true;
+    }
+    ofLogWarning("ofxAVS") << "Failed to save session: " << avs::Preset::last_error();
+    return false;
 }
 
 void ofxAVS::update() {

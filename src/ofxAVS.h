@@ -42,6 +42,13 @@ public:
     void audioIn(ofSoundBuffer& buffer);  // Process audio with FFT
     void setAudioData(const avs::AudioData& data);  // Direct access if needed
 
+    // Session persistence (call explicitly - not automatic)
+    bool loadSession();  // Load from data/session.json
+    bool saveSession();  // Save to data/session.json
+
+    // Root effect list access
+    avs::EffectListRoot* getRoot() { return renderer->root(); }
+
     // Rendering
     void draw(int x, int y, int width, int height);
     void drawUI();
