@@ -1,9 +1,19 @@
 ## What's New
 
-- Add Color Modifier effect (scripted color channel modification)
-- Add Color Clip effect (replace pixels by color threshold)
-- Add Water Bump effect (water ripple displacement)
+**New Effects:**
+- Color Modifier (scripted color channel modification)
+- Color Clip (replace pixels by color threshold)
+- Water Bump (water ripple displacement)
 - 47 of 52 portable effects now implemented (90%)
+
+**Examples Refactored:**
+- Renamed `simple` → `AVS_simple` (minimal full-window visualizer)
+- Renamed `chain` → `AVS_standard` (full UI with effect editing)
+- AVS_simple now works standalone with mic input, no UI panels
+
+**API Changes:**
+- Session load/save now explicit via `loadSession()`/`saveSession()`
+- Added `getRoot()` to access effect chain parameters
 
 ## Installation
 
@@ -11,7 +21,7 @@
    - **Apple Silicon** (M1/M2/M3): `arm64` version
    - **Intel**: `intel` version
 2. Open the DMG and drag to Applications
-3. Run ofxAVS from Applications
+3. Run AVS_standard from Applications
 
 ## Controls
 
