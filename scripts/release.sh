@@ -119,8 +119,13 @@ create_release() {
     else
         echo -e "${GREEN}Creating new release $version...${NC}"
 
-        # Build release body
-        local body="macOS application for AVS (Advanced Visualization Studio) - the legendary Winamp visualizer.
+        # Build release body from RELEASE_NOTES.md or use default
+        local body
+        if [ -f "$PROJECT_DIR/RELEASE_NOTES.md" ]; then
+            body=$(cat "$PROJECT_DIR/RELEASE_NOTES.md")
+            echo -e "${GREEN}Using RELEASE_NOTES.md${NC}"
+        else
+            body="macOS application for AVS (Advanced Visualization Studio) - the legendary Winamp visualizer.
 
 ## Installation
 
@@ -130,25 +135,10 @@ create_release() {
 2. Open the DMG and drag to Applications
 3. Run ofxAVS from Applications
 
-## Features
-
-- 46+ effects ported from original AVS
-- Load original .avs preset files
-- Real-time audio visualization (mic or audio file)
-- Beat detection with BPM display
-- Effect profiling (press P)
-
-## Controls
-
-| Key | Action |
-|-----|--------|
-| Space | Play/pause audio file |
-| P | Toggle effect profiling |
-| Drag & drop | Load .avs presets or audio files |
-
 ## Requirements
 
 - macOS 11.0 or later"
+        fi
 
         # Create the release
         release_response=$(curl -s -X POST "${GITEA_URL}/api/v1/repos/${REPO}/releases" \
