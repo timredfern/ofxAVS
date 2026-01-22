@@ -1,19 +1,21 @@
 ## What's New
 
+**Bug Fixes:**
+- Fix color display from binary presets (colors were showing with R and B swapped - e.g., orange appeared blue)
+- Fix crash when deleting non-empty effect lists
+- Fix Bump effect to match original AVS behavior
+
 **New Effects:**
-- Color Modifier (scripted color channel modification)
-- Color Clip (replace pixels by color threshold)
-- Water Bump (water ripple displacement)
-- 47 of 52 portable effects now implemented (90%)
+- Multi Delay (frame buffer delay with multiple taps)
+- Video Delay (single-tap frame buffer delay)
+- 49 of 51 portable effects now implemented (96%)
 
-**Examples Refactored:**
-- Renamed `simple` → `AVS_simple` (minimal full-window visualizer)
-- Renamed `chain` → `AVS_standard` (full UI with effect editing)
-- AVS_simple now works standalone with mic input, no UI panels
+**Script Engine:**
+- Added 27 EEL functions: `if`, `above`, `below`, `equal`, `sign`, `sqr`, `invsqrt`, `sigmoid`, `band`, `bor`, `bnot`, `gettime`, `getosc`, `getspec`, `getkbmouse`, `megabuf`, `gmegabuf`, `assign`, `exec2`, `exec3`, `loop`, `while`, `sin`, `cos`, `tan`, `asin`, `acos`, `atan`
+- Added modulo (`%`) and bitwise (`&`, `|`) operators
 
-**API Changes:**
-- Session load/save now explicit via `loadSession()`/`saveSession()`
-- Added `getRoot()` to access effect chain parameters
+**Documentation:**
+- Added macOS security instructions for unsigned app
 
 ## Installation
 
