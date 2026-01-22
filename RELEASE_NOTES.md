@@ -31,6 +31,13 @@
 | P | Toggle effect profiling |
 | Drag & drop | Load .avs presets or audio files |
 
+## macOS Security
+
+The app is not signed with an Apple Developer certificate. On first launch:
+1. macOS will say it "can't be opened because Apple cannot check it for malicious software"
+2. Go to **System Settings → Privacy & Security**
+3. Scroll down and click **Open Anyway** next to the AVS_standard message
+
 ## Requirements
 
 - macOS 11.0 or later

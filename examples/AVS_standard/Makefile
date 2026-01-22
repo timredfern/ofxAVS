@@ -87,8 +87,8 @@ app-info:
 	otool -l "$$BINARY" 2>/dev/null | grep -A 2 "LC_VERSION_MIN_MACOSX" | grep "version" | sed 's/^/  /' || \
 	echo "  (not found)"
 
-# Upload release to Gitea
-release: package
+# Upload release to Gitea (release.sh handles the build)
+release:
 	@cd ../.. && scripts/release.sh $(VERSION)
 
 .PHONY: help copy-resources package package-only run-release clean-release app-info release
