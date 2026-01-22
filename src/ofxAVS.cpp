@@ -271,21 +271,31 @@ void ofxAVS::addEffect(const std::string& effectName, avs::EffectContainer* pare
     }
 }
 
+void ofxAVS::cleanupPointersToEffect(avs::EffectBase* effect) {
+    // Clear selected_ if it points to this effect
+    if (selected_ == effect) {
+        selected_ = nullptr;
+    }
+
+    // Remove from collapsed_containers_ if it's a container
+    if (auto* container = dynamic_cast<avs::EffectContainer*>(effect)) {
+        collapsed_containers_.erase(container);
+
+        // Recursively clean up children
+        for (size_t i = 0; i < container->child_count(); i++) {
+            cleanupPointersToEffect(container->get_child(i));
+        }
+    }
+}
+
 void ofxAVS::removeEffect(avs::EffectBase* effect) {
     if (!effect) return;
 
-    // Find parent container
-    avs::EffectContainer* parent = findParentContainer(effect);
-    if (!parent) return;
+    // Clean up UI pointers before removal
+    cleanupPointersToEffect(effect);
 
-    int index = parent->find_child_index(effect);
-    if (index >= 0) {
-        // Clear selection if we're removing the selected effect
-        if (selected_ == effect) {
-            selected_ = nullptr;
-        }
-        parent->remove_child(static_cast<size_t>(index));
-    }
+    // Use library method to remove (don't need return value here, keyboard handler handles selection)
+    renderer->root()->remove_effect(effect);
 }
 
 void ofxAVS::duplicateEffect(avs::EffectBase* effect) {
@@ -916,20 +926,17 @@ void ofxAVS::handleEffectListKeyboard() {
     // Delete key: remove selected effect
     if (ImGui::IsKeyPressed(ImGuiKey_Delete) || ImGui::IsKeyPressed(ImGuiKey_Backspace)) {
         if (selected_effect && selected_effect != renderer->root()) {
-            // Get next effect before removing so we can select it after
-            auto* next = getNextVisibleEffect(selected_effect);
-            auto* prev = getPrevVisibleEffect(selected_effect);
+            // Get siblings before removal (effect will be destroyed)
+            auto* next = renderer->root()->get_sibling_after(selected_effect);
+            auto* prev = renderer->root()->get_sibling_before(selected_effect);
+            auto* parent = renderer->root()->find_parent_of(selected_effect);
 
-            removeEffect(selected_effect);
+            // Clean up UI pointers and remove
+            cleanupPointersToEffect(selected_effect);
+            renderer->root()->remove_effect(selected_effect);
 
-            // Select next effect, or previous if there's no next
-            if (next && next != selected_effect) {
-                selected_ = next;
-            } else if (prev) {
-                selected_ = prev;
-            } else {
-                selected_ = renderer->root();
-            }
+            // Select next sibling, prev sibling, or parent
+            selected_ = next ? next : (prev ? prev : (parent ? parent : renderer->root()));
         }
     }
 }

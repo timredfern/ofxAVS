@@ -132,6 +132,7 @@ private:
     // Tree view helpers
     void drawEffectTree(avs::EffectContainer* container, int depth = 0);
     avs::EffectContainer* findParentContainer(avs::EffectBase* effect, avs::EffectContainer* searchIn = nullptr);
+    void cleanupPointersToEffect(avs::EffectBase* effect);
 
     // Popup menu helpers
     void drawAddEffectMenu(avs::EffectContainer* targetContainer);
