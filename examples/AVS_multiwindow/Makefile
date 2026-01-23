@@ -31,8 +31,8 @@ help:
 	@echo "  Output: bin/release/AVS_standard.app, bin/release/AVS_standard.dmg"
 	@echo ""
 	@echo "Release:"
-	@echo "  make release         - Build, package, and upload to Gitea"
-	@echo "  make release VERSION=v1.0.0  - Release with specific version"
+	@echo "  make release VERSION=v1.0.0  - Build, package, and upload to Gitea"
+	@echo "  make update-release-notes VERSION=v1.0.0  - Update release notes on Gitea"
 	@echo ""
 	@echo "Info:"
 	@echo "  make app-info        - Show architectures and min OS version"
@@ -48,6 +48,7 @@ copy-resources:
 
 # App packaging targets
 SCRIPTS_DIR = ../../scripts
+PROJECT_DIR = ../..
 APP_NAME = $(shell basename $(CURDIR))
 
 # Build release and package as distributable .app
@@ -91,4 +92,17 @@ app-info:
 release:
 	@$(SCRIPTS_DIR)/release.sh $(VERSION)
 
-.PHONY: help copy-resources package package-only run-release clean-release app-info release
+# Update release notes on Gitea for existing release
+update-release-notes:
+	@if [ -z "$(VERSION)" ]; then echo "Usage: make update-release-notes VERSION=v1.0.0"; exit 1; fi
+	@RELEASE_ID=$$(curl -s "https://git.eclectronics.org/api/v1/repos/timredfern/ofxAVS/releases/tags/$(VERSION)" | jq -r '.id'); \
+	if [ "$$RELEASE_ID" = "null" ] || [ -z "$$RELEASE_ID" ]; then \
+		echo "Error: Release $(VERSION) not found"; exit 1; \
+	fi; \
+	jq -n --rawfile body $(PROJECT_DIR)/RELEASE_NOTES.md '{body: $$body}' | \
+	curl -s -X PATCH "https://git.eclectronics.org/api/v1/repos/timredfern/ofxAVS/releases/$$RELEASE_ID" \
+		-H "Authorization: token $$GITEA_TOKEN" \
+		-H "Content-Type: application/json" \
+		-d @- | jq -r '"Updated: " + .html_url'
+
+.PHONY: help copy-resources package package-only run-release clean-release app-info release update-release-notes
