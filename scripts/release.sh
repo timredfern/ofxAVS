@@ -81,14 +81,29 @@ detect_arch() {
     esac
 }
 
-# Build the release DMG
+# Detect example name from current directory
+detect_example() {
+    local cwd=$(pwd)
+    if [[ "$cwd" == */examples/* ]]; then
+        basename "$cwd"
+    else
+        echo ""
+    fi
+}
+
+# Build the release DMG (run from example directory)
 build_release() {
-    echo -e "${GREEN}Building release...${NC}" >&2
-    cd "$PROJECT_DIR/examples/AVS_standard"
+    local example=$(detect_example)
+    if [ -z "$example" ]; then
+        echo -e "${RED}Error: Run this script from an example directory (e.g., examples/AVS_standard)${NC}" >&2
+        exit 1
+    fi
+
+    echo -e "${GREEN}Building $example...${NC}" >&2
     make package >&2
 
     local arch=$(detect_arch)
-    local dmg="$PROJECT_DIR/examples/AVS_standard/bin/release/AVS_standard-${arch}.dmg"
+    local dmg="$(pwd)/bin/release/${example}-${arch}.dmg"
     if [ ! -f "$dmg" ]; then
         echo -e "${RED}Error: DMG not found at $dmg${NC}" >&2
         exit 1
@@ -105,7 +120,10 @@ create_release() {
     # Release name without 'v' prefix for display
     local release_name="ofxAVS ${version}"
     local arch=$(detect_arch)
-    local dmg_name="ofxAVS-${version}-macOS-${arch}.dmg"
+    local example=$(detect_example)
+    # Strip AVS_ prefix for cleaner name: AVS_standard -> standard
+    local example_short="${example#AVS_}"
+    local dmg_name="ofxAVS-${example_short}-${version}-macOS-${arch}.dmg"
 
     echo -e "${GREEN}Uploading $dmg_name to release $version...${NC}"
 
@@ -181,8 +199,6 @@ create_release() {
 # Main
 main() {
     check_requirements
-
-    cd "$PROJECT_DIR"
 
     # Check for Gitea token
     if [ -z "$GITEA_TOKEN" ]; then

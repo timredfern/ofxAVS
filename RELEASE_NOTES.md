@@ -1,5 +1,12 @@
 ## What's New
 
+**New: ofxAVS-multiwindow**
+- Separate chain and output windows
+- Output window is resizable with FPS in title bar
+- Press Space for fullscreen output
+- Right-click "Params" opens effect parameters in separate windows
+- Multiple parameter windows can be open simultaneously
+
 **Bug Fixes:**
 - Fix color display from binary presets (colors were showing with R and B swapped - e.g., orange appeared blue)
 - Fix crash when deleting non-empty effect lists
@@ -19,11 +26,13 @@
 
 ## Installation
 
-1. Download the DMG for your Mac:
+1. Choose your variant:
+   - **ofxAVS-standard**: Single window with effect chain, parameters, and visualization
+   - **ofxAVS-multiwindow**: Separate windows for chain, output, and parameters
+2. Download the DMG for your Mac architecture:
    - **Apple Silicon** (M1/M2/M3): `arm64` version
    - **Intel**: `intel` version
-2. Open the DMG and drag to Applications
-3. Run AVS_standard from Applications
+3. Open the DMG and drag to Applications
 
 ## Controls
 
@@ -35,10 +44,10 @@
 
 ## macOS Security
 
-The app is not signed with an Apple Developer certificate. On first launch:
+The apps are not signed with an Apple Developer certificate. On first launch:
 1. macOS will say it "can't be opened because Apple cannot check it for malicious software"
 2. Go to **System Settings → Privacy & Security**
-3. Scroll down and click **Open Anyway** next to the AVS_standard message
+3. Scroll down and click **Open Anyway** next to the app name
 
 ## Requirements
 
