@@ -1,5 +1,7 @@
 # ofxAVS
 
+![ofxAVS multiWindow](images/AVS_multiwindow.png)
+
 OpenFrameworks addon for AVS (Advanced Visualization Studio) - bringing Nullsoft's legendary Winamp visualizer to creative coding.
 
 ## What is AVS?
