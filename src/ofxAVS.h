@@ -17,6 +17,7 @@
 #include <vector>
 #include <unordered_set>
 #include <memory>
+#include <functional>
 
 // FFT mode selection:
 // Define AVS_ENHANCED_FFT for modern processing (2048 samples, smoothing, dB scale)
@@ -79,6 +80,13 @@ public:
     void toggleProfiling() { show_profiling_ = !show_profiling_; }
     bool isProfilingEnabled() const { return show_profiling_; }
 
+    // Callback for opening parameter windows (for multi-window apps)
+    using OpenParamsCallback = std::function<void(avs::Configurable*)>;
+    void setOpenParamsCallback(OpenParamsCallback cb) { on_open_params_callback_ = cb; }
+
+    // Draw only the chain panel (for multi-window apps that handle params separately)
+    void drawChainPanel() { drawChainPanelInternal(); }
+
 private:
     // Core AVS components
     std::unique_ptr<avs::DefaultRenderer> renderer;
@@ -122,11 +130,14 @@ private:
     // Profiling
     bool show_profiling_ = false;
 
+    // Callback for "Params" menu item
+    OpenParamsCallback on_open_params_callback_;
+
     // Internal methods
     void initializeAvailableEffects();
 
     // UI rendering methods
-    void drawChainPanel();
+    void drawChainPanelInternal();
     void drawParametersPanel();
 
     // Tree view helpers

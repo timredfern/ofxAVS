@@ -249,7 +249,7 @@ void ofxAVS::draw(int x, int y, int w, int h) {
 }
 
 void ofxAVS::drawUI() {
-    drawChainPanel();
+    drawChainPanelInternal();
     drawParametersPanel();
     avs_ui::renderExpressionHelpPopup();  // Render help popup if open
 }
@@ -438,7 +438,7 @@ void ofxAVS::initializeAvailableEffects() {
     }
 }
 
-void ofxAVS::drawChainPanel() {
+void ofxAVS::drawChainPanelInternal() {
     ImGui::SetNextWindowPos(ImVec2(10, 10));
     ImGui::SetNextWindowSize(ImVec2(chain_panel_width, chain_panel_height));
 
@@ -467,6 +467,16 @@ void ofxAVS::drawChainPanel() {
         }
         if (beat_selected) {
             ImGui::PopStyleColor();
+        }
+
+        // Context menu for beat detector
+        if (ImGui::BeginPopupContextItem("beat_context")) {
+            if (ImGui::MenuItem("Params")) {
+                if (on_open_params_callback_) {
+                    on_open_params_callback_(beat_detector_.get());
+                }
+            }
+            ImGui::EndPopup();
         }
 
         ImGui::Separator();
@@ -501,6 +511,12 @@ void ofxAVS::drawChainPanel() {
             // Context menu for root
             if (ImGui::BeginPopupContextItem("chain_context")) {
                 drawAddEffectMenu(root);
+                ImGui::Separator();
+                if (ImGui::MenuItem("Params")) {
+                    if (on_open_params_callback_) {
+                        on_open_params_callback_(root);
+                    }
+                }
                 ImGui::EndPopup();
             }
 
@@ -774,6 +790,12 @@ void ofxAVS::drawEffectContextMenu(avs::EffectBase* effect) {
     }
     if (ImGui::MenuItem("Move Down", nullptr, false, parent && index < static_cast<int>(parent->child_count()) - 1)) {
         moveEffectDown(effect);
+    }
+    ImGui::Separator();
+    if (ImGui::MenuItem("Params")) {
+        if (on_open_params_callback_) {
+            on_open_params_callback_(effect);
+        }
     }
     ImGui::Separator();
     if (ImGui::MenuItem("Remove")) {
