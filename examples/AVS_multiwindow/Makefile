@@ -89,6 +89,6 @@ app-info:
 
 # Upload release to Gitea (release.sh handles the build)
 release:
-	@cd ../.. && scripts/release.sh $(VERSION)
+	@$(SCRIPTS_DIR)/release.sh $(VERSION)
 
 .PHONY: help copy-resources package package-only run-release clean-release app-info release

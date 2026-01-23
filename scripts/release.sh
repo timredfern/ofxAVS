@@ -1,9 +1,11 @@
 #!/bin/bash
 # Release script for ofxAVS
 # Creates a Gitea release and uploads the DMG
+# Run from an example directory (e.g., examples/AVS_standard)
 
 set -e
 
+START_DIR="$(pwd)"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 GITEA_URL="https://git.eclectronics.org"
@@ -81,11 +83,10 @@ detect_arch() {
     esac
 }
 
-# Detect example name from current directory
+# Detect example name from starting directory
 detect_example() {
-    local cwd=$(pwd)
-    if [[ "$cwd" == */examples/* ]]; then
-        basename "$cwd"
+    if [[ "$START_DIR" == */examples/* ]]; then
+        basename "$START_DIR"
     else
         echo ""
     fi
@@ -100,10 +101,11 @@ build_release() {
     fi
 
     echo -e "${GREEN}Building $example...${NC}" >&2
+    cd "$START_DIR"
     make package >&2
 
     local arch=$(detect_arch)
-    local dmg="$(pwd)/bin/release/${example}-${arch}.dmg"
+    local dmg="$START_DIR/bin/release/${example}-${arch}.dmg"
     if [ ! -f "$dmg" ]; then
         echo -e "${RED}Error: DMG not found at $dmg${NC}" >&2
         exit 1
