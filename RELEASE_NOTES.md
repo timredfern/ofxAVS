@@ -1,28 +1,10 @@
 ## What's New
 
-**New: ofxAVS-multiwindow**
-- Separate chain and output windows
-- Output window is resizable with FPS in title bar
-- Press Space for fullscreen output
-- Right-click "Params" opens effect parameters in separate windows
-- Multiple parameter windows can be open simultaneously
-
-**Bug Fixes:**
-- Fix color display from binary presets (colors were showing with R and B swapped - e.g., orange appeared blue)
-- Fix crash when deleting non-empty effect lists
-- Fix Bump effect to match original AVS behavior
-
-**New Effects:**
-- Multi Delay (frame buffer delay with multiple taps)
-- Video Delay (single-tap frame buffer delay)
-- 49 of 51 portable effects now implemented (96%)
-
-**Script Engine:**
-- Added 27 EEL functions: `if`, `above`, `below`, `equal`, `sign`, `sqr`, `invsqrt`, `sigmoid`, `band`, `bor`, `bnot`, `gettime`, `getosc`, `getspec`, `getkbmouse`, `megabuf`, `gmegabuf`, `assign`, `exec2`, `exec3`, `loop`, `while`, `sin`, `cos`, `tan`, `asin`, `acos`, `atan`
-- Added modulo (`%`) and bitwise (`&`, `|`) operators
+**UI Improvements:**
+- Parameters panel now shows effect name in window title (saves vertical space)
 
 **Documentation:**
-- Added macOS security instructions for unsigned app
+- Updated build instructions
 
 ## Installation
 
