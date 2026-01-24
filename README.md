@@ -43,6 +43,9 @@ The addon provides a complete visualization environment:
 ### Building
 
 ```bash
+# install openFrameworks
+# https://github.com/openframeworks/openFrameworks/blob/master/INSTALL_FROM_GITHUB.md
+
 # Set OpenFrameworks path
 export OF_ROOT=/path/to/openFrameworks
 
