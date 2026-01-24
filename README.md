@@ -1,7 +1,5 @@
 # ofxAVS
 
-![ofxAVS multiWindow](images/AVS_multiwindow.png)
-
 OpenFrameworks addon for AVS (Advanced Visualization Studio) - bringing Nullsoft's legendary Winamp visualizer to creative coding.
 
 ## What is AVS?
@@ -22,6 +20,8 @@ This project is a modern C++ port that maintains compatibility with original AVS
 - **Effect profiling** - Press P to show per-effect render times
 
 ## Screenshots
+
+![ofxAVS multiWindow](images/AVS_multiwindow.png)
 
 The addon provides a complete visualization environment:
 - Effect chain panel with drag-drop reordering
