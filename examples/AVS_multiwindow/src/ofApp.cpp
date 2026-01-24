@@ -109,14 +109,11 @@ void ofApp::openParamWindow(avs::Configurable* configurable) {
         }
     }
 
-    // Create new window
+    // Create new window (no context sharing needed - just ImGui UI)
     ofGLFWWindowSettings settings;
     settings.setSize(500, 460);
     settings.resizable = false;
     settings.title = configurable->get_display_name();
-    if (chain_window_) {
-        settings.shareContextWith = chain_window_;
-    }
 
     auto window = ofCreateWindow(settings);
 
@@ -127,8 +124,22 @@ void ofApp::openParamWindow(avs::Configurable* configurable) {
     info->effect_id = reinterpret_cast<uintptr_t>(configurable);
 
     ofAddListener(window->events().draw, this, &ofApp::drawParamWindows);
+    ofAddListener(window->events().exit, this, &ofApp::onParamWindowClose);
 
     param_windows_.push_back(std::move(info));
+}
+
+//--------------------------------------------------------------
+void ofApp::onParamWindowClose(ofEventArgs& args) {
+    auto current_window = ofGetCurrentWindow();
+    for (auto& info : param_windows_) {
+        if (info->window == current_window && !info->marked_for_removal) {
+            info->marked_for_removal = true;
+            ofRemoveListener(info->window->events().draw, this, &ofApp::drawParamWindows);
+            ofRemoveListener(info->window->events().exit, this, &ofApp::onParamWindowClose);
+            return;
+        }
+    }
 }
 
 //--------------------------------------------------------------
@@ -136,6 +147,7 @@ void ofApp::closeParamWindow(avs::Configurable* configurable) {
     for (auto it = param_windows_.begin(); it != param_windows_.end(); ) {
         if ((*it)->configurable == configurable) {
             ofRemoveListener((*it)->window->events().draw, this, &ofApp::drawParamWindows);
+            ofRemoveListener((*it)->window->events().exit, this, &ofApp::onParamWindowClose);
             it = param_windows_.erase(it);
         } else {
             ++it;
@@ -148,6 +160,9 @@ void ofApp::drawParamWindows(ofEventArgs& args) {
     auto current_window = ofGetCurrentWindow();
     for (auto& info : param_windows_) {
         if (info->window == current_window) {
+            if (info->marked_for_removal) {
+                return;
+            }
             drawParamWindow(*info);
             return;
         }
@@ -175,23 +190,22 @@ void ofApp::drawParamWindow(ParamWindowInfo& info) {
 
 //--------------------------------------------------------------
 void ofApp::cleanupInvalidParamWindows() {
-    for (auto it = param_windows_.begin(); it != param_windows_.end(); ) {
-        bool should_remove = false;
+    // First pass: erase windows that were marked (by exit event or effect deletion)
+    param_windows_.erase(
+        std::remove_if(param_windows_.begin(), param_windows_.end(),
+            [](const std::unique_ptr<ParamWindowInfo>& info) {
+                return info->marked_for_removal;
+            }),
+        param_windows_.end());
 
-        if (!isEffectValid((*it)->effect_id)) {
-            should_remove = true;
-        }
+    // Second pass: mark windows for removal if effect was deleted
+    for (auto& info : param_windows_) {
+        if (info->marked_for_removal) continue;
 
-        auto* glfw_window = dynamic_cast<ofAppGLFWWindow*>((*it)->window.get());
-        if (glfw_window && glfw_window->getWindowShouldClose()) {
-            should_remove = true;
-        }
-
-        if (should_remove) {
-            ofRemoveListener((*it)->window->events().draw, this, &ofApp::drawParamWindows);
-            it = param_windows_.erase(it);
-        } else {
-            ++it;
+        if (!isEffectValid(info->effect_id)) {
+            info->marked_for_removal = true;
+            ofRemoveListener(info->window->events().draw, this, &ofApp::drawParamWindows);
+            ofRemoveListener(info->window->events().exit, this, &ofApp::onParamWindowClose);
         }
     }
 }

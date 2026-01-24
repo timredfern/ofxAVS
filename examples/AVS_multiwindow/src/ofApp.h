@@ -44,6 +44,7 @@ private:
         avs::Configurable* configurable;
         uintptr_t effect_id;  // For validation after effect deletion
         bool needs_setup = true;  // Defer setup to first draw when window context is active
+        bool marked_for_removal = false;  // Deferred removal flag
     };
     std::vector<std::unique_ptr<ParamWindowInfo>> param_windows_;
 
@@ -56,4 +57,7 @@ private:
     // Draw handler for parameter windows (called via event)
     void drawParamWindows(ofEventArgs& args);  // Event handler - finds current window
     void drawParamWindow(ParamWindowInfo& info);  // Actual drawing
+
+    // Window close handler
+    void onParamWindowClose(ofEventArgs& args);
 };
