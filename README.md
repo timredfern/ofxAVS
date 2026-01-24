@@ -27,7 +27,7 @@ The addon provides a complete visualization environment:
 - Effect chain panel with drag-drop reordering
 - Parameter controls matching original AVS dialogs
 - Audio controls with device selection
-- Real-time 600x600 visualization output
+- Real-time 600x600 visualisation output
 
 ## Quick Start
 
@@ -50,10 +50,10 @@ export OF_ROOT=/path/to/openFrameworks
 cd $OF_ROOT/addons
 git clone --recursive ssh://git@git.eclectronics.org:2222/timredfern/ofxAVS.git
 
-# Build the chain example
-cd ofxAVS/examples/chain
+# Build the standard example
+cd ofxAVS/examples/AVS_standard
 make
-make run
+make RunRelease
 ```
 
 ### Usage
