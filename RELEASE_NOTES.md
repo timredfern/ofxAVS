@@ -12,6 +12,9 @@
 - CPU rendering (pixels) separated from GPU operations (texture) for cleaner multi-window support
 - Vsync disabled in multiwindow for consistent frame rates
 
+**Bug Fixes:**
+- Fix crash when closing parameter windows in multiwindow example
+
 **UI Improvements:**
 - Parameters panel shows effect name in window title (saves vertical space)
 - Dynamic panel sizing adapts to window dimensions
