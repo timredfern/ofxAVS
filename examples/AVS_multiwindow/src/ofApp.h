@@ -7,7 +7,6 @@
 #include "ofMain.h"
 #include "ofxAVS.h"
 #include "ofxImGui.h"
-#include "ofxAudioDecoder.h"
 #include <memory>
 #include <vector>
 
@@ -22,10 +21,6 @@ public:
     void keyPressed(int key);
     void dragEvent(ofDragInfo dragInfo);
 
-    // Audio callbacks
-    void audioIn(ofSoundBuffer& buffer);
-    void audioOut(ofSoundBuffer& buffer);
-
     // Window management
     void setWindows(std::shared_ptr<ofAppBaseWindow> chain, std::shared_ptr<ofAppBaseWindow> output);
 
@@ -36,40 +31,11 @@ public:
 private:
     ofxAVS avs;
     ofxImGui::Gui chain_gui_;  // ImGui for chain window
-    ofSoundStream soundStream;
-    bool audioInitialized = false;
-    bool hasAudioInput = false;
 
     // Window handles
     std::shared_ptr<ofAppBaseWindow> chain_window_;
     std::shared_ptr<ofAppBaseWindow> output_window_;
 
-    // Audio device selection
-    std::vector<ofSoundDevice> audioDevices;
-    std::vector<int> inputDeviceIndices;
-    std::vector<int> outputDeviceIndices;
-    int selectedInputDevice = -1;
-    int selectedOutputDevice = -1;
-    std::string selectedInputDeviceName;
-    std::string selectedOutputDeviceName;
-
-    // Sound file playback
-    ofSoundBuffer audioFileBuffer;
-    size_t playbackPos = 0;
-    bool useFileInput = false;
-    bool isPlaying = false;
-    std::string loadedFileName;
-    std::string loadedFilePath;
-    float micGain = 1.0f;
-
-    void loadSoundFile(const std::string& path, bool autoPlay = true);
-    void drawAudioControls();
-    void setupAudioDevices();
-    void restartAudio();
-
-    // App settings persistence
-    void loadAppSettings();
-    void saveAppSettings();
 
     // Parameter windows
     struct ParamWindowInfo {

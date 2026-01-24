@@ -9,7 +9,7 @@
 int main() {
     // Chain/UI window (main application window)
     ofGLFWWindowSettings chain_settings;
-    chain_settings.setSize(300, 600);
+    chain_settings.setSize(400, 600);
     chain_settings.setPosition(glm::vec2(100, 100));
     chain_settings.resizable = false;
     chain_settings.title = "AVS Chain";
@@ -18,10 +18,10 @@ int main() {
     // Output/visualization window
     ofGLFWWindowSettings output_settings;
     output_settings.setSize(600, 600);
-    output_settings.setPosition(glm::vec2(420, 100));
+    output_settings.setPosition(glm::vec2(520, 100));
     output_settings.resizable = true;
     output_settings.title = "AVS Output";
-    output_settings.shareContextWith = chain_window;  // Share GL context for texture
+    // No context sharing - texture created in output window context
     auto output_window = ofCreateWindow(output_settings);
 
     // Create app and store window handles
@@ -31,6 +31,8 @@ int main() {
     // Bind output window events to app methods
     ofAddListener(output_window->events().draw, app.get(), &ofApp::drawOutput);
     ofAddListener(output_window->events().keyPressed, app.get(), &ofApp::keyPressedOutput);
+
+    ofSetVerticalSync(false); //vital when drawing multiple windows
 
     // Run main app on chain window
     ofRunApp(chain_window, app);

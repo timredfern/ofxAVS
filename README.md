@@ -12,11 +12,11 @@ This project is a modern C++ port that maintains compatibility with original AVS
 
 - **46+ effects ported** from the original AVS
 - **Full preset compatibility** - Load original .avs preset files
-- **Real-time audio input** - Microphone or audio file playback
+- **Built-in audio management** - Microphone input or audio file playback with device selection
 - **ImGui-based UI** - Effect chain editing with parameter controls
 - **Beat detection** - Automatic BPM detection and beat-triggered effects
-- **Session persistence** - Effect chains saved/restored between sessions
-- **Audio device selection** - Choose input/output devices at runtime
+- **Session persistence** - Effect chains and audio settings saved/restored between sessions
+- **Auto-resizing output** - Renders at native resolution, ideal for fullscreen
 - **Effect profiling** - Press P to show per-effect render times
 
 ## Screenshots
@@ -26,8 +26,8 @@ This project is a modern C++ port that maintains compatibility with original AVS
 The addon provides a complete visualization environment:
 - Effect chain panel with drag-drop reordering
 - Parameter controls matching original AVS dialogs
-- Audio controls with device selection
-- Real-time 600x600 visualisation output
+- Audio controls with device selection and file playback
+- Auto-resizing output (renders at native resolution)
 
 ## Quick Start
 
@@ -72,7 +72,9 @@ class ofApp : public ofBaseApp {
 
     void setup() {
         gui.setup();
-        avs.setup();  // Loads last session automatically
+        avs.setup();
+        avs.loadAudioSettings();  // Restore saved audio device selection
+        avs.setupAudio();         // Initialize audio input/output
     }
 
     void update() {
@@ -80,15 +82,12 @@ class ofApp : public ofBaseApp {
     }
 
     void draw() {
-        avs.draw(0, 0, 600, 600);
+        avs.draw(0, 0, 600, 600);  // Auto-resizes to fit
 
         gui.begin();
-        avs.drawUI();  // Effect chain + parameter panels
+        avs.drawUI();       // Effect chain + parameter panels
+        avs.drawAudioUI();  // Audio device selection + file player
         gui.end();
-    }
-
-    void audioIn(ofSoundBuffer& buffer) {
-        avs.audioIn(buffer);
     }
 };
 ```
@@ -105,8 +104,10 @@ ofxAVS/
 │   ├── effects/            # 46+ effect implementations
 │   └── tests/              # Unit tests
 ├── examples/
-│   ├── chain/              # Full-featured example with UI
-│   └── simple/             # Minimal example
+│   ├── AVS_standard/       # Single-window example with full UI
+│   ├── AVS_multiwindow/    # Separate output window for fullscreen
+│   └── AVS_simple/         # Minimal integration example
+├── images/                 # Screenshots for documentation
 └── scripts/
     └── package-app.sh      # macOS app packaging
 ```
@@ -131,17 +132,28 @@ Custom BPM, Fadeout, OnBeat Clear, Set Render Mode
 ### Trans
 Bass Spin, Blitter Feedback, DDM
 
+## Examples
+
+### AVS_standard
+Single-window application with effect chain, parameters panel, and audio controls. Best for most use cases.
+
+### AVS_multiwindow
+Separate output window that can be made fullscreen independently. UI runs in a separate chain window. Renders at native resolution in fullscreen.
+
+### AVS_simple
+Minimal example showing basic integration without UI panels.
+
 ## Building & Packaging
 
 ```bash
-cd examples/chain
+cd examples/AVS_standard
 
 # Available targets
 make help
 
 # Build and run
 make Release
-./bin/chain.app/Contents/MacOS/chain
+./bin/AVS_standard.app/Contents/MacOS/AVS_standard
 
 # Package for distribution
 make package          # Creates .app and .dmg

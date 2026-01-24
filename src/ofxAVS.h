@@ -7,6 +7,7 @@
 #include "ofMain.h"
 #include "ofxImGui.h"
 #include "ofxFft.h"
+#include "ofxAudioDecoder.h"
 #include "core/renderer.h"
 #include "core/plugin_manager.h"
 #include "core/effect_base.h"
@@ -32,7 +33,7 @@ struct AvailableEffectInfo {
     std::string description;
 };
 
-class ofxAVS {
+class ofxAVS : public ofBaseSoundInput, public ofBaseSoundOutput {
 public:
     ofxAVS();
     ~ofxAVS();
@@ -40,8 +41,22 @@ public:
     // Setup and audio
     void setup();
     void update();
-    void audioIn(ofSoundBuffer& buffer);  // Process audio with FFT
+    void setupAudio();  // Initialize audio devices
+    void audioIn(ofSoundBuffer& buffer) override;   // Process audio with FFT
+    void audioOut(ofSoundBuffer& buffer) override;  // File playback output
     void setAudioData(const avs::AudioData& data);  // Direct access if needed
+
+    // Audio file loading
+    void loadSoundFile(const std::string& path, bool autoPlay = true);
+    void togglePlayback();  // Play/pause
+    bool isPlaying() const { return audio_is_playing_; }
+
+    // Audio settings persistence
+    void loadAudioSettings();
+    void saveAudioSettings();
+
+    // Audio UI - draws responsive audio controls panel
+    void drawAudioUI();
 
     // Session persistence (call explicitly - not automatic)
     bool loadSession();  // Load from data/session.json
@@ -52,6 +67,7 @@ public:
 
     // Rendering
     void draw(int x, int y, int width, int height);
+    void resize(int width, int height);  // Resize internal framebuffer
     void drawUI();
 
     // Effect chain management
@@ -84,8 +100,9 @@ public:
     using OpenParamsCallback = std::function<void(avs::Configurable*)>;
     void setOpenParamsCallback(OpenParamsCallback cb) { on_open_params_callback_ = cb; }
 
-    // Draw only the chain panel (for multi-window apps that handle params separately)
-    void drawChainPanel() { drawChainPanelInternal(); }
+    // Draw only the chain panel content (for multi-window apps that handle params separately)
+    // Call this inside your own ImGui window - it draws content only, no window creation
+    void drawChainPanel() { drawChainPanelContent(); }
 
 private:
     // Core AVS components
@@ -137,7 +154,8 @@ private:
     void initializeAvailableEffects();
 
     // UI rendering methods
-    void drawChainPanelInternal();
+    void drawChainPanelInternal();  // Creates window + content (for standard example)
+    void drawChainPanelContent();   // Content only (for multiwindow - caller creates window)
     void drawParametersPanel();
 
     // Tree view helpers
@@ -158,4 +176,29 @@ private:
     avs::EffectBase* getNextVisibleEffect(avs::EffectBase* current);
     avs::EffectBase* getPrevVisibleEffect(avs::EffectBase* current);
     void buildVisibleEffectList(avs::EffectContainer* container, std::vector<avs::EffectBase*>& list);
+
+    // Audio management
+    ofSoundStream sound_stream_;
+    bool audio_initialized_ = false;
+    bool audio_has_input_ = false;
+
+    // Audio device selection
+    std::vector<ofSoundDevice> audio_devices_;
+    std::vector<int> audio_input_indices_;    // Indices into audio_devices_ for input-capable devices
+    std::vector<int> audio_output_indices_;   // Indices into audio_devices_ for output-capable devices
+    int audio_selected_input_ = -1;           // Index into audio_input_indices_ (-1 = none)
+    int audio_selected_output_ = -1;          // Index into audio_output_indices_
+    std::string audio_input_device_name_;     // For persistence
+    std::string audio_output_device_name_;    // For persistence
+
+    // Sound file playback
+    ofSoundBuffer audio_file_buffer_;
+    size_t audio_playback_pos_ = 0;
+    bool audio_use_file_ = false;
+    bool audio_is_playing_ = false;
+    std::string audio_loaded_filename_;
+    std::string audio_loaded_filepath_;       // Full path for persistence
+    float audio_mic_gain_ = 1.0f;             // Microphone gain (1x to 100x)
+
+    void restartAudio();
 };

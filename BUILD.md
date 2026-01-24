@@ -21,19 +21,33 @@ Add this to your shell profile (`~/.zshrc` or `~/.bashrc`) for persistence.
 
 ## Building Examples
 
-### Chain Example (Full UI)
+### AVS_standard (Recommended)
+
+Single-window application with full UI - effect chain, parameters, and audio controls.
 
 ```bash
-cd examples/chain
+cd examples/AVS_standard
 make            # Debug build
 make Release    # Release build
 make run        # Run after building
 ```
 
-### Simple Example (Minimal)
+### AVS_multiwindow
+
+Separate output window for fullscreen support. Output renders at native resolution.
 
 ```bash
-cd examples/simple
+cd examples/AVS_multiwindow
+make Release
+make run
+```
+
+### AVS_simple
+
+Minimal example for basic integration.
+
+```bash
+cd examples/AVS_simple
 make
 make run
 ```
@@ -76,13 +90,13 @@ make && ./avs_tests
 Create a distributable macOS app:
 
 ```bash
-cd examples/chain
+cd examples/AVS_standard
 make package
 ```
 
 This creates:
-- `bin/release/chain.app` - Signed application bundle
-- `bin/release/chain.dmg` - Disk image with Applications shortcut
+- `bin/release/AVS_standard.app` - Signed application bundle
+- `bin/release/AVS_standard.dmg` - Disk image with Applications shortcut
 
 ## Troubleshooting
 

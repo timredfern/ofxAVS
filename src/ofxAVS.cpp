@@ -33,6 +33,12 @@ ofxAVS::ofxAVS() : fft(nullptr) {
 }
 
 ofxAVS::~ofxAVS() {
+    // Stop audio stream
+    if (audio_initialized_) {
+        sound_stream_.stop();
+        sound_stream_.close();
+    }
+
     // Clear renderer to ensure proper cleanup
     renderer.reset();
 
@@ -65,9 +71,8 @@ void ofxAVS::setup() {
     // Initialize renderer
     renderer = std::make_unique<avs::DefaultRenderer>(width, height);
 
-    // Initialize texture - use BGRA to match our uint32_t ARGB format
+    // Initialize pixels buffer (CPU) - texture allocated on first draw
     pixels.allocate(width, height, OF_PIXELS_BGRA);
-    texture.allocate(pixels);
 
     // Register built-in effects
     avs::register_builtin_effects();
@@ -104,10 +109,9 @@ void ofxAVS::update() {
     // Process beat detection
     bool isBeat = beat_detector_->process(current_audio_data);
 
-    // Render directly into pixels buffer (no intermediate copy)
+    // Render directly into pixels buffer (CPU - context independent)
     renderer->render(current_audio_data, isBeat,
                      reinterpret_cast<uint32_t*>(pixels.getData()));
-    texture.loadData(pixels);
 }
 
 void ofxAVS::audioIn(ofSoundBuffer& buffer) {
@@ -115,6 +119,10 @@ void ofxAVS::audioIn(ofSoundBuffer& buffer) {
     if (!fft || buffer.getNumFrames() == 0 || buffer.getNumChannels() == 0) {
         return;
     }
+
+    // When using mic input (not file playback), apply mic gain
+    // audioOut() calls this for file playback, so only apply gain for actual mic input
+    bool applyMicGain = (!audio_use_file_ || !audio_is_playing_) && audio_mic_gain_ != 1.0f;
 
     memset(current_audio_data, 0, sizeof(avs::AudioData));
 
@@ -127,6 +135,12 @@ void ofxAVS::audioIn(ofSoundBuffer& buffer) {
     for (int i = 0; i < numSamples; i++) {
         float left = buffer[i * numChannels];
         float right = (numChannels >= 2) ? buffer[i * numChannels + 1] : left;
+
+        // Apply mic gain if needed
+        if (applyMicGain) {
+            left = ofClamp(left * audio_mic_gain_, -1.0f, 1.0f);
+            right = ofClamp(right * audio_mic_gain_, -1.0f, 1.0f);
+        }
 
         // Waveform: convert float [-1, 1] to signed char [-128, 127]
         current_audio_data[0][0][i] = static_cast<char>(left * 127.0f);
@@ -241,11 +255,33 @@ void ofxAVS::setAudioData(const avs::AudioData& data) {
 }
 
 void ofxAVS::draw(int x, int y, int w, int h) {
+    // Auto-resize if draw dimensions changed
+    if (w != width || h != height) {
+        resize(w, h);
+    }
+
+    // Allocate texture in current GL context if needed
+    if (!texture.isAllocated()) {
+        texture.allocate(pixels);
+    }
+
+    // Upload pixels to texture (must be in same context as draw)
+    texture.loadData(pixels);
     texture.draw(x, y, w, h);
 
     // Draw FPS below output
     ofSetColor(255);
     ofDrawBitmapString("FPS: " + ofToString(ofGetFrameRate(), 1), x, y + h + 15);
+}
+
+void ofxAVS::resize(int w, int h) {
+    if (w <= 0 || h <= 0) return;
+
+    width = w;
+    height = h;
+    renderer->resize(w, h);
+    pixels.allocate(w, h, OF_PIXELS_BGRA);
+    texture.allocate(pixels);
 }
 
 void ofxAVS::drawUI() {
@@ -447,87 +483,97 @@ void ofxAVS::drawChainPanelInternal() {
     ImGui::PushStyleColor(ImGuiCol_TitleBgCollapsed, ImVec4(0.2f, 0.2f, 0.2f, 1.0f));
 
     if (ImGui::Begin(current_preset_name_.c_str(), nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove)) {
-        // Handle keyboard navigation
-        handleEffectListKeyboard();
+        drawChainPanelContent();
+    }
+    ImGui::End();
+    ImGui::PopStyleColor(3);
+}
 
-        // Draw Beat detector (always first, not expandable)
-        bool beat_selected = (selected_ == beat_detector_.get());
-        if (beat_selected) {
+void ofxAVS::drawChainPanelContent() {
+    // Style context menus with slightly lighter background for contrast
+    ImGui::PushStyleColor(ImGuiCol_PopupBg, ImVec4(0.25f, 0.25f, 0.28f, 1.0f));
+
+    // Get available width dynamically
+    float availWidth = ImGui::GetContentRegionAvail().x;
+
+    // Handle keyboard navigation
+    handleEffectListKeyboard();
+
+    // Draw Beat detector (always first, not expandable)
+    bool beat_selected = (selected_ == beat_detector_.get());
+    if (beat_selected) {
+        ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.4f, 0.4f, 0.6f, 1.0f));
+    }
+
+    // Show BPM info in the label if available
+    std::string beat_label = "Beat detector";
+    if (beat_detector_->getBpm() > 0) {
+        beat_label += " (" + std::to_string(beat_detector_->getBpm()) + " BPM)";
+    }
+
+    if (ImGui::Selectable(beat_label.c_str(), beat_selected, ImGuiSelectableFlags_None, ImVec2(availWidth - 15, 0))) {
+        selected_ = beat_detector_.get();
+    }
+    if (beat_selected) {
+        ImGui::PopStyleColor();
+    }
+
+    // Context menu for beat detector (only in multiwindow mode)
+    if (on_open_params_callback_ && ImGui::BeginPopupContextItem("beat_context")) {
+        if (ImGui::MenuItem("Params")) {
+            on_open_params_callback_(beat_detector_.get());
+        }
+        ImGui::EndPopup();
+    }
+
+    ImGui::Separator();
+
+    // Draw the root container as "Effect chain"
+    avs::EffectListRoot* root = renderer->root();
+    if (root) {
+        bool root_selected = (selected_ == root);
+        bool is_expanded = collapsed_containers_.find(root) == collapsed_containers_.end();
+
+        // Arrow button for expand/collapse
+        if (ImGui::ArrowButton("##chain_arrow", is_expanded ? ImGuiDir_Down : ImGuiDir_Right)) {
+            if (is_expanded) {
+                collapsed_containers_.insert(root);
+            } else {
+                collapsed_containers_.erase(root);
+            }
+        }
+        ImGui::SameLine();
+
+        // Effect chain selectable
+        if (root_selected) {
             ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.4f, 0.4f, 0.6f, 1.0f));
         }
-
-        // Show BPM info in the label if available
-        std::string beat_label = "Beat detector";
-        if (beat_detector_->getBpm() > 0) {
-            beat_label += " (" + std::to_string(beat_detector_->getBpm()) + " BPM)";
+        if (ImGui::Selectable("Effect chain", root_selected, ImGuiSelectableFlags_None, ImVec2(availWidth - 35, 0))) {
+            selected_ = root;
         }
-
-        if (ImGui::Selectable(beat_label.c_str(), beat_selected, ImGuiSelectableFlags_None, ImVec2(chain_panel_width - 30, 0))) {
-            selected_ = beat_detector_.get();
-        }
-        if (beat_selected) {
+        if (root_selected) {
             ImGui::PopStyleColor();
         }
 
-        // Context menu for beat detector
-        if (ImGui::BeginPopupContextItem("beat_context")) {
-            if (ImGui::MenuItem("Params")) {
-                if (on_open_params_callback_) {
-                    on_open_params_callback_(beat_detector_.get());
+        // Context menu for root
+        if (ImGui::BeginPopupContextItem("chain_context")) {
+            drawAddEffectMenu(root);
+            if (on_open_params_callback_) {
+                ImGui::Separator();
+                if (ImGui::MenuItem("Params")) {
+                    on_open_params_callback_(root);
                 }
             }
             ImGui::EndPopup();
         }
 
-        ImGui::Separator();
-
-        // Draw the root container as "Effect chain"
-        avs::EffectListRoot* root = renderer->root();
-        if (root) {
-            bool root_selected = (selected_ == root);
-            bool is_expanded = collapsed_containers_.find(root) == collapsed_containers_.end();
-
-            // Arrow button for expand/collapse
-            if (ImGui::ArrowButton("##chain_arrow", is_expanded ? ImGuiDir_Down : ImGuiDir_Right)) {
-                if (is_expanded) {
-                    collapsed_containers_.insert(root);
-                } else {
-                    collapsed_containers_.erase(root);
-                }
-            }
-            ImGui::SameLine();
-
-            // Effect chain selectable
-            if (root_selected) {
-                ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.4f, 0.4f, 0.6f, 1.0f));
-            }
-            if (ImGui::Selectable("Effect chain", root_selected, ImGuiSelectableFlags_None, ImVec2(chain_panel_width - 50, 0))) {
-                selected_ = root;
-            }
-            if (root_selected) {
-                ImGui::PopStyleColor();
-            }
-
-            // Context menu for root
-            if (ImGui::BeginPopupContextItem("chain_context")) {
-                drawAddEffectMenu(root);
-                ImGui::Separator();
-                if (ImGui::MenuItem("Params")) {
-                    if (on_open_params_callback_) {
-                        on_open_params_callback_(root);
-                    }
-                }
-                ImGui::EndPopup();
-            }
-
-            // Draw children if expanded
-            if (is_expanded) {
-                drawEffectTree(root, 1);
-            }
+        // Draw children if expanded
+        if (is_expanded) {
+            drawEffectTree(root, 1);
         }
     }
-    ImGui::End();
-    ImGui::PopStyleColor(3);
+
+    ImGui::PopStyleColor();  // PopupBg
 }
 
 // Drag-drop payload for effect reordering
@@ -590,7 +636,8 @@ static std::string formatTiming(double us) {
 
 void ofxAVS::drawEffectTree(avs::EffectContainer* container, int depth) {
     float indent = depth * 20.0f;
-    float drop_width = chain_panel_width - indent - 30;
+    float availWidth = ImGui::GetContentRegionAvail().x;
+    float drop_width = availWidth - indent - 15;
 
     // Drop zone before first effect
     drawDropZone(container, 0, indent, drop_width);
@@ -625,7 +672,7 @@ void ofxAVS::drawEffectTree(avs::EffectContainer* container, int depth) {
                 ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.4f, 0.4f, 0.6f, 1.0f));
             }
             std::string label = effect->get_plugin_info().name + id;
-            float selectable_width = show_profiling_ ? chain_panel_width - indent - 120 : chain_panel_width - indent - 50;
+            float selectable_width = show_profiling_ ? availWidth - indent - 105 : availWidth - indent - 35;
             if (ImGui::Selectable(label.c_str(), is_selected, ImGuiSelectableFlags_None, ImVec2(selectable_width, 0))) {
                 selected_ = effect;
             }
@@ -665,7 +712,7 @@ void ofxAVS::drawEffectTree(avs::EffectContainer* container, int depth) {
                 ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.4f, 0.4f, 0.6f, 1.0f));
             }
             std::string label = effect->get_plugin_info().name + id;
-            float selectable_width = show_profiling_ ? chain_panel_width - indent - 100 : 0;
+            float selectable_width = show_profiling_ ? availWidth - indent - 85 : 0;
             if (ImGui::Selectable(label.c_str(), is_selected, ImGuiSelectableFlags_None, ImVec2(selectable_width, 0))) {
                 selected_ = effect;
             }
@@ -791,9 +838,9 @@ void ofxAVS::drawEffectContextMenu(avs::EffectBase* effect) {
     if (ImGui::MenuItem("Move Down", nullptr, false, parent && index < static_cast<int>(parent->child_count()) - 1)) {
         moveEffectDown(effect);
     }
-    ImGui::Separator();
-    if (ImGui::MenuItem("Params")) {
-        if (on_open_params_callback_) {
+    if (on_open_params_callback_) {
+        ImGui::Separator();
+        if (ImGui::MenuItem("Params")) {
             on_open_params_callback_(effect);
         }
     }
@@ -957,5 +1004,402 @@ void ofxAVS::handleEffectListKeyboard() {
             // Select next sibling, prev sibling, or parent
             selected_ = next ? next : (prev ? prev : (parent ? parent : renderer->root()));
         }
+    }
+}
+
+// ============================================================================
+// Audio Management
+// ============================================================================
+
+void ofxAVS::setupAudio() {
+    // Get device list
+    audio_devices_ = sound_stream_.getDeviceList();
+    audio_input_indices_.clear();
+    audio_output_indices_.clear();
+
+    ofLogNotice("ofxAVS") << "Available audio devices:";
+    for (size_t i = 0; i < audio_devices_.size(); i++) {
+        auto& device = audio_devices_[i];
+        std::string rates;
+        for (auto r : device.sampleRates) rates += std::to_string(r) + " ";
+        ofLogNotice("ofxAVS") << "  " << device.deviceID << ": " << device.name
+                              << " (in:" << device.inputChannels << " out:" << device.outputChannels << ")"
+                              << (rates.empty() ? "" : " rates: " + rates);
+
+        if (device.inputChannels > 0) {
+            audio_input_indices_.push_back(i);
+        }
+        if (device.outputChannels > 0) {
+            audio_output_indices_.push_back(i);
+        }
+    }
+
+    // Helper to check if device supports standard sample rates
+    auto supportsStandardRates = [](const ofSoundDevice& device) {
+        if (device.sampleRates.empty()) return true;
+        for (unsigned int rate : {44100u, 48000u, 96000u}) {
+            if (std::find(device.sampleRates.begin(), device.sampleRates.end(), rate)
+                != device.sampleRates.end()) {
+                return true;
+            }
+        }
+        return false;
+    };
+
+    // Select devices based on saved names or auto-detect
+    audio_selected_input_ = -1;
+    audio_selected_output_ = -1;
+
+    // Try to find saved input device
+    if (!audio_input_device_name_.empty()) {
+        for (size_t i = 0; i < audio_input_indices_.size(); i++) {
+            if (audio_devices_[audio_input_indices_[i]].name == audio_input_device_name_) {
+                audio_selected_input_ = i;
+                break;
+            }
+        }
+    }
+
+    // Try to find saved output device
+    if (!audio_output_device_name_.empty()) {
+        for (size_t i = 0; i < audio_output_indices_.size(); i++) {
+            if (audio_devices_[audio_output_indices_[i]].name == audio_output_device_name_) {
+                audio_selected_output_ = i;
+                break;
+            }
+        }
+    }
+
+    // Auto-select output if not found
+    if (audio_selected_output_ < 0 && !audio_output_indices_.empty()) {
+        audio_selected_output_ = 0;
+    }
+
+    // Auto-select input if not found (prefer one with standard sample rates)
+    if (audio_selected_input_ < 0 && !audio_input_indices_.empty()) {
+        for (size_t i = 0; i < audio_input_indices_.size(); i++) {
+            auto& device = audio_devices_[audio_input_indices_[i]];
+            if (supportsStandardRates(device)) {
+                audio_selected_input_ = i;
+                break;
+            }
+        }
+    }
+
+    restartAudio();
+}
+
+void ofxAVS::restartAudio() {
+    // Stop existing stream
+    if (audio_initialized_) {
+        sound_stream_.stop();
+        sound_stream_.close();
+        audio_initialized_ = false;
+        audio_has_input_ = false;
+    }
+
+    if (audio_selected_output_ < 0 || audio_output_indices_.empty()) {
+        ofLogWarning("ofxAVS") << "No output device selected";
+        return;
+    }
+
+    // Helper to find a common sample rate between two devices
+    auto findCommonRate = [](const ofSoundDevice* dev1, const ofSoundDevice* dev2) -> unsigned int {
+        std::vector<unsigned int> commonRates = {44100, 48000, 96000, 22050, 16000, 8000};
+        for (unsigned int rate : commonRates) {
+            bool dev1Ok = !dev1 || dev1->sampleRates.empty() ||
+                std::find(dev1->sampleRates.begin(), dev1->sampleRates.end(), rate) != dev1->sampleRates.end();
+            bool dev2Ok = !dev2 || dev2->sampleRates.empty() ||
+                std::find(dev2->sampleRates.begin(), dev2->sampleRates.end(), rate) != dev2->sampleRates.end();
+            if (dev1Ok && dev2Ok) return rate;
+        }
+        return 44100;
+    };
+
+    ofSoundDevice* outputDevice = &audio_devices_[audio_output_indices_[audio_selected_output_]];
+    ofSoundDevice* inputDevice = (audio_selected_input_ >= 0 && audio_selected_input_ < (int)audio_input_indices_.size())
+        ? &audio_devices_[audio_input_indices_[audio_selected_input_]]
+        : nullptr;
+
+    ofSoundStreamSettings settings;
+    settings.bufferSize = 576;
+    settings.setOutListener(this);
+    settings.sampleRate = findCommonRate(outputDevice, inputDevice);
+    settings.numOutputChannels = std::min(2u, outputDevice->outputChannels);
+    settings.setOutDevice(*outputDevice);
+
+    if (inputDevice) {
+        settings.numInputChannels = 1;
+        settings.setInDevice(*inputDevice);
+        settings.setInListener(this);
+    } else {
+        settings.numInputChannels = 0;
+    }
+
+    try {
+        sound_stream_.setup(settings);
+        audio_initialized_ = true;
+        audio_has_input_ = (inputDevice != nullptr);
+
+        // Update saved device names
+        audio_output_device_name_ = outputDevice->name;
+        if (inputDevice) {
+            audio_input_device_name_ = inputDevice->name;
+        }
+
+        ofLogNotice("ofxAVS") << "Audio setup @ " << settings.sampleRate << "Hz";
+        ofLogNotice("ofxAVS") << "  Output: " << outputDevice->name;
+        if (inputDevice) {
+            ofLogNotice("ofxAVS") << "  Input: " << inputDevice->name;
+        }
+    } catch (...) {
+        ofLogError("ofxAVS") << "Failed to setup audio stream";
+    }
+}
+
+void ofxAVS::loadSoundFile(const std::string& path, bool autoPlay) {
+    ofLogNotice("ofxAVS") << "Loading sound file: " << path;
+
+    if (ofxAudioDecoder::load(audio_file_buffer_, path)) {
+        audio_loaded_filename_ = ofFilePath::getFileName(path);
+        audio_loaded_filepath_ = path;
+        audio_playback_pos_ = 0;
+        if (autoPlay) {
+            audio_use_file_ = true;
+            audio_is_playing_ = true;
+        }
+
+        // Resample to 44100 if needed
+        if (audio_file_buffer_.getSampleRate() != 44100) {
+            float ratio = 44100.0f / audio_file_buffer_.getSampleRate();
+            audio_file_buffer_.resample(ratio);
+            audio_file_buffer_.setSampleRate(44100);
+        }
+
+        ofLogNotice("ofxAVS") << "Loaded: " << audio_loaded_filename_
+                              << " (" << audio_file_buffer_.getNumFrames() << " frames, "
+                              << audio_file_buffer_.getNumChannels() << " channels)";
+    } else {
+        ofLogError("ofxAVS") << "Failed to load sound file: " << path;
+    }
+}
+
+void ofxAVS::togglePlayback() {
+    if (audio_use_file_ && audio_file_buffer_.getNumFrames() > 0) {
+        if (audio_is_playing_) {
+            audio_is_playing_ = false;
+        } else {
+            if (audio_playback_pos_ >= audio_file_buffer_.getNumFrames()) {
+                audio_playback_pos_ = 0;
+            }
+            audio_is_playing_ = true;
+        }
+    }
+}
+
+void ofxAVS::audioOut(ofSoundBuffer& buffer) {
+    if (buffer.getNumFrames() == 0 || buffer.getNumChannels() == 0) {
+        return;
+    }
+
+    // Only output audio if playing a file
+    if (!audio_use_file_ || !audio_is_playing_ || audio_file_buffer_.getNumFrames() == 0) {
+        buffer.set(0);
+        return;
+    }
+
+    size_t numFrames = buffer.getNumFrames();
+    size_t outChannels = buffer.getNumChannels();
+    size_t fileChannels = audio_file_buffer_.getNumChannels();
+    size_t bufferSize = buffer.size();
+
+    for (size_t i = 0; i < numFrames; i++) {
+        if (audio_playback_pos_ >= audio_file_buffer_.getNumFrames()) {
+            audio_playback_pos_ = 0;  // Loop
+        }
+
+        float left = audio_file_buffer_.getSample(audio_playback_pos_, 0);
+        float right = (fileChannels >= 2) ? audio_file_buffer_.getSample(audio_playback_pos_, 1) : left;
+
+        size_t idx0 = i * outChannels;
+        size_t idx1 = idx0 + 1;
+        if (outChannels >= 2 && idx1 < bufferSize) {
+            buffer[idx0] = left;
+            buffer[idx1] = right;
+        } else if (outChannels == 1 && idx0 < bufferSize) {
+            buffer[idx0] = (left + right) * 0.5f;
+        }
+
+        audio_playback_pos_++;
+    }
+
+    // Pass audio to visualization
+    audioIn(buffer);
+}
+
+void ofxAVS::loadAudioSettings() {
+    std::string path = ofToDataPath("audio_settings.json");
+    if (!ofFile::doesFileExist(path)) return;
+
+    try {
+        ofJson json = ofLoadJson(path);
+
+        if (json.contains("input_device") && !json["input_device"].is_null()) {
+            audio_input_device_name_ = json["input_device"].get<std::string>();
+        }
+        if (json.contains("output_device") && !json["output_device"].is_null()) {
+            audio_output_device_name_ = json["output_device"].get<std::string>();
+        }
+        if (json.contains("sound_file") && !json["sound_file"].is_null()) {
+            std::string soundPath = json["sound_file"].get<std::string>();
+            if (!soundPath.empty() && ofFile::doesFileExist(soundPath)) {
+                loadSoundFile(soundPath, false);
+            }
+        }
+        if (json.contains("mic_gain")) {
+            audio_mic_gain_ = json["mic_gain"].get<float>();
+            audio_mic_gain_ = ofClamp(audio_mic_gain_, 1.0f, 100.0f);
+        }
+        ofLogNotice("ofxAVS") << "Loaded audio settings";
+    } catch (const std::exception& e) {
+        ofLogWarning("ofxAVS") << "Failed to load audio settings: " << e.what();
+    }
+}
+
+void ofxAVS::saveAudioSettings() {
+    ofJson json;
+    json["sound_file"] = audio_loaded_filepath_;
+    json["use_file_input"] = audio_use_file_;
+    json["mic_gain"] = audio_mic_gain_;
+    json["input_device"] = audio_input_device_name_;
+    json["output_device"] = audio_output_device_name_;
+
+    std::string path = ofToDataPath("audio_settings.json");
+    if (ofSaveJson(path, json)) {
+        ofLogNotice("ofxAVS") << "Saved audio settings";
+    } else {
+        ofLogWarning("ofxAVS") << "Failed to save audio settings";
+    }
+}
+
+void ofxAVS::drawAudioUI() {
+    float availWidth = ImGui::GetContentRegionAvail().x;
+    bool wideLayout = availWidth > 400;
+    float comboWidth = wideLayout ? 270.0f : availWidth - 60;
+
+    // Input device
+    ImGui::Text("Input:");
+    ImGui::SameLine();
+    ImGui::SetNextItemWidth(comboWidth);
+
+    const char* inputLabel = "None";
+    if (audio_selected_input_ >= 0 && audio_selected_input_ < (int)audio_input_indices_.size()) {
+        inputLabel = audio_devices_[audio_input_indices_[audio_selected_input_]].name.c_str();
+    }
+
+    if (ImGui::BeginCombo("##input_device", inputLabel)) {
+        if (ImGui::Selectable("None", audio_selected_input_ < 0)) {
+            if (audio_selected_input_ >= 0) {
+                audio_selected_input_ = -1;
+                restartAudio();
+            }
+        }
+        if (audio_selected_input_ < 0) ImGui::SetItemDefaultFocus();
+
+        for (size_t i = 0; i < audio_input_indices_.size(); i++) {
+            bool isSelected = ((int)i == audio_selected_input_);
+            if (ImGui::Selectable(audio_devices_[audio_input_indices_[i]].name.c_str(), isSelected)) {
+                if ((int)i != audio_selected_input_) {
+                    audio_selected_input_ = i;
+                    restartAudio();
+                }
+            }
+            if (isSelected) ImGui::SetItemDefaultFocus();
+        }
+        ImGui::EndCombo();
+    }
+
+    // Output device - same line if wide, new line if narrow
+    if (wideLayout) {
+        ImGui::SameLine();
+    }
+    ImGui::Text("Output:");
+    ImGui::SameLine();
+    ImGui::SetNextItemWidth(comboWidth);
+    if (ImGui::BeginCombo("##output_device",
+        (audio_selected_output_ >= 0 && audio_selected_output_ < (int)audio_output_indices_.size())
+            ? audio_devices_[audio_output_indices_[audio_selected_output_]].name.c_str()
+            : "None")) {
+        for (size_t i = 0; i < audio_output_indices_.size(); i++) {
+            bool isSelected = ((int)i == audio_selected_output_);
+            if (ImGui::Selectable(audio_devices_[audio_output_indices_[i]].name.c_str(), isSelected)) {
+                if ((int)i != audio_selected_output_) {
+                    audio_selected_output_ = i;
+                    restartAudio();
+                }
+            }
+            if (isSelected) ImGui::SetItemDefaultFocus();
+        }
+        ImGui::EndCombo();
+    }
+
+    ImGui::Separator();
+
+    // Audio source toggle
+    if (audio_has_input_) {
+        if (ImGui::RadioButton("Microphone", !audio_use_file_)) {
+            if (audio_use_file_) {
+                audio_is_playing_ = false;
+                audio_use_file_ = false;
+            }
+        }
+        ImGui::SameLine();
+        if (ImGui::RadioButton("Sound File", audio_use_file_)) {
+            audio_use_file_ = true;
+        }
+    } else {
+        ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Sound File (no mic)");
+        audio_use_file_ = true;
+    }
+
+    // Player controls - same line if wide, new line if narrow
+    if (wideLayout) {
+        ImGui::SameLine();
+        ImGui::Spacing();
+        ImGui::SameLine();
+    }
+
+    if (audio_use_file_) {
+        if (audio_file_buffer_.getNumFrames() > 0) {
+            if (ImGui::Button(audio_is_playing_ ? "Stop" : "Play", ImVec2(60, 0))) {
+                togglePlayback();
+            }
+            ImGui::SameLine();
+
+            float fileInfoWidth = wideLayout ? 250.0f : std::min(availWidth - 80, 150.0f);
+            ImGui::SetNextItemWidth(fileInfoWidth);
+            ImGui::Text("%s", audio_loaded_filename_.c_str());
+            ImGui::SameLine();
+
+            float progressWidth = wideLayout ? 150.0f : std::max(availWidth - fileInfoWidth - 100, 50.0f);
+            float progress = (float)audio_playback_pos_ / audio_file_buffer_.getNumFrames();
+            ImGui::ProgressBar(progress, ImVec2(progressWidth, 0));
+
+            if (ImGui::IsItemClicked()) {
+                ImVec2 mousePos = ImGui::GetMousePos();
+                ImVec2 itemPos = ImGui::GetItemRectMin();
+                float seekPos = (mousePos.x - itemPos.x) / progressWidth;
+                seekPos = ofClamp(seekPos, 0.0f, 1.0f);
+                audio_playback_pos_ = (size_t)(seekPos * audio_file_buffer_.getNumFrames());
+            }
+        } else {
+            ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Drop audio file here");
+        }
+    } else {
+        ImGui::Text("Mic Gain:");
+        ImGui::SameLine();
+        float gainWidth = wideLayout ? 200.0f : std::min(availWidth - 80, 120.0f);
+        ImGui::SetNextItemWidth(gainWidth);
+        ImGui::SliderFloat("##micgain", &audio_mic_gain_, 1.0f, 100.0f, "%.0fx");
     }
 }
