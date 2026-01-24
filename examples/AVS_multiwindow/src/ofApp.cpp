@@ -359,7 +359,7 @@ void ofApp::openParamWindow(avs::Configurable* configurable) {
 
     // Create new window
     ofGLFWWindowSettings settings;
-    settings.setSize(520, 520);
+    settings.setSize(500, 460);
     settings.resizable = false;
     settings.title = configurable->get_display_name();
     if (chain_window_) {
