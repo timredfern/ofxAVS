@@ -43,4 +43,15 @@ void renderExpressionHelpButton(const std::string& effect_name, const std::strin
  */
 void renderExpressionHelpPopup();
 
+/**
+ * Render a Configurable's parameters in a fullscreen borderless ImGui window
+ * Use this for separate OS windows where the window title is already set.
+ * Creates a borderless ImGui window filling the current OpenFrameworks window.
+ *
+ * @param configurable The Configurable instance to render parameters for
+ * @param window_width Current window width (typically ofGetWidth())
+ * @param window_height Current window height (typically ofGetHeight())
+ */
+void renderParamWindowContent(avs::Configurable* configurable, float window_width, float window_height);
+
 } // namespace avs_ui

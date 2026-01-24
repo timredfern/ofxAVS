@@ -423,22 +423,7 @@ void ofApp::drawParamWindow(ParamWindowInfo& info) {
 
     info.gui->begin();
 
-    ImGui::SetNextWindowPos(ImVec2(0, 0));
-    ImGui::SetNextWindowSize(ImVec2(ofGetWidth(), ofGetHeight()));
-
-    ImGui::Begin("##params", nullptr,
-        ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize |
-        ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse);
-
-    ImGui::Text("%s", info.configurable->get_display_name().c_str());
-    ImGui::Separator();
-
-    const avs::EffectUILayout& layout = info.configurable->get_ui_layout();
-    if (!layout.getControls().empty()) {
-        avs_ui::renderImGui(layout, info.configurable);
-    }
-
-    ImGui::End();
+    avs_ui::renderParamWindowContent(info.configurable, ofGetWidth(), ofGetHeight());
 
     info.gui->end();
     info.gui->draw();  // Actually render

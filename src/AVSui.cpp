@@ -692,4 +692,22 @@ void renderExpressionHelpPopup() {
     ImGui::End();
 }
 
+void renderParamWindowContent(avs::Configurable* configurable, float window_width, float window_height) {
+    if (!configurable) return;
+
+    ImGui::SetNextWindowPos(ImVec2(0, 0));
+    ImGui::SetNextWindowSize(ImVec2(window_width, window_height));
+
+    ImGui::Begin("##params", nullptr,
+        ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize |
+        ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse);
+
+    const avs::EffectUILayout& layout = configurable->get_ui_layout();
+    if (!layout.getControls().empty()) {
+        renderImGui(layout, configurable);
+    }
+
+    ImGui::End();
+}
+
 } // namespace avs_ui
