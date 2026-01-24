@@ -33,7 +33,7 @@ The addon provides a complete visualization environment:
 
 ### Prerequisites
 
-- OpenFrameworks 0.12+
+- OpenFrameworks 0.12+ (https://github.com/openframeworks/openFrameworks/blob/master/INSTALL_FROM_GITHUB.md)
 - C++17 compiler
 - Required addons:
   - [ofxImGui](https://github.com/jvcleave/ofxImGui) - UI rendering
@@ -43,8 +43,7 @@ The addon provides a complete visualization environment:
 ### Building
 
 ```bash
-# install openFrameworks
-# https://github.com/openframeworks/openFrameworks/blob/master/INSTALL_FROM_GITHUB.md
+# first install openFrameworks and required addons
 
 # Set OpenFrameworks path
 export OF_ROOT=/path/to/openFrameworks
@@ -58,6 +57,8 @@ cd ofxAVS/examples/AVS_standard
 make
 make RunRelease
 ```
+
+or, just install a release
 
 ### Usage
 
