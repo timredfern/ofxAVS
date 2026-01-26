@@ -183,8 +183,8 @@ void MyEffect::load_parameters(const std::vector<uint8_t>& data) {
     int some_value = reader.read_u32();
     parameters().set_int("some_param", some_value);
 
-    // For colors: use bgr_add_alpha (NOT bgr_to_argb)
-    uint32_t color = BinaryReader::bgr_add_alpha(reader.read_u32());
+    // For colors: swap R↔B to convert legacy ABGR to internal ARGB
+    uint32_t color = avs::color::swap_rb(reader.read_u32()) | 0xFF000000;
     parameters().set_color("color", color);
 
     // For scripts: length-prefixed strings
@@ -193,7 +193,7 @@ void MyEffect::load_parameters(const std::vector<uint8_t>& data) {
 }
 ```
 
-3. **Color conversion** - Binary AVS stores colors as BGR (`0x00BBGGRR`). Use `bgr_add_alpha()` to add alpha while preserving byte order for internal ABGR format. Do NOT use `bgr_to_argb()` which swaps bytes.
+3. **Color conversion** - Binary AVS presets store colors in legacy ABGR format (`0x00BBGGRR`). Use `swap_rb()` to convert to internal ARGB format, then add alpha. This is the ONE place where R↔B conversion happens.
 
 4. **Write tests** - Add tests in `test_load_parameters_colors.cpp` to verify color loading works correctly.
 
@@ -201,12 +201,39 @@ void MyEffect::load_parameters(const std::vector<uint8_t>& data) {
 
 ## 5. Technical Reference
 
-**Pixel Format**
-Each pixel is a 32-bit integer: `0xAARRGGBB` stored as `0xAABBGGRR` in memory (little-endian).
-- Bits 0-7: Red
-- Bits 8-15: Green
-- Bits 16-23: Blue
-- Bits 24-31: Alpha
+**Pixel Format: ARGB**
+
+All colors in avs_lib use **ARGB format**: `0xAARRGGBB`
+
+| Bits | Component | Mask |
+|------|-----------|------|
+| 24-31 | Alpha | `0xFF000000` |
+| 16-23 | Red | `0x00FF0000` |
+| 8-15 | Green | `0x0000FF00` |
+| 0-7 | Blue | `0x000000FF` |
+
+On little-endian systems, this is stored in memory as bytes `[B, G, R, A]`.
+
+**Why ARGB?** OpenFrameworks/OpenGL require ARGB for texture uploads. This is the native format throughout avs_lib.
+
+**Legacy Format: Windows AVS uses ABGR**
+
+Original Windows AVS used **ABGR format**: `0xAABBGGRR` (also known as Windows COLORREF with alpha). Binary `.avs` preset files store colors in this format.
+
+| Format | Hex Layout | Bits 0-7 | Bits 16-23 |
+|--------|------------|----------|------------|
+| ARGB (avs_lib) | `0xAARRGGBB` | Blue | Red |
+| ABGR (legacy) | `0xAABBGGRR` | Red | Blue |
+
+**The One Color Conversion**
+
+When loading legacy presets, we swap Red and Blue **once**:
+```cpp
+// In load_parameters() - convert legacy ABGR to internal ARGB
+uint32_t color = swap_rb(reader.read_u32());
+```
+
+This is the **only** R↔B swap in the entire codebase. After loading, all colors are ARGB. Effects, blend operations, line drawing - everything uses ARGB. No further conversions needed.
 
 **Alpha Channel Handling**
 
@@ -229,7 +256,7 @@ if (alpha > 128) {
     framebuffer[i] = blend_pixels(framebuffer[i], new_color);
 }
 
-// Write alpha for next effect
+// Write alpha for next effect (ARGB format)
 framebuffer[i] = (my_alpha << 24) | (r << 16) | (g << 8) | b;
 ```
 
@@ -240,27 +267,24 @@ output_buffer[i] = static_cast<uint32_t>(temp_buffer[i]) | 0xFF000000;
 
 **Do NOT** add `| 0xFF000000` inside effect code - alpha should propagate through the chain for effects that use it.
 
-**Color Format and Conversion**
-Internal format is ABGR: `0xAABBGGRR` (Alpha, Blue, Green, Red). Use `core/color.h` utilities:
+**Color Utilities**
+
+Use `core/color.h` for color manipulation:
 
 ```cpp
 #include "core/color.h"
 
-// Extract components
-uint8_t r = avs::color::red(color);    // bits 0-7
+// Extract components (ARGB format)
+uint8_t r = avs::color::red(color);    // bits 16-23
 uint8_t g = avs::color::green(color);  // bits 8-15
-uint8_t b = avs::color::blue(color);   // bits 16-23
+uint8_t b = avs::color::blue(color);   // bits 0-7
 
-// Build color
-uint32_t c = avs::color::make(r, g, b);
+// Build ARGB color
+uint32_t c = avs::color::make(r, g, b);  // alpha defaults to 0xFF
 
-// Format conversions
-avs::color::bgr_add_alpha(bgr);   // Binary loading: BGR → ABGR
-avs::color::abgr_to_argb(abgr);   // JSON output: ABGR → ARGB
-avs::color::argb_to_abgr(argb);   // JSON loading: ARGB → ABGR
+// Legacy preset loading (ABGR → ARGB)
+uint32_t color = avs::color::swap_rb(reader.read_u32());
 ```
-
-JSON uses standard ARGB (`#AARRGGBB`) for human readability. Conversion happens automatically in `preset.cpp`.
 
 **UI Layout**
 Dialog coordinates come from original `res.rc`. The 2x position scaling is intentional. Don't adjust sizes or positions without testing.

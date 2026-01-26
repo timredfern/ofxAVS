@@ -14,25 +14,24 @@
 
 namespace avs_ui {
 
-// Color format conversion between ImGui (RGBA floats) and AVS framebuffer format
-// AVS framebuffer format: 0xAABBGGRR (R in bits 0-7, G in bits 8-15, B in bits 16-23, A in bits 24-31)
-// This matches OF_PIXELS_BGRA on little-endian systems.
+// Color format conversion between ImGui (RGBA floats) and AVS internal format
+// AVS internal format: ARGB 0xAARRGGBB (A in bits 24-31, R in bits 16-23, G in bits 8-15, B in bits 0-7)
 // ImGui expects col[0]=R, col[1]=G, col[2]=B, col[3]=A as floats 0-1
 
-// Extract ImGui float array from 0xAABBGGRR color
+// Extract ImGui float array from ARGB color (0xAARRGGBB)
 inline void color_to_imgui(uint32_t color, float* col) {
-    col[0] = (color & 0xFF) / 255.0f;          // R from bits 0-7
+    col[0] = ((color >> 16) & 0xFF) / 255.0f;  // R from bits 16-23
     col[1] = ((color >> 8) & 0xFF) / 255.0f;   // G from bits 8-15
-    col[2] = ((color >> 16) & 0xFF) / 255.0f;  // B from bits 16-23
+    col[2] = (color & 0xFF) / 255.0f;          // B from bits 0-7
     col[3] = ((color >> 24) & 0xFF) / 255.0f;  // A from bits 24-31
 }
 
-// Build 0xAABBGGRR color from ImGui float array
+// Build ARGB color (0xAARRGGBB) from ImGui float array
 inline uint32_t imgui_to_color(const float* col) {
     return ((uint32_t)(col[3] * 255) << 24) |  // A to bits 24-31
-           ((uint32_t)(col[2] * 255) << 16) |  // B to bits 16-23
+           ((uint32_t)(col[0] * 255) << 16) |  // R to bits 16-23
            ((uint32_t)(col[1] * 255) << 8) |   // G to bits 8-15
-           ((uint32_t)(col[0] * 255));         // R to bits 0-7
+           ((uint32_t)(col[2] * 255));         // B to bits 0-7
 }
 
 // Non-linear slider mapping for brightness RGB controls
