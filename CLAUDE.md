@@ -216,6 +216,24 @@ On little-endian systems, this is stored in memory as bytes `[B, G, R, A]`.
 
 **Why ARGB?** OpenFrameworks/OpenGL require ARGB for texture uploads. This is the native format throughout avs_lib.
 
+**AudioData Format**
+
+Audio data uses a fixed format matching original AVS and grandchild:
+```cpp
+typedef char AudioData[2][2][576];
+// AudioData[type][channel][sample]
+
+// ALWAYS use constants instead of magic numbers:
+constexpr int AUDIO_SPECTRUM = 0;  // Frequency domain (unsigned 0-255)
+constexpr int AUDIO_WAVEFORM = 1;  // Time domain (signed, XOR 128 for unsigned)
+constexpr int AUDIO_LEFT = 0;      // Left channel
+constexpr int AUDIO_RIGHT = 1;     // Right channel
+
+// Example: visdata[AUDIO_WAVEFORM][AUDIO_LEFT][i] for left channel waveform sample i
+```
+
+**NEVER use magic numbers 0 and 1 for audio indices.** Always use the constants. This prevents the widespread convention confusion that previously existed in the codebase.
+
 **Legacy Format: Windows AVS uses ABGR**
 
 Original Windows AVS used **ABGR format**: `0xAABBGGRR` (also known as Windows COLORREF with alpha). Binary `.avs` preset files store colors in this format.
@@ -318,7 +336,28 @@ Scripted effects often have a help button (IDC_HELPBTN) that shows variable docu
 
 ---
 
-## 6. Housekeeping
+## 6. Cross-Implementation Testing
+
+**Reference Images**
+
+Test output images are stored in `~/workspace/avs/ref/`:
+- `test_avslib_{frame}_{preset}.ppm` - Output from our avs_lib
+- `test_grandchild_{frame}_{preset}.ppm` - Output from grandchild (reference)
+
+**Grandchild Reference Implementation**
+
+There is a branch of grandchild's `avs-render-tool` with a command line tool that uses the **same synthetic audio data** as our `avs_render_test`. This allows direct pixel-by-pixel comparison between implementations.
+
+**Test Script**
+
+Use `tools/avs_test` to generate test images:
+```bash
+avs_test "preset name.avs" <frame> ~/workspace/avs/ref
+```
+
+---
+
+## 7. Housekeeping
 
 **Git**
 Repository: `/Users/tim/workspace/avs/ofxAVS` (already initialized, don't run `git init`)

@@ -121,9 +121,12 @@ See `libs/avs_lib/ARCHITECTURE.md` for detailed documentation of the original Wi
 
 ```cpp
 typedef char AudioData[2][2][576];
-// [spectrum/waveform][left/right][samples]
-// visdata[0] = spectrum (unsigned 0-255)
-// visdata[1] = waveform (signed, XOR 128 for unsigned)
+// AudioData[type][channel][sample]
+// Use constants instead of magic numbers:
+constexpr int AUDIO_SPECTRUM = 0;  // Frequency domain (unsigned 0-255)
+constexpr int AUDIO_WAVEFORM = 1;  // Time domain (signed, XOR 128 for unsigned)
+constexpr int AUDIO_LEFT = 0;      // Left channel
+constexpr int AUDIO_RIGHT = 1;     // Right channel
 ```
 
 ## Integration Example

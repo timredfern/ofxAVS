@@ -143,8 +143,8 @@ void ofxAVS::audioIn(ofSoundBuffer& buffer) {
         }
 
         // Waveform: convert float [-1, 1] to signed char [-128, 127]
-        current_audio_data[0][0][i] = static_cast<char>(left * 127.0f);
-        current_audio_data[0][1][i] = static_cast<char>(right * 127.0f);
+        current_audio_data[avs::AUDIO_WAVEFORM][avs::AUDIO_LEFT][i] = static_cast<char>(left * 127.0f);
+        current_audio_data[avs::AUDIO_WAVEFORM][avs::AUDIO_RIGHT][i] = static_cast<char>(right * 127.0f);
 
         // Mix to mono for FFT
         if (i < FFT_SIZE) {
@@ -200,8 +200,8 @@ void ofxAVS::audioIn(ofSoundBuffer& buffer) {
         }
 
         unsigned char val = static_cast<unsigned char>(smoothedSpectrum[i] * 255.0f);
-        current_audio_data[1][0][i] = static_cast<char>(val);
-        current_audio_data[1][1][i] = static_cast<char>(val);
+        current_audio_data[avs::AUDIO_SPECTRUM][avs::AUDIO_LEFT][i] = static_cast<char>(val);
+        current_audio_data[avs::AUDIO_SPECTRUM][avs::AUDIO_RIGHT][i] = static_cast<char>(val);
     }
 
 #else
@@ -243,8 +243,8 @@ void ofxAVS::audioIn(ofSoundBuffer& buffer) {
     // Apply AVS log table compression
     for (int i = 0; i < 576; i++) {
         unsigned char compressed = logTable[spectrumRaw[i]];
-        current_audio_data[1][0][i] = static_cast<char>(compressed);
-        current_audio_data[1][1][i] = static_cast<char>(compressed);
+        current_audio_data[avs::AUDIO_SPECTRUM][avs::AUDIO_LEFT][i] = static_cast<char>(compressed);
+        current_audio_data[avs::AUDIO_SPECTRUM][avs::AUDIO_RIGHT][i] = static_cast<char>(compressed);
     }
 
 #endif
