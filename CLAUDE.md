@@ -147,6 +147,137 @@ int render(...) {
    ```
    This function should not exist. Use `on_parameter_changed()` instead.
 
+4. **Validity flags checked in render():**
+   ```cpp
+   // WRONG - flag set elsewhere, work done in render
+   void on_parameter_changed(...) {
+       scripts_need_compile_ = true;  // Just set a flag
+       table_valid_ = false;
+   }
+   int render(...) {
+       if (scripts_need_compile_) {   // Check flag, do expensive work
+           compile_all_scripts();     // This blocks rendering!
+           scripts_need_compile_ = false;
+       }
+       if (!table_valid_) {
+           regenerate_lookup_table(); // 2 million iterations!
+       }
+   }
+   ```
+   ```cpp
+   // RIGHT - do work immediately when parameter changes
+   void on_parameter_changed(...) {
+       compile_all_scripts();         // Do it now
+       regenerate_lookup_table();     // Do it now
+   }
+   int render(...) {
+       // Just render. No flag checks. No compilation.
+       apply_transformation(...);
+   }
+   ```
+
+5. **Polling UI state in render():**
+   ```cpp
+   // WRONG - checking dropdown value every frame
+   int render(...) {
+       int preset_idx = parameters().get_int("example_preset");
+       if (preset_idx > 0) {
+           load_preset(preset_idx);
+           parameters().set_int("example_preset", 0);  // Reset
+       }
+   }
+   ```
+   ```cpp
+   // RIGHT - respond to UI events
+   void on_parameter_changed(const std::string& param_name) {
+       if (param_name == "example_preset") {
+           int preset_idx = parameters().get_int("example_preset");
+           if (preset_idx > 0) {
+               load_preset(preset_idx);
+               parameters().set_int("example_preset", 0);
+           }
+       }
+   }
+   ```
+
+6. **Width multiplier lookup tables:**
+   ```cpp
+   // WRONG - 1990s "optimization" that hurts modern CPUs
+   std::vector<int> w_mul_;
+   w_mul_[y] = y * w;  // Precompute to "avoid multiplication"
+   int idx = x + w_mul_[y];  // Memory lookup
+   ```
+   ```cpp
+   // RIGHT - just multiply (1-3 cycles on modern CPUs)
+   int idx = x + y * w;  // Faster than cache-missing memory lookup
+   ```
+
+7. **Per-pixel script parsing:**
+   ```cpp
+   // CATASTROPHICALLY WRONG - parses script 2 million times at 1080p
+   for (int py = 0; py < h; py++) {
+       for (int px = 0; px < w; px++) {
+           engine.evaluate(script);  // PARSES TEXT EVERY PIXEL
+       }
+   }
+   ```
+   ```cpp
+   // RIGHT - compile once, execute many
+   void on_parameter_changed(...) {
+       compiled_script_ = engine.compile(script);  // Parse once
+   }
+   int render(...) {
+       for (int py = 0; py < h; py++) {
+           for (int px = 0; px < w; px++) {
+               engine.execute(compiled_script_);  // Fast execution
+           }
+       }
+   }
+   ```
+
+---
+
+## Hall of Shame (Historical Anti-Patterns)
+
+These patterns were found throughout the codebase and systematically removed. This section documents them so they never return.
+
+**Pattern: `scripts_need_compile_` flag**
+- Set `true` in `on_parameter_changed()`, checked in `render()`
+- Caused: UI lag when editing scripts (compilation blocked rendering)
+- Found in: superscope, color_modifier, ddm, shift, bump, set_render_mode_ext, effect_list
+- Fix: Compile immediately in `on_parameter_changed()`
+
+**Pattern: `table_valid_` flag**
+- Set `false` when parameters change, regenerate table in `render()`
+- Caused: 2-second freezes when editing movement scripts
+- Found in: movement, color_modifier
+- Fix: Regenerate table immediately in `on_parameter_changed()` using cached dimensions
+
+**Pattern: Preset dropdown polling**
+- Check `parameters().get_int("example_preset")` every frame in `render()`
+- Found in: superscope, color_modifier
+- Fix: Handle in `on_parameter_changed("example_preset")`
+
+**Pattern: `w_mul_`/`wmul_` lookup tables**
+- Precomputed `y * w` to "avoid multiplication"
+- Cargo-culted from 1990s when multiply was 10+ cycles
+- Modern CPUs: multiply is 1-3 cycles, memory lookup is slower
+- Found in: rotoblitter, ddm
+- Fix: Delete the tables, just use `y * w`
+
+**Pattern: Per-pixel `evaluate()` instead of `compile()`/`execute()`**
+- Parsed script text for every pixel (millions of times)
+- Caused: Movement effect table generation took seconds
+- Found in: movement
+- Fix: Use `CompiledScript` API
+
+**Pattern: `evaluate()` instead of compiled scripts for frame scripts**
+- Re-parsed script every frame instead of once on change
+- Found in: dynamic_movement, dynamic_movement_ext
+- Fix: Use `compile()` in `on_parameter_changed()`, `execute()` in `render()`
+
+---
+
 **Parameter Names Must Match Control IDs**
 The UI layout defines control IDs. Your parameter names must be identical.
 ```cpp
