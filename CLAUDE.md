@@ -276,6 +276,19 @@ These patterns were found throughout the codebase and systematically removed. Th
 - Found in: dynamic_movement, dynamic_movement_ext
 - Fix: Use `compile()` in `on_parameter_changed()`, `execute()` in `render()`
 
+**Pattern: ABGR channel extraction in ARGB codebase**
+- Original Windows AVS used ABGR (COLORREF): `pix & 0xff` = Red
+- Our codebase uses ARGB: `pix & 0xff` = Blue, `(pix >> 16) & 0xff` = Red
+- Blindly porting `pix & 0xff` as "red" produces swapped R/B channels
+- Found in: interferences (RGB separation mode)
+- Fix: Audit all per-channel operations. Red = bits 16-23, Green = bits 8-15, Blue = bits 0-7
+
+**Pattern: Animated state stored in parameters**
+- Writing animated values to `parameters().set_int()` every frame
+- Causes: UI slider jitter, potential feedback loops with on_parameter_changed
+- Found in: interferences (rotation animation)
+- Fix: Use internal member variables for animated runtime state, separate from UI-bound parameters
+
 ---
 
 **Parameter Names Must Match Control IDs**
