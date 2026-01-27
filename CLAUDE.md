@@ -451,6 +451,19 @@ uint32_t color = avs::color::swap_rb(reader.read_u32());
 **UI Layout**
 Dialog coordinates come from original `res.rc`. The 2x position scaling is intentional. Don't adjust sizes or positions without testing.
 
+**CRITICAL: Slider .text does NOT display as a label!**
+The `.text` field on SLIDER controls is NOT rendered. You MUST use separate LABEL controls for slider labels. See brightness.cpp for the correct pattern:
+```cpp
+// WRONG - slider .text is ignored, no label appears:
+{.id = "red_adjust", .text = "Red", .type = ControlType::SLIDER, .x = 0, .y = 13, ...}
+
+// RIGHT - separate LABEL control positioned to the left of slider:
+{.id = "red_label", .text = "Red", .type = ControlType::LABEL, .x = 0, .y = 15, .w = 14, .h = 8},
+{.id = "red_adjust", .text = "", .type = ControlType::SLIDER, .x = 25, .y = 13, .w = 97, .h = 13, ...}
+```
+
+When adding UI elements, use res.rc coordinates consistently throughout the entire layout. Do NOT mix coordinate systems - if an effect's existing layout uses different coordinates, convert ALL elements to res.rc coords or keep ALL in the existing system.
+
 When implementing effects with script edit boxes (EDITTEXT), always check `res.rc` for accompanying LTEXT labels. Script dialogs typically have labels like "init", "frame", "beat", "point" next to their edit boxes:
 ```cpp
 // From res.rc - note the LTEXT labels
