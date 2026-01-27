@@ -1,0 +1,44 @@
+#!/bin/bash
+# Usage: avs_test <preset.avs> <frame> <output_dir>
+# Runs both local avs_render_test and remote grandchild avs_render,
+# saves both images, opens them for comparison, cleans up remote files.
+
+set -e
+
+if [ $# -lt 3 ]; then
+    echo "Usage: avs_test <preset.avs> <frame> <output_dir>"
+    exit 1
+fi
+
+preset="$1"
+frame="$2"
+outdir="$3"
+
+# Sanitize preset name for filename (remove path, replace spaces)
+preset_basename=$(basename "$preset")
+preset_safe=$(echo "${preset_basename%.avs}" | tr ' ' '_')
+
+local_out="${outdir}/test_avslib_${frame}_${preset_safe}.ppm"
+remote_out="${outdir}/test_grandchild_${frame}_${preset_safe}.ppm"
+
+REMOTE="tim@eclectronics.org"
+REMOTE_TMP="/tmp/avs_test_$$"
+
+echo "=== Running local avs_render_test ==="
+avs_render_test --preset "$preset" --frame "$frame" --output "$local_out"
+echo "Wrote: $local_out"
+
+echo ""
+echo "=== Running remote avs_render (grandchild) ==="
+
+# Create temp dir on remote, copy preset, run, copy back, cleanup
+ssh "$REMOTE" "mkdir -p $REMOTE_TMP"
+scp -q "$preset" "${REMOTE}:${REMOTE_TMP}/"
+ssh "$REMOTE" "cd $REMOTE_TMP && avs-render --preset '${preset_basename}' --frame $frame --output output.ppm"
+scp -q "${REMOTE}:${REMOTE_TMP}/output.ppm" "$remote_out"
+ssh "$REMOTE" "rm -rf $REMOTE_TMP"
+echo "Wrote: $remote_out"
+
+echo ""
+echo "=== Opening images ==="
+open "$local_out" "$remote_out"

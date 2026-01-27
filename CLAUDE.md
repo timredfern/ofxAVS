@@ -367,6 +367,9 @@ Never hardcode filesystem paths. Use environment variables:
 export OF_ROOT=~/workspace/openFrameworks
 ```
 
+**Tools Location**
+Always put new scripts and tools in the `tools/` directory. The canonical location is in the repository, not in ~/bin. User may symlink or copy to ~/bin for convenience, but the source of truth is tools/.
+
 **Copyright Headers**
 
 For avs_lib files:
