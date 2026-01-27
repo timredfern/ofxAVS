@@ -289,6 +289,21 @@ These patterns were found throughout the codebase and systematically removed. Th
 - Found in: interferences (rotation animation)
 - Fix: Use internal member variables for animated runtime state, separate from UI-bound parameters
 
+**Pattern: Magic values instead of color.h utilities**
+- Using `pix & 0xff`, `(pix >> 16) & 0xff`, `0xFF0000`, etc. directly
+- Error-prone: easy to confuse ARGB bit positions, no compile-time checks
+- Found in: many effects during initial port
+- Fix: Use `avs::color::red(pix)`, `avs::color::blue(pix)` for normalized 0-255 values
+- Fix: Use `avs::color::red_i(pix)`, `avs::color::make_i(r,g,b)` for in-place efficiency
+- Fix: Use `avs::color::RED_MAX_I`, `avs::color::BLUE_MAX_I` for clamp limits
+
+**Pattern: UI-to-channel mapping not matching labels**
+- "Red" slider affecting blue channel, "Blue" slider affecting red channel
+- Caused by ABGR logic ported without adaptation to ARGB framebuffer
+- User moves "Red" slider expecting red to change, but blue changes instead
+- Found in: brightness (originally), channel_shift, dot_plane, dot_fountain
+- Fix: Trace from UI parameter → multiplier/table → extraction → output to verify correct channel
+
 ---
 
 **Parameter Names Must Match Control IDs**
