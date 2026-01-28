@@ -859,7 +859,7 @@ void ofxAVS::drawParametersPanel() {
     ImGui::PushStyleColor(ImGuiCol_TitleBgActive, ImVec4(0.2f, 0.2f, 0.2f, 1.0f));
     ImGui::PushStyleColor(ImGuiCol_TitleBgCollapsed, ImVec4(0.2f, 0.2f, 0.2f, 1.0f));
 
-    std::string title = selected_ ? selected_->get_display_name() : "Parameters";
+    std::string title = (selected_ ? selected_->get_display_name() : "Parameters") + "###params_panel";
     if (ImGui::Begin(title.c_str(), nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove)) {
         if (selected_) {
             // Get UI layout from the Configurable interface
