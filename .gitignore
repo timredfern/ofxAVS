@@ -6,6 +6,7 @@ build/
 obj/
 bin/
 *.app/
+**/openFrameworks-Info.plist
 
 # CMake generated files
 CMakeCache.txt
