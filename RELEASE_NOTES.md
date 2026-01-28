@@ -1,28 +1,26 @@
-## What's New
+## v0.1.8 - Color Accuracy
 
-**Audio Management:**
-- Responsive audio UI adapts to panel width
-
-**Rendering:**
-- Auto-resizing output renders at native resolution
-- Fullscreen mode in multiwindow renders at screen resolution (not stretched)
-
-**Architecture:**
-- Multiwindow example uses independent GL contexts (no context sharing)
-- CPU rendering (pixels) separated from GPU operations (texture) for cleaner multi-window support
-- Vsync disabled in multiwindow for consistent frame rates
+**Major Color System Overhaul:**
+- Fixed 8 critical R↔B channel swap bugs affecting starfield, ddm, ring, oscstar, rotstar, dot_grid, picture effects
+- Converted all 27 color-handling effects to use explicit color.h utilities
+- Eliminated error-prone magic number bit manipulation throughout codebase
+- Colors now render correctly across all effects
 
 **Bug Fixes:**
-- Fix crash when closing parameter windows in multiwindow example
+- Fix keyboard navigation losing focus after arrow key/delete in effect list
+- Fix audio data indexing to match original AVS convention
+- Fix UI color picker display for ARGB format
+- Fix blitter_feedback UI: add missing labels and groupboxes
 
-**UI Improvements:**
-- Parameters panel shows effect name in window title (saves vertical space)
-- Dynamic panel sizing adapts to window dimensions
-- Context menus have subtle background contrast for visibility
+**Effect List:**
+- Complete Effect List implementation with all blend modes
+- Input/output blending with 14 modes (ignore, replace, 50/50, max, additive, etc.)
+- Evaluation override scripting support
+- Buffer-based alpha blending
 
-**Documentation:**
-- Updated README and BUILD with correct example names
-- Added example descriptions (AVS_standard, AVS_multiwindow, AVS_simple)
+**Developer Tools:**
+- Add avs_test script for cross-implementation comparison with grandchild
+- Add WORKLOG.md for session state persistence
 
 ## Installation
 
