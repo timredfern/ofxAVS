@@ -408,24 +408,35 @@ constexpr int AUDIO_RIGHT = 1;     // Right channel
 
 **NEVER use magic numbers 0 and 1 for audio indices.** Always use the constants. This prevents the widespread convention confusion that previously existed in the codebase.
 
-**Legacy Format: Windows AVS uses ABGR**
+**Legacy Color Formats in Binary Presets**
 
-Original Windows AVS used **ABGR format**: `0xAABBGGRR` (also known as Windows COLORREF with alpha). Binary `.avs` preset files store colors in this format.
+Binary `.avs` preset files store colors in two different formats depending on the effect:
 
-| Format | Hex Layout | Bits 0-7 | Bits 16-23 |
-|--------|------------|----------|------------|
-| ARGB (avs_lib) | `0xAARRGGBB` | Blue | Red |
-| ABGR (legacy) | `0xAABBGGRR` | Red | Blue |
+| Format | Hex Layout | Bits 0-7 | Bits 16-23 | Effects |
+|--------|------------|----------|------------|---------|
+| ARGB (avs_lib) | `0xAARRGGBB` | Blue | Red | Internal format |
+| 0x00RRGGBB | `0x00RRGGBB` | Blue | Red | SuperScope, (others TBD) |
+| ABGR/COLORREF | `0x00BBGGRR` | Red | Blue | Most other effects |
 
-**The One Color Conversion**
+**Determining Which Format an Effect Uses**
 
-When loading legacy presets, we swap Red and Blue **once**:
+Check the original Windows AVS source (`vis_avs/avs/vis_avs/r_*.cpp` files):
+- Look at how `load_config()` reads colors and how `render()` uses them
+- If color components are extracted as `(color >> 16) & 0xff` for red → 0x00RRGGBB format (no swap needed)
+- If color components are extracted as `color & 0xff` for red → ABGR format (swap needed)
+- Also check dialog code: if there's a R↔B swap before passing to GDI, the internal format is 0x00RRGGBB
+
+**Color Conversion in load_parameters()**
+
 ```cpp
-// In load_parameters() - convert legacy ABGR to internal ARGB
-uint32_t color = swap_rb(reader.read_u32());
+// Effects using ABGR format (most effects) - swap R↔B:
+uint32_t color = swap_rb(reader.read_u32()) | 0xFF000000;
+
+// Effects using 0x00RRGGBB format (SuperScope, etc.) - no swap:
+uint32_t color = reader.read_u32() | 0xFF000000;
 ```
 
-This is the **only** R↔B swap in the entire codebase. After loading, all colors are ARGB. Effects, blend operations, line drawing - everything uses ARGB. No further conversions needed.
+After loading, all colors are ARGB internally. Effects, blend operations, line drawing - everything uses ARGB.
 
 **Alpha Channel Handling**
 
