@@ -1,5 +1,20 @@
 # AVS Project Instructions
 
+## 0. Session Start - READ WORKLOG.md FIRST
+
+**BEFORE doing anything else**, read `WORKLOG.md` in this directory. It contains:
+- Current task in progress
+- Audit results and pending items
+- Context that would otherwise be lost between sessions
+
+Update WORKLOG.md when:
+- Completing items from the pending list
+- Discovering new issues during work
+- Partially completing a multi-step task
+- Before any large refactoring
+
+---
+
 ## 1. Project Context
 
 **What is AVS?**
