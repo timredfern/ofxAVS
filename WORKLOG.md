@@ -4,7 +4,7 @@
 
 ## Current Task
 
-Updating effects to use color.h utilities instead of magic numbers.
+Color audit COMPLETE - all effects now use color.h utilities.
 
 ## Completed
 
@@ -34,29 +34,29 @@ Updating effects to use color.h utilities instead of magic numbers.
 | dot_grid.cpp      | ~50     | Same interpolation pattern | FIXED     |
 | picture.cpp       | 57      | Constructs ABGR not ARGB!  | FIXED     |
 
-### MAGIC NUMBERS (need color.h for safety) (15 files)
+### MAGIC NUMBERS - ALL CONVERTED TO color.h
 
 | File                 | Issue                           | Status |
 |----------------------|---------------------------------|--------|
-| oscilloscope.cpp     | & 0xff, >> 8, >> 16             | TODO   |
-| superscope.cpp       | color interpolation             | TODO   |
-| color_clip.cpp       | channel extraction              | TODO   |
-| color_fade.cpp       | channel extraction              | TODO   |
-| color_modifier.cpp   | channel work                    | TODO   |
-| interferences.cpp    | channel extraction              | TODO   |
-| brightness.cpp       | lookup table                    | TODO   |
-| bump.cpp             | setdepth functions              | TODO   |
-| fadeout.cpp          | color table build               | TODO   |
-| fast_brightness.cpp  | channel math                    | TODO   |
-| grain.cpp            | channel extraction/construction | TODO   |
-| multiplier.cpp       | >> 16, >> 8, & 0xff, masks      | TODO   |
-| movement.cpp         | blend_max, blend4               | TODO   |
-| dynamic_movement.cpp | bilinear blend                  | TODO   |
-| effect_list.cpp      | depthof() function              | TODO   |
-| unique_tone.cpp      | lookup table                    | TODO   |
-| dot_fountain.cpp     | color table                     | TODO   |
+| oscilloscope.cpp     | & 0xff, >> 8, >> 16             | DONE   |
+| superscope.cpp       | color interpolation             | DONE   |
+| color_clip.cpp       | channel extraction              | DONE   |
+| color_fade.cpp       | channel extraction              | DONE   |
+| color_modifier.cpp   | byte-level access (intentional) | N/A    |
+| interferences.cpp    | channel extraction              | DONE   |
+| brightness.cpp       | lookup table                    | DONE   |
+| bump.cpp             | setdepth functions              | DONE   |
+| fadeout.cpp          | color table build               | DONE   |
+| fast_brightness.cpp  | channel math                    | DONE   |
+| grain.cpp            | channel extraction/construction | DONE   |
+| multiplier.cpp       | >> 16, >> 8, & 0xff, masks      | DONE   |
+| movement.cpp         | blend_max, blend4               | DONE   |
+| dynamic_movement.cpp | uses CoordinateGrid (no direct) | N/A    |
+| effect_list.cpp      | depthof() function              | DONE   |
+| unique_tone.cpp      | lookup table                    | DONE   |
+| dot_fountain.cpp     | color table                     | DONE   |
 
-### ALREADY USING color.h (12 files)
+### NOW USING color.h (27 files)
 
 | File              | Status |
 |-------------------|--------|
@@ -72,6 +72,21 @@ Updating effects to use color.h utilities instead of magic numbers.
 | rotstar.cpp       | OK     |
 | dot_grid.cpp      | OK     |
 | picture.cpp       | OK     |
+| oscilloscope.cpp  | OK     |
+| superscope.cpp    | OK     |
+| color_clip.cpp    | OK     |
+| color_fade.cpp    | OK     |
+| interferences.cpp | OK     |
+| brightness.cpp    | OK     |
+| bump.cpp          | OK     |
+| fadeout.cpp       | OK     |
+| fast_brightness.cpp| OK    |
+| grain.cpp         | OK     |
+| multiplier.cpp    | OK     |
+| movement.cpp      | OK     |
+| effect_list.cpp   | OK     |
+| unique_tone.cpp   | OK     |
+| dot_fountain.cpp  | OK     |
 
 ### NO COLOR WORK (28 files)
 
@@ -85,11 +100,78 @@ water_bump.cpp, unsupported.cpp
 ## Summary
 
 - 8 CRITICAL bugs - ALL FIXED
-- 15 files with magic numbers (functional but fragile) - TODO
-- 12 files now using color.h
-- 28 files have no color channel work
+- 15 files with magic numbers - ALL CONVERTED to color.h
+- 27 files now using color.h
+- 2 files intentionally use different approach (color_modifier.cpp: byte access, dynamic_movement.cpp: uses CoordinateGrid)
+- 26 files have no color channel work
 - Total: 53 effect files
+
+## Anti-Patterns (Hall of Shame)
+
+These patterns were found throughout the codebase and systematically removed. This section documents them so they never return.
+
+### `scripts_need_compile_` flag
+- Set `true` in `on_parameter_changed()`, checked in `render()`
+- Caused: UI lag when editing scripts (compilation blocked rendering)
+- Found in: superscope, color_modifier, ddm, shift, bump, set_render_mode_ext, effect_list
+- Fix: Compile immediately in `on_parameter_changed()`
+
+### `table_valid_` flag
+- Set `false` when parameters change, regenerate table in `render()`
+- Caused: 2-second freezes when editing movement scripts
+- Found in: movement, color_modifier
+- Fix: Regenerate table immediately in `on_parameter_changed()` using cached dimensions
+
+### Preset dropdown polling
+- Check `parameters().get_int("example_preset")` every frame in `render()`
+- Found in: superscope, color_modifier
+- Fix: Handle in `on_parameter_changed("example_preset")`
+
+### `w_mul_`/`wmul_` lookup tables
+- Precomputed `y * w` to "avoid multiplication"
+- Cargo-culted from 1990s when multiply was 10+ cycles
+- Modern CPUs: multiply is 1-3 cycles, memory lookup is slower
+- Found in: rotoblitter, ddm
+- Fix: Delete the tables, just use `y * w`
+
+### Per-pixel `evaluate()` instead of `compile()`/`execute()`
+- Parsed script text for every pixel (millions of times)
+- Caused: Movement effect table generation took seconds
+- Found in: movement
+- Fix: Use `CompiledScript` API
+
+### `evaluate()` instead of compiled scripts for frame scripts
+- Re-parsed script every frame instead of once on change
+- Found in: dynamic_movement, dynamic_movement_ext
+- Fix: Use `compile()` in `on_parameter_changed()`, `execute()` in `render()`
+
+### ABGR channel extraction in ARGB codebase
+- Original Windows AVS used ABGR (COLORREF): `pix & 0xff` = Red
+- Our codebase uses ARGB: `pix & 0xff` = Blue, `(pix >> 16) & 0xff` = Red
+- Blindly porting `pix & 0xff` as "red" produces swapped R/B channels
+- Found in: interferences (RGB separation mode)
+- Fix: Audit all per-channel operations. Red = bits 16-23, Green = bits 8-15, Blue = bits 0-7
+
+### Animated state stored in parameters
+- Writing animated values to `parameters().set_int()` every frame
+- Causes: UI slider jitter, potential feedback loops with on_parameter_changed
+- Found in: interferences (rotation animation)
+- Fix: Use internal member variables for animated runtime state, separate from UI-bound parameters
+
+### Magic values instead of color.h utilities
+- Using `pix & 0xff`, `(pix >> 16) & 0xff`, `0xFF0000`, etc. directly
+- Error-prone: easy to confuse ARGB bit positions, no compile-time checks
+- Found in: many effects during initial port
+- Fix: Use `avs::color::red(pix)`, `avs::color::blue(pix)` for normalized 0-255 values
+- Fix: Use `avs::color::make(r, g, b)` to construct colors
+
+### UI-to-channel mapping not matching labels
+- "Red" slider affecting blue channel, "Blue" slider affecting red channel
+- Caused by ABGR logic ported without adaptation to ARGB framebuffer
+- User moves "Red" slider expecting red to change, but blue changes instead
+- Found in: brightness (originally), channel_shift, dot_plane, dot_fountain
+- Fix: Trace from UI parameter → multiplier/table → extraction → output to verify correct channel
 
 ## Last Updated
 
-2026-01-28 - Fixed all 8 critical R↔B swap bugs
+2026-01-28 - Converted all magic number files to use color.h
