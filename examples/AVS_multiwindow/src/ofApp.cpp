@@ -255,18 +255,31 @@ void ofApp::keyPressed(int key) {
 
 //--------------------------------------------------------------
 void ofApp::dragEvent(ofDragInfo dragInfo) {
-    if (dragInfo.files.size() > 0) {
-        std::string path = dragInfo.files[0];
-        std::string ext = ofFilePath::getFileExt(path);
+    if (dragInfo.files.empty()) return;
 
-        if (ext == "avs" || ext == "json") {
-            if (avs.loadPreset(path)) {
-                ofLogNotice() << "Loaded preset: " << ofFilePath::getFileName(path);
-            } else {
-                ofLogError() << "Failed to load preset: " << avs.getLastError();
-            }
+    std::string path = dragInfo.files[0];
+    std::string ext = ofFilePath::getFileExt(path);
+
+    // Preset files
+    if (ext == "avs" || ext == "avsp") {
+        if (avs.loadPreset(path)) {
+            ofLogNotice() << "Loaded preset: " << ofFilePath::getFileName(path);
         } else {
-            avs.loadSoundFile(path);
+            ofLogError() << "Failed to load preset: " << avs.getLastError();
         }
+    }
+    // MIDI files
+    else if (ext == "mid" || ext == "midi") {
+        avs.setMidiDebug(true);
+        avs.loadMidiFile(path);
+    }
+    // Catalogue files (audio + MIDI synced)
+    else if (ext == "avsc") {
+        avs.setMidiDebug(true);
+        avs.loadCatalogue(path);
+    }
+    // Audio files
+    else {
+        avs.loadSoundFile(path);
     }
 }

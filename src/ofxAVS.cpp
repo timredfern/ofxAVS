@@ -10,6 +10,7 @@
 #include "core/ui.h"  // For resource_path()
 #include <cmath>
 #include <map>
+#include <iomanip>
 
 // Session file location (in app's data folder)
 static std::string getSessionPath() {
@@ -106,10 +107,14 @@ bool ofxAVS::saveSession() {
 }
 
 void ofxAVS::update() {
+    // Update MIDI playback (push events to EventBus based on audio position)
+    updateMidiPlayback();
+
     // Process beat detection
     bool isBeat = beat_detector_->process(current_audio_data);
 
     // Render directly into pixels buffer (CPU - context independent)
+    // Note: Renderer::render() calls EventBus::process_frame() internally
     renderer->render(current_audio_data, isBeat,
                      reinterpret_cast<uint32_t*>(pixels.getData()));
 }
@@ -1191,9 +1196,138 @@ void ofxAVS::togglePlayback() {
         } else {
             if (audio_playback_pos_ >= audio_file_buffer_.getNumFrames()) {
                 audio_playback_pos_ = 0;
+                midi_event_index_ = 0;  // Reset MIDI playback too
             }
             audio_is_playing_ = true;
         }
+    }
+}
+
+void ofxAVS::loadMidiFile(const std::string& path) {
+    ofLogNotice("ofxAVS") << "Loading MIDI file: " << path;
+
+    if (midi_file_.load(path)) {
+        midi_loaded_filepath_ = path;
+        midi_event_index_ = 0;
+        ofLogNotice("ofxAVS") << "Loaded MIDI: " << midi_file_.getEvents().size()
+                              << " events, duration: " << midi_file_.getDuration() << "s"
+                              << ", tempo: " << midi_file_.getTempo() << " BPM";
+    } else {
+        ofLogError("ofxAVS") << "Failed to load MIDI file: " << midi_file_.getError();
+    }
+}
+
+bool ofxAVS::loadCatalogue(const std::string& jsonPath) {
+    ofLogNotice("ofxAVS") << "Loading catalogue: " << jsonPath;
+
+    ofJson json;
+    try {
+        ofFile file(jsonPath);
+        if (!file.exists()) {
+            ofLogError("ofxAVS") << "Catalogue file not found: " << jsonPath;
+            return false;
+        }
+        file >> json;
+    } catch (const std::exception& e) {
+        ofLogError("ofxAVS") << "Failed to parse catalogue JSON: " << e.what();
+        return false;
+    }
+
+    // Get directory of catalogue file for relative paths
+    std::string baseDir = ofFilePath::getEnclosingDirectory(jsonPath);
+
+    // Load audio file
+    if (json.contains("audio")) {
+        std::string audioPath = json["audio"].get<std::string>();
+        // Handle relative paths
+        if (!ofFilePath::isAbsolute(audioPath)) {
+            audioPath = baseDir + audioPath;
+        }
+        loadSoundFile(audioPath, false);  // Don't auto-play yet
+    }
+
+    // Load MIDI file
+    if (json.contains("midi")) {
+        std::string midiPath = json["midi"].get<std::string>();
+        // Handle relative paths
+        if (!ofFilePath::isAbsolute(midiPath)) {
+            midiPath = baseDir + midiPath;
+        }
+        loadMidiFile(midiPath);
+    }
+
+    // Start playback
+    if (audio_file_buffer_.getNumFrames() > 0) {
+        audio_playback_pos_ = 0;
+        midi_event_index_ = 0;
+        audio_use_file_ = true;
+        audio_is_playing_ = true;
+    }
+
+    return true;
+}
+
+void ofxAVS::updateMidiPlayback() {
+    if (!midi_file_.isLoaded() || !audio_is_playing_ || !audio_use_file_) {
+        return;
+    }
+
+    const auto& events = midi_file_.getEvents();
+    if (midi_event_index_ >= events.size()) {
+        return;
+    }
+
+    // Calculate current playback time in seconds
+    double currentTime = static_cast<double>(audio_playback_pos_) / 44100.0;
+
+    // Process all events up to current time
+    while (midi_event_index_ < events.size() && events[midi_event_index_].time <= currentTime) {
+        const auto& evt = events[midi_event_index_];
+
+        // Debug print
+        if (midi_debug_) {
+            const char* typeStr = "???";
+            switch (evt.type()) {
+                case avs::MidiFileEvent::NOTE_ON: typeStr = "NOTE_ON"; break;
+                case avs::MidiFileEvent::NOTE_OFF: typeStr = "NOTE_OFF"; break;
+                case avs::MidiFileEvent::CONTROL_CHANGE: typeStr = "CC"; break;
+                case avs::MidiFileEvent::PITCH_BEND: typeStr = "PITCH"; break;
+                case avs::MidiFileEvent::PROGRAM_CHANGE: typeStr = "PROG"; break;
+            }
+            ofLogNotice("MIDI") << std::fixed << std::setprecision(3) << evt.time << "s "
+                                << typeStr << " ch=" << evt.channel()
+                                << " d1=" << (int)evt.data1 << " d2=" << (int)evt.data2;
+        }
+
+        // Push to EventBus
+        avs::Event busEvent;
+        busEvent.channel = evt.channel();
+        busEvent.data1 = evt.data1;
+        busEvent.data2 = evt.data2;
+        busEvent.timestamp = evt.time;
+
+        switch (evt.type()) {
+            case avs::MidiFileEvent::NOTE_ON:
+                busEvent.type = avs::Event::Type::MIDI_NOTE_ON;
+                avs::EventBus::instance().push_event(busEvent);
+                break;
+            case avs::MidiFileEvent::NOTE_OFF:
+                busEvent.type = avs::Event::Type::MIDI_NOTE_OFF;
+                avs::EventBus::instance().push_event(busEvent);
+                break;
+            case avs::MidiFileEvent::CONTROL_CHANGE:
+                busEvent.type = avs::Event::Type::MIDI_CC;
+                avs::EventBus::instance().push_event(busEvent);
+                break;
+            case avs::MidiFileEvent::PITCH_BEND:
+                // Pitch bend: combine data1 (LSB) and data2 (MSB) into 14-bit value
+                busEvent.type = avs::Event::Type::MIDI_PITCH_BEND;
+                busEvent.data1 = (evt.data2 << 7) | evt.data1;  // 14-bit value
+                avs::EventBus::instance().push_event(busEvent);
+                break;
+        }
+
+        midi_event_index_++;
     }
 }
 
