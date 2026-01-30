@@ -1203,6 +1203,11 @@ void ofxAVS::togglePlayback() {
     }
 }
 
+void ofxAVS::toggleMidiDebug() {
+    midi_debug_ = !midi_debug_;
+    ofLogNotice("ofxAVS") << "MIDI debug " << (midi_debug_ ? "ON" : "OFF");
+}
+
 void ofxAVS::loadMidiFile(const std::string& path) {
     ofLogNotice("ofxAVS") << "Loading MIDI file: " << path;
 
@@ -1284,7 +1289,7 @@ void ofxAVS::updateMidiPlayback() {
     while (midi_event_index_ < events.size() && events[midi_event_index_].time <= currentTime) {
         const auto& evt = events[midi_event_index_];
 
-        // Debug print
+        // Print MIDI events (toggle with 'M' key)
         if (midi_debug_) {
             const char* typeStr = "???";
             switch (evt.type()) {
@@ -1350,6 +1355,7 @@ void ofxAVS::audioOut(ofSoundBuffer& buffer) {
     for (size_t i = 0; i < numFrames; i++) {
         if (audio_playback_pos_ >= audio_file_buffer_.getNumFrames()) {
             audio_playback_pos_ = 0;  // Loop
+            midi_event_index_ = 0;    // Reset MIDI too
         }
 
         float left = audio_file_buffer_.getSample(audio_playback_pos_, 0);
@@ -1390,9 +1396,21 @@ void ofxAVS::loadAudioSettings() {
                 loadSoundFile(soundPath, false);
             }
         }
+        if (json.contains("midi_file") && !json["midi_file"].is_null()) {
+            std::string midiPath = json["midi_file"].get<std::string>();
+            if (!midiPath.empty() && ofFile::doesFileExist(midiPath)) {
+                loadMidiFile(midiPath);
+            }
+        }
         if (json.contains("mic_gain")) {
             audio_mic_gain_ = json["mic_gain"].get<float>();
             audio_mic_gain_ = ofClamp(audio_mic_gain_, 1.0f, 100.0f);
+        }
+        if (json.contains("use_file_input")) {
+            audio_use_file_ = json["use_file_input"].get<bool>();
+        }
+        if (json.contains("midi_debug")) {
+            midi_debug_ = json["midi_debug"].get<bool>();
         }
         ofLogNotice("ofxAVS") << "Loaded audio settings";
     } catch (const std::exception& e) {
@@ -1403,6 +1421,8 @@ void ofxAVS::loadAudioSettings() {
 void ofxAVS::saveAudioSettings() {
     ofJson json;
     json["sound_file"] = audio_loaded_filepath_;
+    json["midi_file"] = midi_loaded_filepath_;
+    json["midi_debug"] = midi_debug_;
     json["use_file_input"] = audio_use_file_;
     json["mic_gain"] = audio_mic_gain_;
     json["input_device"] = audio_input_device_name_;

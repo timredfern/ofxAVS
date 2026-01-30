@@ -1,3 +1,22 @@
+## v0.1.9 - MIDI Support
+
+**MIDI Integration:**
+- Scripts can now access MIDI data via `midi_cc[0..127]`, `midi_note[0..127]`, `midi_pitch_bend`
+- MIDI file playback synced with audio position
+- Catalogue files (.avsc) link audio + MIDI for synchronized playback
+- Press **M** to toggle MIDI debug output
+
+**Audio Settings Persistence:**
+- MIDI file path now saved/restored with audio settings
+- Audio input mode (file/mic) properly restored on startup
+
+**Documentation:**
+- New FILE_FORMATS.md documenting .avs, .avsp, .avsc, and .mid formats
+
+**Bug Fixes:**
+- Fix MIDI not playing after restore (use_file_input wasn't being loaded)
+- Fix MIDI not looping with audio (midi_event_index_ now resets on loop)
+
 ## v0.1.8 - Color Accuracy
 
 **Major Color System Overhaul:**
@@ -38,7 +57,8 @@
 |-----|--------|
 | Space | Play/pause audio (standard) / Toggle fullscreen (multiwindow output) |
 | P | Toggle effect profiling |
-| Drag & drop | Load .avs presets or audio files |
+| M | Toggle MIDI debug output |
+| Drag & drop | Load .avs/.avsp presets, audio files, .mid MIDI files, or .avsc catalogues |
 
 ## macOS Security
 

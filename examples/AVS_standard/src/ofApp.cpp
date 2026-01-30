@@ -68,6 +68,9 @@ void ofApp::keyPressed(int key){
     if (key == 'p' || key == 'P') {
         avs.toggleProfiling();
     }
+    if (key == 'm' || key == 'M') {
+        avs.toggleMidiDebug();
+    }
 }
 
 void ofApp::keyReleased(int key){}

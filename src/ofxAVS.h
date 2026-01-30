@@ -57,6 +57,7 @@ public:
     void loadMidiFile(const std::string& path);
     bool loadCatalogue(const std::string& jsonPath);  // Load JSON with audio+MIDI paths
     void setMidiDebug(bool enabled) { midi_debug_ = enabled; }
+    void toggleMidiDebug();
 
     // Audio settings persistence
     void loadAudioSettings();
