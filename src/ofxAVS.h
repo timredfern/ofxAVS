@@ -14,7 +14,9 @@
 #include "core/effect_container.h"
 #include "core/beat_detector.h"
 #include "core/configurable.h"
+#include "core/event_bus.h"
 #include "effects/effect_list_root.h"
+#include "MidiFile.h"
 #include <vector>
 #include <unordered_set>
 #include <memory>
@@ -50,6 +52,11 @@ public:
     void loadSoundFile(const std::string& path, bool autoPlay = true);
     void togglePlayback();  // Play/pause
     bool isPlaying() const { return audio_is_playing_; }
+
+    // MIDI file loading and catalogue
+    void loadMidiFile(const std::string& path);
+    bool loadCatalogue(const std::string& jsonPath);  // Load JSON with audio+MIDI paths
+    void setMidiDebug(bool enabled) { midi_debug_ = enabled; }
 
     // Audio settings persistence
     void loadAudioSettings();
@@ -201,4 +208,12 @@ private:
     float audio_mic_gain_ = 1.0f;             // Microphone gain (1x to 100x)
 
     void restartAudio();
+
+    // MIDI file playback
+    avs::MidiFile midi_file_;
+    size_t midi_event_index_ = 0;            // Next event to process
+    bool midi_debug_ = false;                // Print MIDI events to console
+    std::string midi_loaded_filepath_;       // Currently loaded MIDI file
+
+    void updateMidiPlayback();               // Called from update() to process MIDI events
 };
