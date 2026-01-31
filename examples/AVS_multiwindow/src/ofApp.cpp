@@ -251,7 +251,7 @@ void ofApp::keyPressed(int key) {
     if (key == 'p' || key == 'P') {
         avs.toggleProfiling();
     }
-    if (key == 'm' || key == 'M') {
+    if (key == OF_KEY_F3) {
         avs.toggleMidiDebug();
     }
 }
