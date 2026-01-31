@@ -1,45 +1,17 @@
-## v0.1.9 - MIDI Support
+## Inital MIDI Support
 
-**MIDI Integration:**
+**avs_lib Events:**
+- Agnostic typed event bus
 - Scripts can now access MIDI data via `midi_cc[0..127]`, `midi_note[0..127]`, `midi_pitch_bend`
-- MIDI file playback synced with audio position
+
+**MIDI file support in UI examples:**
+- MIDI playback synced with audio position
 - Catalogue files (.avsc) link audio + MIDI for synchronized playback
 - Press **M** to toggle MIDI debug output
-
-**Audio Settings Persistence:**
-- MIDI file path now saved/restored with audio settings
-- Audio input mode (file/mic) properly restored on startup
+- MIDI file path saved/restored with audio settings
 
 **Documentation:**
 - New FILE_FORMATS.md documenting .avs, .avsp, .avsc, and .mid formats
-
-**Bug Fixes:**
-- Fix MIDI not playing after restore (use_file_input wasn't being loaded)
-- Fix MIDI not looping with audio (midi_event_index_ now resets on loop)
-
-## v0.1.8 - Color Accuracy
-
-**Major Color System Overhaul:**
-- Fixed 8 critical R↔B channel swap bugs affecting starfield, ddm, ring, oscstar, rotstar, dot_grid, picture effects
-- Converted all 27 color-handling effects to use explicit color.h utilities
-- Eliminated error-prone magic number bit manipulation throughout codebase
-- Colors now render correctly across all effects
-
-**Bug Fixes:**
-- Fix keyboard navigation losing focus after arrow key/delete in effect list
-- Fix audio data indexing to match original AVS convention
-- Fix UI color picker display for ARGB format
-- Fix blitter_feedback UI: add missing labels and groupboxes
-
-**Effect List:**
-- Complete Effect List implementation with all blend modes
-- Input/output blending with 14 modes (ignore, replace, 50/50, max, additive, etc.)
-- Evaluation override scripting support
-- Buffer-based alpha blending
-
-**Developer Tools:**
-- Add avs_test script for cross-implementation comparison with grandchild
-- Add WORKLOG.md for session state persistence
 
 ## Installation
 
