@@ -1,24 +1,10 @@
-## Inital MIDI Support
+## Preset improvements
 
 **Preset Save/Load:**
 - Right-click menu: Save Effect / Load Effect (single effect or entire EffectList)
 - Right-click on root: Save Preset / Load Preset (entire chain)
 - Cmd+S / Cmd+L for global preset save/load
 - Load Effect adds to existing chain (doesn't replace)
-
-**avs_lib Events:**
-- Agnostic typed event bus
-- Scripts can now access MIDI data via `midi_cc[0..127]`, `midi_note[0..127]`, `midi_pitch_bend`
-
-**MIDI file support in UI examples:**
-- MIDI playback synced with audio position
-- Catalogue files (.avsc) link audio + MIDI for synchronized playback
-- Press **`** (backtick) to toggle MIDI debug output
-- MIDI file path saved/restored with audio settings
-
-**Documentation:**
-- New FILE_FORMATS.md documenting .avs, .avsp, .avsc, and .mid formats
-- MIDI tab in expression help with array/variable reference
 
 ## Installation
 
