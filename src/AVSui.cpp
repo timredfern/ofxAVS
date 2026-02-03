@@ -637,48 +637,45 @@ void renderExpressionHelpPopup() {
 
     if (ImGui::Begin("AVS Expression Help", &s_help_popup_open)) {
         if (ImGui::BeginTabBar("HelpTabs")) {
+            // Helper to display read-only selectable text
+            auto showHelpText = [](const char* id, const char* text) {
+                ImVec2 size = ImGui::GetContentRegionAvail();
+                ImGui::InputTextMultiline(id, const_cast<char*>(text), strlen(text) + 1,
+                    size, ImGuiInputTextFlags_ReadOnly);
+            };
+
             // Tab 0: General
             if (ImGui::BeginTabItem("General")) {
                 s_help_last_tab = 0;
-                ImGui::BeginChild("GeneralScroll", ImVec2(0, 0), false, ImGuiWindowFlags_AlwaysVerticalScrollbar);
-                ImGui::TextWrapped("%s", avs::expression_help::general());
-                ImGui::EndChild();
+                showHelpText("##general", avs::expression_help::general());
                 ImGui::EndTabItem();
             }
 
             // Tab 1: Operators
             if (ImGui::BeginTabItem("Operators")) {
                 s_help_last_tab = 1;
-                ImGui::BeginChild("OperatorsScroll", ImVec2(0, 0), false, ImGuiWindowFlags_AlwaysVerticalScrollbar);
-                ImGui::TextWrapped("%s", avs::expression_help::operators());
-                ImGui::EndChild();
+                showHelpText("##operators", avs::expression_help::operators());
                 ImGui::EndTabItem();
             }
 
             // Tab 2: Functions
             if (ImGui::BeginTabItem("Functions")) {
                 s_help_last_tab = 2;
-                ImGui::BeginChild("FunctionsScroll", ImVec2(0, 0), false, ImGuiWindowFlags_AlwaysVerticalScrollbar);
-                ImGui::TextWrapped("%s", avs::expression_help::functions());
-                ImGui::EndChild();
+                showHelpText("##functions", avs::expression_help::functions());
                 ImGui::EndTabItem();
             }
 
             // Tab 3: Constants
             if (ImGui::BeginTabItem("Constants")) {
                 s_help_last_tab = 3;
-                ImGui::BeginChild("ConstantsScroll", ImVec2(0, 0), false, ImGuiWindowFlags_AlwaysVerticalScrollbar);
-                ImGui::TextWrapped("%s", avs::expression_help::constants());
-                ImGui::EndChild();
+                showHelpText("##constants", avs::expression_help::constants());
                 ImGui::EndTabItem();
             }
 
             // Tab 4: MIDI
             if (ImGui::BeginTabItem("MIDI")) {
                 s_help_last_tab = 4;
-                ImGui::BeginChild("MIDIScroll", ImVec2(0, 0), false, ImGuiWindowFlags_AlwaysVerticalScrollbar);
-                ImGui::TextWrapped("%s", avs::expression_help::midi());
-                ImGui::EndChild();
+                showHelpText("##midi", avs::expression_help::midi());
                 ImGui::EndTabItem();
             }
 
@@ -688,9 +685,7 @@ void renderExpressionHelpPopup() {
                 ImGuiTabItemFlags flags = (s_help_last_tab == 5) ? ImGuiTabItemFlags_SetSelected : 0;
                 if (ImGui::BeginTabItem(s_help_effect_name.c_str(), nullptr, flags)) {
                     s_help_last_tab = 5;
-                    ImGui::BeginChild("EffectScroll", ImVec2(0, 0), false, ImGuiWindowFlags_AlwaysVerticalScrollbar);
-                    ImGui::TextWrapped("%s", s_help_effect_text.c_str());
-                    ImGui::EndChild();
+                    showHelpText("##effect", s_help_effect_text.c_str());
                     ImGui::EndTabItem();
                 }
             }

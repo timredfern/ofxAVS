@@ -420,6 +420,67 @@ bool ofxAVS::savePreset(const std::string& path) {
     return success;
 }
 
+void ofxAVS::saveEffectDialog(avs::EffectBase* effect) {
+    if (!effect) return;
+
+    std::string defaultName = effect->get_plugin_info().name + ".avsp";
+    ofFileDialogResult result = ofSystemSaveDialog(defaultName, "Save Effect");
+    if (result.bSuccess) {
+        std::string path = result.getPath();
+        // Ensure .avsp extension
+        if (path.size() < 5 || path.substr(path.size() - 5) != ".avsp") {
+            path += ".avsp";
+        }
+        if (avs::Preset::save_effect(path, effect)) {
+            ofLogNotice("ofxAVS") << "Saved effect: " << path;
+        } else {
+            ofLogError("ofxAVS") << "Failed to save effect: " << avs::Preset::last_error();
+        }
+    }
+}
+
+void ofxAVS::loadEffectDialog(avs::EffectContainer* target, int insertIndex) {
+    if (!target) {
+        target = renderer ? renderer->root() : nullptr;
+    }
+    if (!target) return;
+
+    ofFileDialogResult result = ofSystemLoadDialog("Load Effect", false, "");
+    if (result.bSuccess) {
+        std::string path = result.getPath();
+        auto effect = avs::Preset::load_effect(path);
+        if (effect) {
+            if (insertIndex >= 0 && insertIndex <= static_cast<int>(target->child_count())) {
+                target->insert_child(insertIndex, std::move(effect));
+            } else {
+                target->add_child(std::move(effect));
+            }
+            ofLogNotice("ofxAVS") << "Loaded effect: " << path;
+        } else {
+            ofLogError("ofxAVS") << "Failed to load effect: " << avs::Preset::last_error();
+        }
+    }
+}
+
+void ofxAVS::savePresetDialog() {
+    ofFileDialogResult result = ofSystemSaveDialog("preset.avsp", "Save Preset");
+    if (result.bSuccess) {
+        std::string path = result.getPath();
+        // Ensure .avsp extension
+        if (path.size() < 5 || path.substr(path.size() - 5) != ".avsp") {
+            path += ".avsp";
+        }
+        savePreset(path);
+    }
+}
+
+void ofxAVS::loadPresetDialog() {
+    ofFileDialogResult result = ofSystemLoadDialog("Load Preset", false, "");
+    if (result.bSuccess) {
+        loadPreset(result.getPath());
+    }
+}
+
 const std::string& ofxAVS::getLastError() const {
     return last_error_;
 }
@@ -568,6 +629,17 @@ void ofxAVS::drawChainPanelContent() {
                 if (ImGui::MenuItem("Params")) {
                     on_open_params_callback_(root);
                 }
+            }
+            ImGui::Separator();
+            if (ImGui::MenuItem("Save Preset...")) {
+                savePresetDialog();
+            }
+            if (ImGui::MenuItem("Load Preset...")) {
+                loadPresetDialog();
+            }
+            ImGui::Separator();
+            if (ImGui::MenuItem("Load Effect...")) {
+                loadEffectDialog(root, -1);
             }
             ImGui::EndPopup();
         }
@@ -847,6 +919,18 @@ void ofxAVS::drawEffectContextMenu(avs::EffectBase* effect) {
         ImGui::Separator();
         if (ImGui::MenuItem("Params")) {
             on_open_params_callback_(effect);
+        }
+    }
+    ImGui::Separator();
+    if (ImGui::MenuItem("Save Effect...")) {
+        saveEffectDialog(effect);
+    }
+    if (ImGui::MenuItem("Load Effect...")) {
+        // Load and insert after this effect
+        if (parent) {
+            loadEffectDialog(parent, index + 1);
+        } else if (as_container) {
+            loadEffectDialog(as_container, -1);
         }
     }
     ImGui::Separator();

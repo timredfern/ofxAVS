@@ -90,6 +90,14 @@ public:
     bool savePreset(const std::string& path);
     const std::string& getLastError() const;
 
+    // Single effect save/load with file dialogs
+    void saveEffectDialog(avs::EffectBase* effect);
+    void loadEffectDialog(avs::EffectContainer* target, int insertIndex = -1);
+
+    // Global preset save/load with file dialogs
+    void savePresetDialog();
+    void loadPresetDialog();
+
     // UI panel management - now uses Configurable interface for effects and settings
     void setSelected(avs::Configurable* item) { selected_ = item; }
     avs::Configurable* getSelected() const { return selected_; }

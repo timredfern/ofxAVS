@@ -245,13 +245,17 @@ void ofApp::exit() {
 
 //--------------------------------------------------------------
 void ofApp::keyPressed(int key) {
-    if (key == ' ') {
+    bool cmd = ofGetKeyPressed(OF_KEY_COMMAND) || ofGetKeyPressed(OF_KEY_CONTROL);
+
+    if (cmd && (key == 's' || key == 'S')) {
+        avs.savePresetDialog();
+    } else if (cmd && (key == 'l' || key == 'L')) {
+        avs.loadPresetDialog();
+    } else if (key == ' ') {
         avs.togglePlayback();
-    }
-    if (key == 'p' || key == 'P') {
+    } else if (key == 'p' || key == 'P') {
         avs.toggleProfiling();
-    }
-    if (key == OF_KEY_F3) {
+    } else if (key == '`') {
         avs.toggleMidiDebug();
     }
 }
