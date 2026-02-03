@@ -673,12 +673,21 @@ void renderExpressionHelpPopup() {
                 ImGui::EndTabItem();
             }
 
-            // Tab 4: Effect-specific (only if we have effect help text)
+            // Tab 4: MIDI
+            if (ImGui::BeginTabItem("MIDI")) {
+                s_help_last_tab = 4;
+                ImGui::BeginChild("MIDIScroll", ImVec2(0, 0), false, ImGuiWindowFlags_AlwaysVerticalScrollbar);
+                ImGui::TextWrapped("%s", avs::expression_help::midi());
+                ImGui::EndChild();
+                ImGui::EndTabItem();
+            }
+
+            // Tab 5: Effect-specific (only if we have effect help text)
             if (!s_help_effect_name.empty() && !s_help_effect_text.empty()) {
                 // Use SetSelected to open this tab when first opening the popup
-                ImGuiTabItemFlags flags = (s_help_last_tab == 4) ? ImGuiTabItemFlags_SetSelected : 0;
+                ImGuiTabItemFlags flags = (s_help_last_tab == 5) ? ImGuiTabItemFlags_SetSelected : 0;
                 if (ImGui::BeginTabItem(s_help_effect_name.c_str(), nullptr, flags)) {
-                    s_help_last_tab = 4;
+                    s_help_last_tab = 5;
                     ImGui::BeginChild("EffectScroll", ImVec2(0, 0), false, ImGuiWindowFlags_AlwaysVerticalScrollbar);
                     ImGui::TextWrapped("%s", s_help_effect_text.c_str());
                     ImGui::EndChild();
