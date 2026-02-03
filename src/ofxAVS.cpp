@@ -903,6 +903,19 @@ void ofxAVS::drawEffectContextMenu(avs::EffectBase* effect) {
         // For regular effects: insert after this effect
         drawAddEffectMenuInsertAfter(parent, index);
     }
+
+    // Save/Load Effect (next to Add Effect)
+    if (ImGui::MenuItem("Save Effect...")) {
+        saveEffectDialog(effect);
+    }
+    if (ImGui::MenuItem("Load Effect...")) {
+        // Load and insert after this effect
+        if (parent) {
+            loadEffectDialog(parent, index + 1);
+        } else if (as_container) {
+            loadEffectDialog(as_container, -1);
+        }
+    }
     ImGui::Separator();
 
     if (ImGui::MenuItem("x2 (Duplicate)")) {
@@ -919,18 +932,6 @@ void ofxAVS::drawEffectContextMenu(avs::EffectBase* effect) {
         ImGui::Separator();
         if (ImGui::MenuItem("Params")) {
             on_open_params_callback_(effect);
-        }
-    }
-    ImGui::Separator();
-    if (ImGui::MenuItem("Save Effect...")) {
-        saveEffectDialog(effect);
-    }
-    if (ImGui::MenuItem("Load Effect...")) {
-        // Load and insert after this effect
-        if (parent) {
-            loadEffectDialog(parent, index + 1);
-        } else if (as_container) {
-            loadEffectDialog(as_container, -1);
         }
     }
     ImGui::Separator();
