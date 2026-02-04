@@ -62,6 +62,11 @@ void ofApp::exit(){
 
 //--------------------------------------------------------------
 void ofApp::keyPressed(int key){
+    // Don't process shortcuts when typing in ImGui text fields
+    if (ImGui::GetIO().WantCaptureKeyboard) {
+        return;
+    }
+
     bool cmd = ofGetKeyPressed(OF_KEY_COMMAND) || ofGetKeyPressed(OF_KEY_CONTROL);
 
     if (cmd && (key == 's' || key == 'S')) {
