@@ -4,12 +4,12 @@
 - Comparison operators: `<` `>` `<=` `>=` `==` `!=` (return 1.0 or 0.0)
 - Line comments: `// comment to end of line`
 - User-defined arrays: `arr[i] = value` for storing/retrieving values by index
-- `while(condition, body)` and `loop(count, body)` now work correctly
 
 **Bug Fixes:**
 - Fixed `%` modulo operator to use integer modulo (matching original AVS)
 - Fixed MIDI file playback: seeking now syncs MIDI position correctly
 - Fixed keyboard shortcuts triggering while typing in script edit boxes
+- `while(condition, body)` and `loop(count, body)` now work correctly
 
 **Arrays:**
 - Auto-create on first write, auto-grow as needed
