@@ -1,3 +1,24 @@
+## Script Engine Improvements
+
+**New Language Features:**
+- Comparison operators: `<` `>` `<=` `>=` `==` `!=` (return 1.0 or 0.0)
+- Line comments: `// comment to end of line`
+- User-defined arrays: `arr[i] = value` for storing/retrieving values by index
+- `while(condition, body)` and `loop(count, body)` now work correctly
+
+**Bug Fixes:**
+- Fixed `%` modulo operator to use integer modulo (matching original AVS)
+- Fixed MIDI file playback: seeking now syncs MIDI position correctly
+- Fixed keyboard shortcuts triggering while typing in script edit boxes
+
+**Arrays:**
+- Auto-create on first write, auto-grow as needed
+- Persist across script phases (init/frame/beat/point) and frames
+- Use `while()` or `loop()` to populate arrays in frame script
+- Access with integer index in point script: `x = shape_x[idx]`
+
+---
+
 ## Preset improvements
 
 **Preset Save/Load:**

@@ -1630,6 +1630,23 @@ void ofxAVS::drawAudioUI() {
                 float seekPos = (mousePos.x - itemPos.x) / progressWidth;
                 seekPos = ofClamp(seekPos, 0.0f, 1.0f);
                 audio_playback_pos_ = (size_t)(seekPos * audio_file_buffer_.getNumFrames());
+
+                // Sync MIDI playback to new position
+                if (midi_file_.isLoaded()) {
+                    double seekTime = seekPos * (audio_file_buffer_.getNumFrames() / 44100.0);
+                    const auto& events = midi_file_.getEvents();
+                    // Find first event at or after seek time
+                    midi_event_index_ = 0;
+                    for (size_t i = 0; i < events.size(); i++) {
+                        if (events[i].time >= seekTime) {
+                            midi_event_index_ = i;
+                            break;
+                        }
+                        midi_event_index_ = events.size();  // Past end if none found
+                    }
+                    // Clear MIDI state (all notes off)
+                    avs::EventBus::instance().reset();
+                }
             }
         } else {
             ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Drop audio file here");
