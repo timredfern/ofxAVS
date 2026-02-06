@@ -57,6 +57,15 @@ public:
     // Get error message if load failed
     const std::string& getError() const { return error_; }
 
+    // Clear loaded MIDI file
+    void clear() {
+        events_.clear();
+        duration_ = 0.0;
+        tempo_ = 120.0;
+        loaded_ = false;
+        error_.clear();
+    }
+
 private:
     std::vector<MidiFileEvent> events_;
     double duration_ = 0.0;

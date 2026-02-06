@@ -4,107 +4,54 @@
 
 ## Current Task
 
-Color audit COMPLETE - all effects now use color.h utilities.
+Ready for user testing on macOS and Linux/Pi4.
 
-## Completed
+## Recent Work
 
-- [x] starfield.cpp - Updated to use color.h + tests added
-- [x] starfield_ext.cpp - Updated to use color.h
-- [x] ddm.cpp - Updated bilinear interpolation to use color.h
-- [x] ring.cpp - Updated color interpolation to use color.h
-- [x] oscstar.cpp - Updated color interpolation to use color.h
-- [x] rotstar.cpp - Updated color interpolation to use color.h
-- [x] dot_grid.cpp - Updated color interpolation to use color.h
-- [x] picture.cpp - Fixed ABGR bug, now uses color::make() for ARGB
-- [x] Keyboard navigation fix (Parameters panel stable window ID)
-- [x] WORKLOG.md created for session persistence
+### MIDI/EventBus Support - COMPLETE
 
-## COMPLETE COLOR AUDIT - ALL 53 EFFECTS
+Full MIDI support implemented:
+- `libs/avs_lib/core/event_bus.h/cpp` - Lock-free SPSC ring buffer, EventBus singleton
+- `libs/avs_lib/MIDI.md` - Design documentation
+- Script arrays: `midi_cc[0..127]`, `midi_note[0..127]`, `midi_note_index[i]`
+- Script scalars: `midi_note_count`, `midi_pitch_bend`, `midi_any_note`
+- Renderer calls `EventBus::instance().process_frame()` before effects
+- Tests in `test_midi_eventbus.cpp`
 
-### CRITICAL R↔B SWAP BUGS (8 files) - ALL FIXED
+### MIDI File Playback - COMPLETE
 
-| File              | Lines   | Issue                      | Status    |
-|-------------------|---------|----------------------------|-----------|
-| starfield.cpp     | 90-95   | cr=Blue, cb=Red, swapped   | FIXED     |
-| starfield_ext.cpp | 89-96   | Same pattern               | FIXED     |
-| ddm.cpp           | 258-265 | r=Blue, b=Red in bilinear  | FIXED     |
-| ring.cpp          | 50-54   | r1=Blue, r3=Red            | FIXED     |
-| oscstar.cpp       | ~50     | Same interpolation pattern | FIXED     |
-| rotstar.cpp       | 49-53   | r1=Blue, r3=Red            | FIXED     |
-| dot_grid.cpp      | ~50     | Same interpolation pattern | FIXED     |
-| picture.cpp       | 57      | Constructs ABGR not ARGB!  | FIXED     |
+- `src/MidiFile.h/cpp` - SMF parser with tempo/timing support
+- Synced with audio playback position
+- Events pushed to EventBus during playback
+- Debug toggle with backtick key
 
-### MAGIC NUMBERS - ALL CONVERTED TO color.h
+### Script Engine Extensions - COMPLETE
 
-| File                 | Issue                           | Status |
-|----------------------|---------------------------------|--------|
-| oscilloscope.cpp     | & 0xff, >> 8, >> 16             | DONE   |
-| superscope.cpp       | color interpolation             | DONE   |
-| color_clip.cpp       | channel extraction              | DONE   |
-| color_fade.cpp       | channel extraction              | DONE   |
-| color_modifier.cpp   | byte-level access (intentional) | N/A    |
-| interferences.cpp    | channel extraction              | DONE   |
-| brightness.cpp       | lookup table                    | DONE   |
-| bump.cpp             | setdepth functions              | DONE   |
-| fadeout.cpp          | color table build               | DONE   |
-| fast_brightness.cpp  | channel math                    | DONE   |
-| grain.cpp            | channel extraction/construction | DONE   |
-| multiplier.cpp       | >> 16, >> 8, & 0xff, masks      | DONE   |
-| movement.cpp         | blend_max, blend4               | DONE   |
-| dynamic_movement.cpp | uses CoordinateGrid (no direct) | N/A    |
-| effect_list.cpp      | depthof() function              | DONE   |
-| unique_tone.cpp      | lookup table                    | DONE   |
-| dot_fountain.cpp     | color table                     | DONE   |
+- Comparison operators: `<` `>` `<=` `>=` `==` `!=`
+- Line comments: `// comment`
+- User-defined arrays: `arr[i] = value`
+- `while(condition, body)` and `loop(count, body)`
+- Fixed `%` modulo to use integer math
+- Documentation in `SCRIPT_ARCHITECTURE.md`
 
-### NOW USING color.h (27 files)
+### Cross-Platform Audio - COMPLETE
 
-| File              | Status |
-|-------------------|--------|
-| timescope.cpp     | OK     |
-| dot_plane.cpp     | OK     |
-| water.cpp         | OK     |
-| channel_shift.cpp | OK     |
-| starfield.cpp     | OK     |
-| starfield_ext.cpp | OK     |
-| ddm.cpp           | OK     |
-| ring.cpp          | OK     |
-| oscstar.cpp       | OK     |
-| rotstar.cpp       | OK     |
-| dot_grid.cpp      | OK     |
-| picture.cpp       | OK     |
-| oscilloscope.cpp  | OK     |
-| superscope.cpp    | OK     |
-| color_clip.cpp    | OK     |
-| color_fade.cpp    | OK     |
-| interferences.cpp | OK     |
-| brightness.cpp    | OK     |
-| bump.cpp          | OK     |
-| fadeout.cpp       | OK     |
-| fast_brightness.cpp| OK    |
-| grain.cpp         | OK     |
-| multiplier.cpp    | OK     |
-| movement.cpp      | OK     |
-| effect_list.cpp   | OK     |
-| unique_tone.cpp   | OK     |
-| dot_fountain.cpp  | OK     |
+- Replaced macOS-only ofxAudioDecoder with miniaudio
+- `libs/miniaudio/miniaudio.h` - Single-header library
+- `src/AudioFileLoader.h/cpp` - Cross-platform audio decoder
+- Supports macOS, Linux, Windows
 
-### NO COLOR WORK (28 files)
+### C++20 Compatibility - COMPLETE
 
-bass_spin.cpp, blitter_feedback.cpp, blur.cpp, buffer_save.cpp, clear.cpp,
-color_reduction.cpp, comment.cpp, custom_bpm.cpp, dynamic_movement_ext.cpp,
-interleave.cpp, invert.cpp, mirror.cpp, mosaic.cpp, multi_delay.cpp,
-moving_particle.cpp, onbeat_clear.cpp, rotoblitter.cpp, scatter.cpp,
-set_render_mode.cpp, set_render_mode_ext.cpp, shift.cpp, video_delay.cpp,
-water_bump.cpp, unsupported.cpp
+- Fixed designated initializer order for GCC 13+ (Debian Trixie/Pi4)
+- Upgraded to C++20 with -pedantic to catch issues on macOS
+- Files fixed: color_clip, starfield, water_bump, fast_brightness, channel_shift, multiplier, dot_grid, multi_delay, video_delay, clear, bump, bass_spin, blur, brightness, oscilloscope, superscope, beat_detector
 
-## Summary
+### Color Audit - COMPLETE
 
-- 8 CRITICAL bugs - ALL FIXED
-- 15 files with magic numbers - ALL CONVERTED to color.h
-- 27 files now using color.h
-- 2 files intentionally use different approach (color_modifier.cpp: byte access, dynamic_movement.cpp: uses CoordinateGrid)
-- 26 files have no color channel work
-- Total: 53 effect files
+All 53 effects audited. 8 critical R↔B bugs fixed. All magic numbers converted to color.h.
+
+---
 
 ## Anti-Patterns (Hall of Shame)
 
@@ -174,4 +121,4 @@ These patterns were found throughout the codebase and systematically removed. Th
 
 ## Last Updated
 
-2026-01-28 - Converted all magic number files to use color.h
+2026-02-06 - MIDI/EventBus complete, cross-platform audio, C++20 fixes

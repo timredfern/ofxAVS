@@ -24,12 +24,13 @@ meta:
 common:
 	# dependencies with other addons, a list of them separated by spaces
 	# or use += in several lines
-	ADDON_DEPENDENCIES = ofxImGui ofxFft ofxAudioDecoder
+	ADDON_DEPENDENCIES = ofxImGui ofxFft
 
 	# include search paths, this will be usually parsed from the file system
 	# but if the addon or addon libraries need special search paths they can be
 	# specified here separated by spaces or one per line using +=
 	ADDON_INCLUDES += libs/avs_lib
+	ADDON_INCLUDES += libs/miniaudio
 
 	# any special flag that should be passed to the compiler when using this
 	# addon

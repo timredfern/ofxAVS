@@ -1,31 +1,19 @@
-## Script Engine Improvements
+## Cross-Platform Audio
 
-**New Language Features:**
-- Comparison operators: `<` `>` `<=` `>=` `==` `!=` (return 1.0 or 0.0)
-- Line comments: `// comment to end of line`
-- User-defined arrays: `arr[i] = value` for storing/retrieving values by index
+- Replaced macOS-only audio decoder with miniaudio library
+- Audio file loading now works on macOS, Linux, and Windows
+- Supports MP3, WAV, FLAC, OGG, and other common formats
 
-**Bug Fixes:**
-- Fixed `%` modulo operator to use integer modulo (matching original AVS)
-- Fixed MIDI file playback: seeking now syncs MIDI position correctly
-- Fixed keyboard shortcuts triggering while typing in script edit boxes
-- `while(condition, body)` and `loop(count, body)` now work correctly
+## Linux Support
 
-**Arrays:**
-- Auto-create on first write, auto-grow as needed
-- Persist across script phases (init/frame/beat/point) and frames
-- Use `while()` or `loop()` to populate arrays in frame script
-- Access with integer index in point script: `x = shape_x[idx]`
+- Fixed C++20 designated initializer ordering for GCC 13+
+- Tested on Debian Trixie (Raspberry Pi 4)
+
+## Bug Fixes
+
+- Loading an audio file now clears any previously loaded MIDI file
 
 ---
-
-## Preset improvements
-
-**Preset Save/Load:**
-- Right-click menu: Save Effect / Load Effect (single effect or entire EffectList)
-- Right-click on root: Save Preset / Load Preset (entire chain)
-- Cmd+S / Cmd+L for global preset save/load
-- Load Effect adds to existing chain (doesn't replace)
 
 ## Installation
 
@@ -58,3 +46,4 @@ The apps are not signed with an Apple Developer certificate. On first launch:
 ## Requirements
 
 - macOS 11.0 or later
+- Linux support via source build

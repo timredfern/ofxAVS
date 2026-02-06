@@ -1250,7 +1250,16 @@ void ofxAVS::restartAudio() {
 void ofxAVS::loadSoundFile(const std::string& path, bool autoPlay) {
     ofLogNotice("ofxAVS") << "Loading sound file: " << path;
 
-    if (ofxAudioDecoder::load(audio_file_buffer_, path)) {
+    // Clear any loaded MIDI file - audio files loaded directly don't have paired MIDI
+    if (midi_file_.isLoaded()) {
+        midi_file_.clear();
+        midi_loaded_filepath_.clear();
+        midi_event_index_ = 0;
+        avs::EventBus::instance().reset();
+        ofLogNotice("ofxAVS") << "Cleared MIDI file (loading audio directly)";
+    }
+
+    if (AudioFile::load(audio_file_buffer_, path)) {
         audio_loaded_filename_ = ofFilePath::getFileName(path);
         audio_loaded_filepath_ = path;
         audio_playback_pos_ = 0;

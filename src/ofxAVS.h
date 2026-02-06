@@ -7,7 +7,7 @@
 #include "ofMain.h"
 #include "ofxImGui.h"
 #include "ofxFft.h"
-#include "ofxAudioDecoder.h"
+#include "AudioFile.h"
 #include "core/renderer.h"
 #include "core/plugin_manager.h"
 #include "core/effect_base.h"
