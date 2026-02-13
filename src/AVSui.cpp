@@ -14,6 +14,9 @@
 
 namespace avs_ui {
 
+// Forward declaration for context menu
+void openExpressionHelp(const std::string& effect_name, const std::string& effect_help);
+
 // Color format conversion between ImGui (RGBA floats) and AVS internal format
 // AVS internal format: ARGB 0xAARRGGBB (A in bits 24-31, R in bits 16-23, G in bits 8-15, B in bits 0-7)
 // ImGui expects col[0]=R, col[1]=G, col[2]=B, col[3]=A as floats 0-1
@@ -322,6 +325,30 @@ void renderImGui(const avs::EffectUILayout& layout, avs::Configurable* configura
                     last_param_values[buffer_key] = new_value;
                     configurable->on_parameter_changed(control.id);
                 }
+
+                // Right-click context menu for script edit boxes
+                std::string popup_id = "ScriptContext##" + buffer_key;
+                if (ImGui::IsItemClicked(ImGuiMouseButton_Right)) {
+                    ImGui::OpenPopup(popup_id.c_str());
+                }
+
+                if (ImGui::BeginPopup(popup_id.c_str())) {
+                    std::string effect_help = configurable->get_help_text();
+                    bool has_help = !effect_help.empty();
+
+                    if (has_help && ImGui::MenuItem("Expression Help")) {
+                        // Extract effect name from first line
+                        std::string effect_name = effect_help;
+                        size_t newline = effect_name.find('\n');
+                        if (newline != std::string::npos) {
+                            effect_name = effect_name.substr(0, newline);
+                        }
+                        // Open help popup
+                        openExpressionHelp(effect_name, effect_help);
+                    }
+
+                    ImGui::EndPopup();
+                }
                 break;
             }
 
@@ -614,6 +641,14 @@ static bool s_help_popup_open = false;
 static std::string s_help_effect_name;
 static std::string s_help_effect_text;
 static int s_help_last_tab = 0;  // Remember last viewed tab
+
+// Open expression help popup (called from context menu)
+void openExpressionHelp(const std::string& effect_name, const std::string& effect_help) {
+    s_help_popup_open = true;
+    s_help_effect_name = effect_name;
+    s_help_effect_text = effect_help;
+    s_help_last_tab = 5;  // Default to effect-specific tab
+}
 
 void renderExpressionHelpButton(const std::string& effect_name, const std::string& effect_help,
                                  float width, float height) {
