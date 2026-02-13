@@ -319,6 +319,31 @@ These patterns were found throughout the codebase and systematically removed. Th
 - Found in: brightness (originally), channel_shift, dot_plane, dot_fountain
 - Fix: Trace from UI parameter → multiplier/table → extraction → output to verify correct channel
 
+**Pattern: Y-invariant calculations inside X loop**
+- Calculations that depend only on Y done for every X pixel
+- Wastes CPU repeating identical math width×height times
+- Found in: coordinate_grid apply()
+- Fix: Hoist Y-dependent calculations outside the inner X loop
+
+**Pattern: Redundant grid corner fetches**
+- Fetching all 4 grid corners for each pixel when 2 are inherited from previous pixel
+- When moving right, previous right corners become new left corners
+- Found in: coordinate_grid apply()
+- Fix: Cache corners; only fetch new right corners when grid cell changes
+
+**Pattern: Fixed-point → double → fixed-point round-trip**
+- Grid stores coordinates as 16.16 fixed-point
+- Converting to double for interpolation, then back to fixed-point for sampling
+- Found in: coordinate_grid apply()
+- Fix: Interpolate directly in fixed-point (integer math is faster and exact)
+
+**Pattern: set_variable/get_variable in hot loops**
+- Using `engine.set_variable("x", val)` and `engine.get_variable("x")` inside pixel loops
+- Each call does a hash table lookup/insertion
+- At 1080p: 2 million × 12 calls = 24 million hash operations
+- Found in: movement (table generation), color_modifier (minor - only 256 iterations)
+- Fix: Use `double& var_x = engine.var_ref("x")` before loop, then `var_x = val` inside
+
 ---
 
 **Parameter Names Must Match Control IDs**
