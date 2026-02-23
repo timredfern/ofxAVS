@@ -34,7 +34,7 @@ The addon provides a complete visualization environment:
 ### Prerequisites
 
 - OpenFrameworks 0.12+ (https://github.com/openframeworks/openFrameworks/blob/master/INSTALL_FROM_GITHUB.md)
-- C++17 compiler
+- C++20 compiler
 - Required addons:
   - [ofxImGui](https://github.com/jvcleave/ofxImGui) - UI rendering
   - [ofxFft](https://github.com/kylemcdonald/ofxFft) - FFT audio processing
