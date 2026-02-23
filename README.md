@@ -10,7 +10,7 @@ This project is a modern C++ port that maintains compatibility with original AVS
 
 ## Features
 
-- **46+ effects ported** from the original AVS
+- **49 effects ported** from the original AVS
 - **Full preset compatibility** - Load original .avs preset files
 - **Built-in audio management** - Microphone input or audio file playback with device selection
 - **ImGui-based UI** - Effect chain editing with parameter controls
@@ -99,9 +99,13 @@ ofxAVS/
 ├── src/                    # OpenFrameworks addon layer
 │   ├── ofxAVS.cpp/h        # Main addon: rendering, audio, UI
 │   └── AVSui.cpp/h         # ImGui control rendering
+├── docs/                   # Documentation
+│   ├── ARCHITECTURE.md     # ofxAVS architecture
+│   ├── BUILD.md            # Build instructions
+│   └── FYREWURX.md         # Fyrewurx preset notes
 ├── libs/avs_lib/           # Portable AVS library (no dependencies)
 │   ├── core/               # Renderer, effects, parameters
-│   ├── effects/            # 46+ effect implementations
+│   ├── effects/            # 49 effect implementations
 │   └── tests/              # Unit tests
 ├── examples/
 │   ├── AVS_standard/       # Single-window example with full UI

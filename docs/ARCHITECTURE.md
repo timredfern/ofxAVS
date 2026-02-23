@@ -12,7 +12,7 @@ It serves as a reference implementation showing how to integrate avs_lib into a 
 ## Directory Structure
 
 ```
-src/
+docs/
 ├── ARCHITECTURE.md     # This file
 ├── ofxAVS.cpp          # Main addon: effect chain, audio, rendering
 ├── ofxAVS.h            # Public API
@@ -115,7 +115,7 @@ ofxAVS supports two FFT modes controlled by `#define AVS_ENHANCED_FFT`:
 - Log table compression (base ~60) matching original AVS
 - No temporal smoothing
 
-See `libs/avs_lib/ARCHITECTURE.md` for detailed documentation of the original Winamp/AVS FFT pipeline.
+See `libs/avs_lib/docs/ARCHITECTURE.md` for detailed documentation of the original Winamp/AVS FFT pipeline.
 
 ### AudioData Format
 
