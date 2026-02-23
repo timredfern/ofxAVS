@@ -3,7 +3,7 @@
 ## Prerequisites
 
 - OpenFrameworks 0.12+
-- C++17 compiler (Xcode Command Line Tools on macOS)
+- C++20 compiler (Xcode Command Line Tools on macOS)
 - Required addons:
   - [ofxImGui](https://github.com/jvcleave/ofxImGui) - UI rendering
   - [ofxFft](https://github.com/kylemcdonald/ofxFft) - FFT audio processing
