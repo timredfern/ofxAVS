@@ -185,4 +185,4 @@ See `libs/avs_lib/README.md` for detailed library documentation.
 MIT License - see LICENSE file
 
 Based on original AVS source code by Nullsoft, Inc.
-Original AVS Copyright (C) 2005 Nullsoft, Inc.
+AVS Copyright (C) 2005 Nullsoft, Inc.
