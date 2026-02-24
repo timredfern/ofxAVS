@@ -1,0 +1,4 @@
+[submodule "libs/avs_lib"]
+	path = libs/avs_lib
+	url = git@github.com:timredfern/avs_lib.git
+	branch = main

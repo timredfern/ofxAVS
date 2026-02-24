@@ -1,0 +1,48 @@
+# Build directories
+build/
+**/build/
+
+# OpenFrameworks build artifacts
+obj/
+bin/
+*.app/
+**/openFrameworks-Info.plist
+
+# CMake generated files
+CMakeCache.txt
+CMakeFiles/
+libs/**/Makefile
+cmake_install.cmake
+*.cmake
+_deps/
+DartConfiguration.tcl
+avs_tests
+
+# Compiled binaries
+*.o
+*.a
+*.so
+*.dll
+*.exe
+*.d
+avs_example
+
+# Generated output files
+*.ppm
+*.png
+
+# IDE files
+.vscode/
+.idea/
+*.xcodeproj/
+*.sln
+*.vcxproj
+
+# System files
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*~
+*.tmp
+*.bak
