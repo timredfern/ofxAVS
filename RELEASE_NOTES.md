@@ -7,9 +7,10 @@ Initial public release of ofxAVS - bringing Nullsoft's legendary Winamp visualiz
 - **49 effects** ported from original AVS (96% coverage)
 - **Full preset compatibility** - load original .avs preset files
 - **Built-in audio management** - microphone input or audio file playback
+- **Live MIDI input** - connect hardware controllers with channel filtering and debug window
 - **ImGui-based UI** - effect chain editing with parameter controls
 - **Beat detection** - automatic BPM detection and beat-triggered effects
-- **Session persistence** - effect chains and audio settings saved between sessions
+- **Session persistence** - effect chains, audio and MIDI settings saved between sessions
 - **Cross-platform** - macOS, Linux (Raspberry Pi tested)
 
 ## Installation

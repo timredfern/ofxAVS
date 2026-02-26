@@ -17,6 +17,7 @@
 #include "core/event_bus.h"
 #include "effects/effect_list_root.h"
 #include "MidiFile.h"
+#include "MidiInput.h"
 #include <vector>
 #include <unordered_set>
 #include <memory>
@@ -56,8 +57,12 @@ public:
     // MIDI file loading and catalogue
     void loadMidiFile(const std::string& path);
     bool loadCatalogue(const std::string& jsonPath);  // Load JSON with audio+MIDI paths
-    void setMidiDebug(bool enabled) { midi_debug_ = enabled; }
-    void toggleMidiDebug();
+    void setMidiFileDebug(bool enabled) { midi_debug_ = enabled; }
+    void toggleMidiFileDebug();
+
+    // Live MIDI input
+    avs::MidiInput& getMidiInput() { return midi_input_; }
+    void drawMidiDebugWindow();  // Call from your draw loop if debug window enabled
 
     // Audio settings persistence
     void loadAudioSettings();
@@ -221,8 +226,13 @@ private:
     // MIDI file playback
     avs::MidiFile midi_file_;
     size_t midi_event_index_ = 0;            // Next event to process
-    bool midi_debug_ = false;                // Print MIDI events to console
+    bool midi_debug_ = false;                // Print MIDI file events to console
     std::string midi_loaded_filepath_;       // Currently loaded MIDI file
 
     void updateMidiPlayback();               // Called from update() to process MIDI events
+
+    // Live MIDI input
+    avs::MidiInput midi_input_;
+    std::string midi_input_device_name_;     // For persistence
+    int midi_input_channel_ = 0;             // 0 = Omni, 1-16 = specific channel
 };

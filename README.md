@@ -16,6 +16,7 @@ This project is a modern C++ port that maintains compatibility with original AVS
 - **ImGui-based UI** - Effect chain editing with parameter controls
 - **Beat detection** - Automatic BPM detection and beat-triggered effects
 - **Session persistence** - Effect chains and audio settings saved/restored between sessions
+- **Live MIDI input** - Connect hardware controllers, filter by channel, debug window
 - **Auto-resizing output** - Renders at native resolution, ideal for fullscreen
 - **Effect profiling** - Press P to show per-effect render times
 
@@ -39,6 +40,7 @@ The addon provides a complete visualization environment:
   - [ofxImGui](https://github.com/jvcleave/ofxImGui) - UI rendering
   - [ofxFft](https://github.com/kylemcdonald/ofxFft) - FFT audio processing
   - [ofxAudioDecoder](https://github.com/kylemcdonald/ofxAudioDecoder) - Audio file playback
+  - [ofxMidi](https://github.com/danomatika/ofxMidi) - Live MIDI input
 
 ### Building
 
@@ -85,8 +87,9 @@ class ofApp : public ofBaseApp {
         avs.draw(0, 0, 600, 600);  // Auto-resizes to fit
 
         gui.begin();
-        avs.drawUI();       // Effect chain + parameter panels
-        avs.drawAudioUI();  // Audio device selection + file player
+        avs.drawUI();              // Effect chain + parameter panels
+        avs.drawAudioUI();         // Audio/MIDI device selection + file player
+        avs.drawMidiDebugWindow(); // MIDI debug log (if enabled)
         gui.end();
     }
 };
@@ -98,7 +101,9 @@ class ofApp : public ofBaseApp {
 ofxAVS/
 ├── src/                    # OpenFrameworks addon layer
 │   ├── ofxAVS.cpp/h        # Main addon: rendering, audio, UI
-│   └── AVSui.cpp/h         # ImGui control rendering
+│   ├── AVSui.cpp/h         # ImGui control rendering
+│   ├── MidiInput.cpp/h     # Live MIDI input handling
+│   └── MidiFile.cpp/h      # MIDI file playback
 ├── docs/                   # Documentation
 │   ├── ARCHITECTURE.md     # ofxAVS architecture
 │   ├── BUILD.md            # Build instructions

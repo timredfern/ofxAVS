@@ -107,8 +107,11 @@ bool ofxAVS::saveSession() {
 }
 
 void ofxAVS::update() {
-    // Update MIDI playback (push events to EventBus based on audio position)
+    // Update MIDI file playback (push events to EventBus based on audio position)
     updateMidiPlayback();
+
+    // Update live MIDI input (push events to EventBus from hardware)
+    midi_input_.update();
 
     // Process beat detection
     bool isBeat = beat_detector_->process(current_audio_data);
@@ -1297,9 +1300,9 @@ void ofxAVS::togglePlayback() {
     }
 }
 
-void ofxAVS::toggleMidiDebug() {
+void ofxAVS::toggleMidiFileDebug() {
     midi_debug_ = !midi_debug_;
-    ofLogNotice("ofxAVS") << "MIDI debug " << (midi_debug_ ? "ON" : "OFF");
+    ofLogNotice("ofxAVS") << "MIDI file debug " << (midi_debug_ ? "ON" : "OFF");
 }
 
 void ofxAVS::loadMidiFile(const std::string& path) {
@@ -1506,6 +1509,20 @@ void ofxAVS::loadAudioSettings() {
         if (json.contains("midi_debug")) {
             midi_debug_ = json["midi_debug"].get<bool>();
         }
+        // Live MIDI input settings
+        if (json.contains("midi_input_device") && !json["midi_input_device"].is_null()) {
+            midi_input_device_name_ = json["midi_input_device"].get<std::string>();
+            if (!midi_input_device_name_.empty()) {
+                midi_input_.openDevice(midi_input_device_name_);
+            }
+        }
+        if (json.contains("midi_input_channel")) {
+            midi_input_channel_ = json["midi_input_channel"].get<int>();
+            midi_input_.setChannel(midi_input_channel_);
+        }
+        if (json.contains("midi_input_debug")) {
+            midi_input_.setDebugEnabled(json["midi_input_debug"].get<bool>());
+        }
         ofLogNotice("ofxAVS") << "Loaded audio settings";
     } catch (const std::exception& e) {
         ofLogWarning("ofxAVS") << "Failed to load audio settings: " << e.what();
@@ -1521,6 +1538,10 @@ void ofxAVS::saveAudioSettings() {
     json["mic_gain"] = audio_mic_gain_;
     json["input_device"] = audio_input_device_name_;
     json["output_device"] = audio_output_device_name_;
+    // Live MIDI input settings
+    json["midi_input_device"] = midi_input_device_name_;
+    json["midi_input_channel"] = midi_input_channel_;
+    json["midi_input_debug"] = midi_input_.isDebugEnabled();
 
     std::string path = ofToDataPath("audio_settings.json");
     if (ofSaveJson(path, json)) {
@@ -1666,5 +1687,128 @@ void ofxAVS::drawAudioUI() {
         float gainWidth = wideLayout ? 200.0f : std::min(availWidth - 80, 120.0f);
         ImGui::SetNextItemWidth(gainWidth);
         ImGui::SliderFloat("##micgain", &audio_mic_gain_, 1.0f, 100.0f, "%.0fx");
+    }
+
+    ImGui::Separator();
+
+    // MIDI Input
+    ImGui::Text("MIDI:");
+    ImGui::SameLine();
+    ImGui::SetNextItemWidth(comboWidth);
+
+    const char* midiLabel = "None";
+    std::string midiDeviceName;
+    if (midi_input_.isOpen()) {
+        midiDeviceName = midi_input_.getDeviceName();
+        midiLabel = midiDeviceName.c_str();
+    }
+
+    // Cache device list (refreshed when combo opens)
+    static std::vector<std::string> midiDevices;
+    if (ImGui::BeginCombo("##midi_device", midiLabel)) {
+        // Refresh device list each time combo opens
+        midiDevices = midi_input_.getDeviceList();
+
+        if (ImGui::Selectable("None", !midi_input_.isOpen())) {
+            midi_input_.closeDevice();
+            midi_input_device_name_.clear();
+        }
+        if (!midi_input_.isOpen()) ImGui::SetItemDefaultFocus();
+
+        for (size_t i = 0; i < midiDevices.size(); i++) {
+            bool isSelected = midi_input_.isOpen() && midi_input_.getDeviceName() == midiDevices[i];
+            if (ImGui::Selectable(midiDevices[i].c_str(), isSelected)) {
+                if (midi_input_.openDevice(static_cast<int>(i))) {
+                    midi_input_device_name_ = midiDevices[i];
+                }
+            }
+            if (isSelected) ImGui::SetItemDefaultFocus();
+        }
+        ImGui::EndCombo();
+    }
+
+    // MIDI Channel
+    if (wideLayout) {
+        ImGui::SameLine();
+    }
+    ImGui::Text("Ch:");
+    ImGui::SameLine();
+    ImGui::SetNextItemWidth(70);
+
+    const char* channelLabels[] = {
+        "Omni", "1", "2", "3", "4", "5", "6", "7", "8",
+        "9", "10", "11", "12", "13", "14", "15", "16"
+    };
+    int currentChannel = midi_input_.getChannel();
+    if (ImGui::BeginCombo("##midi_channel", channelLabels[currentChannel])) {
+        for (int i = 0; i <= 16; i++) {
+            bool isSelected = (i == currentChannel);
+            if (ImGui::Selectable(channelLabels[i], isSelected)) {
+                midi_input_.setChannel(i);
+                midi_input_channel_ = i;
+            }
+            if (isSelected) ImGui::SetItemDefaultFocus();
+        }
+        ImGui::EndCombo();
+    }
+
+    // Debug button
+    ImGui::SameLine();
+    if (ImGui::Button("Debug")) {
+        midi_input_.setDebugEnabled(!midi_input_.isDebugEnabled());
+    }
+}
+
+void ofxAVS::drawMidiDebugWindow() {
+    if (!midi_input_.isDebugEnabled()) return;
+
+    ImGui::SetNextWindowSize(ImVec2(400, 300), ImGuiCond_FirstUseEver);
+    bool open = true;
+    if (ImGui::Begin("MIDI Debug", &open)) {
+        // Device info
+        if (midi_input_.isOpen()) {
+            ImGui::TextColored(ImVec4(0.4f, 1.0f, 0.4f, 1.0f), "Device: %s", midi_input_.getDeviceName().c_str());
+        } else {
+            ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.4f, 1.0f), "No device connected");
+        }
+
+        // Channel filter display
+        int ch = midi_input_.getChannel();
+        ImGui::SameLine();
+        if (ch == 0) {
+            ImGui::Text("| Ch: Omni");
+        } else {
+            ImGui::Text("| Ch: %d", ch);
+        }
+
+        ImGui::Separator();
+
+        // Controls
+        bool autoScroll = midi_input_.isAutoScroll();
+        if (ImGui::Checkbox("Auto-scroll", &autoScroll)) {
+            midi_input_.setAutoScroll(autoScroll);
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("Clear")) {
+            midi_input_.clearDebugLog();
+        }
+
+        ImGui::Separator();
+
+        // Log window
+        ImGui::BeginChild("MidiLog", ImVec2(0, 0), true, ImGuiWindowFlags_HorizontalScrollbar);
+        const auto& log = midi_input_.getDebugLog();
+        for (const auto& entry : log) {
+            ImGui::Text("[%.2f] %s", entry.timestamp, entry.message.c_str());
+        }
+        if (autoScroll && ImGui::GetScrollY() >= ImGui::GetScrollMaxY()) {
+            ImGui::SetScrollHereY(1.0f);
+        }
+        ImGui::EndChild();
+    }
+    ImGui::End();
+
+    if (!open) {
+        midi_input_.setDebugEnabled(false);
     }
 }

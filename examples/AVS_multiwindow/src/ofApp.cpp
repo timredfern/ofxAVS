@@ -46,13 +46,13 @@ void ofApp::draw() {
 
     float margin = 5;
     float gap = 5;
-    float audioHeight = 130;
+    float inputHeight = 150;  // Audio + MIDI row
     float w = ofGetWidth();
     float h = ofGetHeight();
     float panelWidth = w - margin * 2;
 
     // Chain panel - no title bar, consistent margin
-    float chainHeight = h - audioHeight - margin * 2 - gap;
+    float chainHeight = h - inputHeight - margin * 2 - gap;
     ImGui::SetNextWindowPos(ImVec2(margin, margin));
     ImGui::SetNextWindowSize(ImVec2(panelWidth, chainHeight));
     ImGui::Begin("##chain", nullptr,
@@ -61,14 +61,17 @@ void ofApp::draw() {
     avs.drawChainPanel();
     ImGui::End();
 
-    // Audio panel - with title
+    // Input panel (Audio + MIDI) - with title
     ImGui::SetNextWindowPos(ImVec2(margin, margin * 2 + chainHeight + gap));
-    ImGui::SetNextWindowSize(ImVec2(panelWidth, audioHeight));
-    ImGui::Begin("Audio", nullptr,
+    ImGui::SetNextWindowSize(ImVec2(panelWidth, inputHeight));
+    ImGui::Begin("Input", nullptr,
         ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
         ImGuiWindowFlags_NoCollapse);
     avs.drawAudioUI();
     ImGui::End();
+
+    // MIDI debug window (floats freely when enabled)
+    avs.drawMidiDebugWindow();
 
     chain_gui_.end();
     chain_gui_.draw();
@@ -261,7 +264,7 @@ void ofApp::keyPressed(int key) {
     } else if (key == 'p' || key == 'P') {
         avs.toggleProfiling();
     } else if (key == '`') {
-        avs.toggleMidiDebug();
+        avs.toggleMidiFileDebug();
     }
 }
 
@@ -282,12 +285,12 @@ void ofApp::dragEvent(ofDragInfo dragInfo) {
     }
     // MIDI files
     else if (ext == "mid" || ext == "midi") {
-        avs.setMidiDebug(true);
+        avs.setMidiFileDebug(true);
         avs.loadMidiFile(path);
     }
     // Catalogue files (audio + MIDI synced)
     else if (ext == "avsc") {
-        avs.setMidiDebug(true);
+        avs.setMidiFileDebug(true);
         avs.loadCatalogue(path);
     }
     // Audio files
