@@ -23,10 +23,6 @@
 #include <memory>
 #include <functional>
 
-// FFT mode selection:
-// Define AVS_ENHANCED_FFT for modern processing (2048 samples, smoothing, dB scale)
-// Undefine for original Winamp behavior (512 samples, log table, no smoothing)
-//#define AVS_ENHANCED_FFT
 
 // Available effect info
 struct AvailableEffectInfo {
@@ -133,15 +129,28 @@ private:
     int width, height;
     avs::AudioData current_audio_data;
 
-    // FFT for spectrum analysis
-    ofxFft* fft;
-#ifdef AVS_ENHANCED_FFT
-    static const int FFT_SIZE = 2048;  // Higher resolution for enhanced mode
-    float smoothedSpectrum[576];       // Temporal smoothing buffer
-#else
-    static const int FFT_SIZE = 512;   // Original Winamp FFT size
-    unsigned char logTable[256];       // AVS log compression table
-#endif
+    // FFT for spectrum analysis (runtime selectable mode)
+    ofxFft* fft = nullptr;
+    bool audio_classic_mode_ = false;  // true = original Winamp, false = modern processing
+
+    // Classic mode: 512-sample FFT with log table compression
+    static const int FFT_SIZE_CLASSIC = 512;
+    unsigned char logTable[256];       // AVS log compression table (always initialized)
+
+    // Modern mode: 2048-sample FFT with temporal smoothing
+    static const int FFT_SIZE_MODERN = 2048;
+    float smoothedSpectrum[avs::AUDIO_BUFFER_SIZE] = {0}; // Temporal smoothing buffer
+
+    // Modern mode: raw audio circular buffer for frame-accurate resampling
+    static const int RAW_AUDIO_BUFFER_SIZE = 8192;  // ~186ms at 44100Hz
+    float raw_audio_left_[RAW_AUDIO_BUFFER_SIZE] = {0};
+    float raw_audio_right_[RAW_AUDIO_BUFFER_SIZE] = {0};
+    int raw_audio_write_pos_ = 0;
+    int raw_audio_samples_available_ = 0;
+
+    // Render dimensions for audio resampling
+    int render_width_ = 600;   // Updated by draw()
+    int audio_sample_rate_ = 44100;
 
     // Beat detector
     std::unique_ptr<avs::BeatDetector> beat_detector_;
@@ -222,6 +231,7 @@ private:
     float audio_mic_gain_ = 1.0f;             // Microphone gain (1x to 100x)
 
     void restartAudio();
+    void createFft();  // Create/recreate FFT for current mode
 
     // MIDI file playback
     avs::MidiFile midi_file_;

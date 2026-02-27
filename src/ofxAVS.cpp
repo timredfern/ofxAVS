@@ -17,11 +17,8 @@ static std::string getSessionPath() {
     return ofToDataPath("session.json");
 }
 
-ofxAVS::ofxAVS() : fft(nullptr) {
-#ifdef AVS_ENHANCED_FFT
-    memset(smoothedSpectrum, 0, sizeof(smoothedSpectrum));
-#else
-    // Initialize AVS log table (base ~60 compression)
+ofxAVS::ofxAVS() {
+    // Initialize AVS log table for classic mode (base ~60 compression)
     // Formula: log(x * 60/255 + 1) / log(60) * 255
     for (int x = 0; x < 256; x++) {
         double a = log(x * 60.0 / 255.0 + 1.0) / log(60.0);
@@ -30,7 +27,6 @@ ofxAVS::ofxAVS() : fft(nullptr) {
         if (t > 255) t = 255;
         logTable[x] = static_cast<unsigned char>(t);
     }
-#endif
 }
 
 ofxAVS::~ofxAVS() {
@@ -58,13 +54,8 @@ void ofxAVS::setup() {
     // This looks for resources in bin/data/avs/
     avs::resource_path() = ofToDataPath("avs");
 
-    // Initialize FFT
-#ifdef AVS_ENHANCED_FFT
-    fft = ofxFft::create(FFT_SIZE, OF_FFT_WINDOW_HAMMING);
-#else
-    // Original Winamp used Hann window
-    fft = ofxFft::create(FFT_SIZE, OF_FFT_WINDOW_HANN);
-#endif
+    // Initialize FFT based on mode (classic uses Hann like original Winamp)
+    createFft();
 
     // Initialize beat detector
     beat_detector_ = std::make_unique<avs::BeatDetector>();
@@ -135,12 +126,13 @@ void ofxAVS::audioIn(ofSoundBuffer& buffer) {
     memset(current_audio_data, 0, sizeof(avs::AudioData));
 
     int numChannels = buffer.getNumChannels();
-    int numSamples = std::min(static_cast<int>(buffer.getNumFrames()), 576);
+    int numFrames = buffer.getNumFrames();
+    int fftSize = audio_classic_mode_ ? FFT_SIZE_CLASSIC : FFT_SIZE_MODERN;
 
-    static vector<float> fftSamples(FFT_SIZE);
+    static vector<float> fftSamples(FFT_SIZE_MODERN);
 
-    // Process waveform and prepare FFT input
-    for (int i = 0; i < numSamples; i++) {
+    // Store raw audio in circular buffer (for modern mode frame-accurate resampling)
+    for (int i = 0; i < numFrames; i++) {
         float left = buffer[i * numChannels];
         float right = (numChannels >= 2) ? buffer[i * numChannels + 1] : left;
 
@@ -150,18 +142,22 @@ void ofxAVS::audioIn(ofSoundBuffer& buffer) {
             right = ofClamp(right * audio_mic_gain_, -1.0f, 1.0f);
         }
 
-        // Waveform: convert float [-1, 1] to signed char [-128, 127]
-        current_audio_data[avs::AUDIO_WAVEFORM][avs::AUDIO_LEFT][i] = static_cast<char>(left * 127.0f);
-        current_audio_data[avs::AUDIO_WAVEFORM][avs::AUDIO_RIGHT][i] = static_cast<char>(right * 127.0f);
+        // Store in circular buffer
+        raw_audio_left_[raw_audio_write_pos_] = left;
+        raw_audio_right_[raw_audio_write_pos_] = right;
+        raw_audio_write_pos_ = (raw_audio_write_pos_ + 1) % RAW_AUDIO_BUFFER_SIZE;
 
-        // Mix to mono for FFT
-        if (i < FFT_SIZE) {
+        // Prepare FFT input (mono mix)
+        if (i < fftSize) {
             fftSamples[i] = (left + right) * 0.5f;
         }
     }
 
+    // Track how many samples we have available
+    raw_audio_samples_available_ = std::min(raw_audio_samples_available_ + numFrames, RAW_AUDIO_BUFFER_SIZE);
+
     // Zero-pad FFT input if needed
-    for (int i = numSamples; i < FFT_SIZE; i++) {
+    for (int i = numFrames; i < fftSize; i++) {
         fftSamples[i] = 0;
     }
 
@@ -170,92 +166,119 @@ void ofxAVS::audioIn(ofSoundBuffer& buffer) {
     float* amplitude = fft->getAmplitude();
     int binSize = fft->getBinSize();
 
-#ifdef AVS_ENHANCED_FFT
-    // ========== ENHANCED MODE ==========
-    // Higher resolution FFT with smoothing and dB scale
+    if (audio_classic_mode_) {
+        // ========== CLASSIC MODE (Original Winamp) ==========
+        // Fixed MIN_AUDIO_SAMPLES, arbitrary slice of audio
 
-    // Smoothing constants
-    const float attack = 0.8f;   // How fast values rise
-    const float decay = 0.4f;    // How fast values fall (slower = smoother)
+        int numSamples = std::min(numFrames, avs::MIN_AUDIO_SAMPLES);
 
-    // Convert spectrum to AVS format (576 bins, 0-255 unsigned char)
-    // Use linear interpolation and temporal smoothing
-    for (int i = 0; i < 576; i++) {
-        // Map output bin to FFT bin with interpolation
-        float srcPos = (float)i * (binSize - 1) / 575.0f;
-        int srcIdx = (int)srcPos;
-        float frac = srcPos - srcIdx;
-        if (srcIdx >= binSize - 1) {
-            srcIdx = binSize - 2;
-            frac = 1.0f;
+        // Fill waveform directly from buffer (classic behavior)
+        for (int i = 0; i < numSamples; i++) {
+            float left = buffer[i * numChannels];
+            float right = (numChannels >= 2) ? buffer[i * numChannels + 1] : left;
+            if (applyMicGain) {
+                left = ofClamp(left * audio_mic_gain_, -1.0f, 1.0f);
+                right = ofClamp(right * audio_mic_gain_, -1.0f, 1.0f);
+            }
+            current_audio_data[avs::AUDIO_WAVEFORM][avs::AUDIO_LEFT][i] = static_cast<char>(left * 127.0f);
+            current_audio_data[avs::AUDIO_WAVEFORM][avs::AUDIO_RIGHT][i] = static_cast<char>(right * 127.0f);
         }
 
-        // Linear interpolation between adjacent bins
-        float mag = amplitude[srcIdx] * (1.0f - frac) + amplitude[srcIdx + 1] * frac;
+        // 512-sample FFT → 256 bins → expand to MIN_AUDIO_SAMPLES → log table compression
+        unsigned char spectrumRaw[avs::MIN_AUDIO_SAMPLES];
+        int outIdx = 0;
+        float lastValue = 0.0f;
 
-        // Log scale (dB) with adjusted range
-        float db = 20.0f * log10f(mag + 0.00001f);
-        float normalized = (db + 80.0f) / 80.0f;  // Wider dynamic range
-        if (normalized < 0) normalized = 0;
-        if (normalized > 1) normalized = 1;
+        for (int x = 0; x < 256 && outIdx < 512; x++) {
+            float mag = amplitude[x] * 128.0f;
+            if (mag > 255.0f) mag = 255.0f;
 
-        // Temporal smoothing (attack/decay envelope)
-        float target = normalized;
-        if (target > smoothedSpectrum[i]) {
-            smoothedSpectrum[i] = smoothedSpectrum[i] + (target - smoothedSpectrum[i]) * attack;
-        } else {
-            smoothedSpectrum[i] = smoothedSpectrum[i] + (target - smoothedSpectrum[i]) * decay;
+            unsigned char smoothed = static_cast<unsigned char>((mag + lastValue) / 2.0f);
+            spectrumRaw[outIdx++] = smoothed;
+            spectrumRaw[outIdx++] = static_cast<unsigned char>(mag);
+            lastValue = mag;
         }
 
-        unsigned char val = static_cast<unsigned char>(smoothedSpectrum[i] * 255.0f);
-        current_audio_data[avs::AUDIO_SPECTRUM][avs::AUDIO_LEFT][i] = static_cast<char>(val);
-        current_audio_data[avs::AUDIO_SPECTRUM][avs::AUDIO_RIGHT][i] = static_cast<char>(val);
+        while (outIdx < avs::MIN_AUDIO_SAMPLES) {
+            lastValue /= 2.0f;
+            spectrumRaw[outIdx++] = static_cast<unsigned char>(lastValue);
+        }
+
+        for (int i = 0; i < avs::MIN_AUDIO_SAMPLES; i++) {
+            unsigned char compressed = logTable[spectrumRaw[i]];
+            current_audio_data[avs::AUDIO_SPECTRUM][avs::AUDIO_LEFT][i] = static_cast<char>(compressed);
+            current_audio_data[avs::AUDIO_SPECTRUM][avs::AUDIO_RIGHT][i] = static_cast<char>(compressed);
+        }
+    } else {
+        // ========== MODERN MODE ==========
+        // Frame-accurate resampling: one frame's audio → screen width samples
+
+        // Calculate how many raw samples represent one frame
+        float fps = ofGetFrameRate();
+        if (fps < 1.0f) fps = 60.0f;  // Fallback
+        int samplesPerFrame = static_cast<int>(audio_sample_rate_ / fps);
+        samplesPerFrame = std::min(samplesPerFrame, raw_audio_samples_available_);
+        samplesPerFrame = std::min(samplesPerFrame, RAW_AUDIO_BUFFER_SIZE);
+
+        // Target sample count: max(render_width, MIN_AUDIO_SAMPLES)
+        int targetSamples = std::max(render_width_, avs::MIN_AUDIO_SAMPLES);
+        targetSamples = std::min(targetSamples, avs::AUDIO_BUFFER_SIZE);
+
+        // Resample last frame's audio to target sample count
+        if (samplesPerFrame > 0) {
+            // Calculate read position (start of last frame's audio)
+            int readStart = (raw_audio_write_pos_ - samplesPerFrame + RAW_AUDIO_BUFFER_SIZE) % RAW_AUDIO_BUFFER_SIZE;
+
+            for (int i = 0; i < targetSamples; i++) {
+                // Map output sample to input sample with linear interpolation
+                float srcPos = (float)i * (samplesPerFrame - 1) / (targetSamples - 1);
+                int srcIdx = static_cast<int>(srcPos);
+                float frac = srcPos - srcIdx;
+
+                int idx0 = (readStart + srcIdx) % RAW_AUDIO_BUFFER_SIZE;
+                int idx1 = (readStart + srcIdx + 1) % RAW_AUDIO_BUFFER_SIZE;
+
+                // Linear interpolation
+                float left = raw_audio_left_[idx0] * (1.0f - frac) + raw_audio_left_[idx1] * frac;
+                float right = raw_audio_right_[idx0] * (1.0f - frac) + raw_audio_right_[idx1] * frac;
+
+                // Convert to signed char
+                current_audio_data[avs::AUDIO_WAVEFORM][avs::AUDIO_LEFT][i] = static_cast<char>(left * 127.0f);
+                current_audio_data[avs::AUDIO_WAVEFORM][avs::AUDIO_RIGHT][i] = static_cast<char>(right * 127.0f);
+            }
+        }
+
+        // Spectrum: resample to target sample count with dB scale and temporal smoothing
+        const float attack = 0.8f;
+        const float decay = 0.4f;
+
+        for (int i = 0; i < targetSamples; i++) {
+            float srcPos = (float)i * (binSize - 1) / (targetSamples - 1);
+            int srcIdx = static_cast<int>(srcPos);
+            float frac = srcPos - srcIdx;
+            if (srcIdx >= binSize - 1) {
+                srcIdx = binSize - 2;
+                frac = 1.0f;
+            }
+
+            float mag = amplitude[srcIdx] * (1.0f - frac) + amplitude[srcIdx + 1] * frac;
+
+            float db = 20.0f * log10f(mag + 0.00001f);
+            float normalized = (db + 80.0f) / 80.0f;
+            if (normalized < 0) normalized = 0;
+            if (normalized > 1) normalized = 1;
+
+            if (normalized > smoothedSpectrum[i]) {
+                smoothedSpectrum[i] += (normalized - smoothedSpectrum[i]) * attack;
+            } else {
+                smoothedSpectrum[i] += (normalized - smoothedSpectrum[i]) * decay;
+            }
+
+            unsigned char val = static_cast<unsigned char>(smoothedSpectrum[i] * 255.0f);
+            current_audio_data[avs::AUDIO_SPECTRUM][avs::AUDIO_LEFT][i] = static_cast<char>(val);
+            current_audio_data[avs::AUDIO_SPECTRUM][avs::AUDIO_RIGHT][i] = static_cast<char>(val);
+        }
     }
-
-#else
-    // ========== ORIGINAL WINAMP MODE ==========
-    // 512-sample FFT → 256 bins → expand to 576 → log table compression
-
-    // Temporary buffer for Winamp-style spectrum (before log compression)
-    unsigned char spectrumRaw[576];
-    int outIdx = 0;
-    float lastValue = 0.0f;
-
-    // Process 256 FFT bins, output 2 values each (512 total)
-    for (int x = 0; x < 256 && outIdx < 512; x++) {
-        // ofxFft normalizes amplitude by 2/windowSum (≈ 1/128 for 512-sample Hann)
-        // A full-scale sinusoid gives amplitude ≈ 2.0 after normalization
-        // Winamp's /16 divisor was empirically chosen for typical audio levels
-        // Scale by 128 to map normalized amplitudes to 0-255 range
-        float mag = amplitude[x] * 128.0f;
-
-        // Clamp to 255
-        if (mag > 255.0f) mag = 255.0f;
-
-        // Output smoothed value (average with previous)
-        unsigned char smoothed = static_cast<unsigned char>((mag + lastValue) / 2.0f);
-        spectrumRaw[outIdx++] = smoothed;
-
-        // Output raw value
-        spectrumRaw[outIdx++] = static_cast<unsigned char>(mag);
-
-        lastValue = mag;
-    }
-
-    // Fill remaining slots (576 - 512 = 64) with decaying values
-    while (outIdx < 576) {
-        lastValue /= 2.0f;
-        spectrumRaw[outIdx++] = static_cast<unsigned char>(lastValue);
-    }
-
-    // Apply AVS log table compression
-    for (int i = 0; i < 576; i++) {
-        unsigned char compressed = logTable[spectrumRaw[i]];
-        current_audio_data[avs::AUDIO_SPECTRUM][avs::AUDIO_LEFT][i] = static_cast<char>(compressed);
-        current_audio_data[avs::AUDIO_SPECTRUM][avs::AUDIO_RIGHT][i] = static_cast<char>(compressed);
-    }
-
-#endif
 }
 
 void ofxAVS::setAudioData(const avs::AudioData& data) {
@@ -263,6 +286,9 @@ void ofxAVS::setAudioData(const avs::AudioData& data) {
 }
 
 void ofxAVS::draw(int x, int y, int w, int h) {
+    // Track render width for audio resampling
+    render_width_ = w;
+
     // Auto-resize if draw dimensions changed
     if (w != width || h != height) {
         resize(w, h);
@@ -1215,7 +1241,7 @@ void ofxAVS::restartAudio() {
         : nullptr;
 
     ofSoundStreamSettings settings;
-    settings.bufferSize = 576;
+    settings.bufferSize = avs::MIN_AUDIO_SAMPLES;
     settings.setOutListener(this);
     settings.sampleRate = findCommonRate(outputDevice, inputDevice);
     settings.numOutputChannels = std::min(2u, outputDevice->outputChannels);
@@ -1247,6 +1273,22 @@ void ofxAVS::restartAudio() {
         }
     } catch (...) {
         ofLogError("ofxAVS") << "Failed to setup audio stream";
+    }
+}
+
+void ofxAVS::createFft() {
+    if (fft) {
+        delete fft;
+        fft = nullptr;
+    }
+
+    if (audio_classic_mode_) {
+        // Original Winamp: 512 samples, Hann window
+        fft = ofxFft::create(FFT_SIZE_CLASSIC, OF_FFT_WINDOW_HANN);
+    } else {
+        // Modern: 2048 samples, Hamming window
+        fft = ofxFft::create(FFT_SIZE_MODERN, OF_FFT_WINDOW_HAMMING);
+        memset(smoothedSpectrum, 0, sizeof(smoothedSpectrum));
     }
 }
 
@@ -1523,6 +1565,10 @@ void ofxAVS::loadAudioSettings() {
         if (json.contains("midi_input_debug")) {
             midi_input_.setDebugEnabled(json["midi_input_debug"].get<bool>());
         }
+        if (json.contains("classic_audio")) {
+            audio_classic_mode_ = json["classic_audio"].get<bool>();
+            createFft();  // Recreate FFT for loaded mode
+        }
         ofLogNotice("ofxAVS") << "Loaded audio settings";
     } catch (const std::exception& e) {
         ofLogWarning("ofxAVS") << "Failed to load audio settings: " << e.what();
@@ -1542,6 +1588,8 @@ void ofxAVS::saveAudioSettings() {
     json["midi_input_device"] = midi_input_device_name_;
     json["midi_input_channel"] = midi_input_channel_;
     json["midi_input_debug"] = midi_input_.isDebugEnabled();
+    // Audio processing mode
+    json["classic_audio"] = audio_classic_mode_;
 
     std::string path = ofToDataPath("audio_settings.json");
     if (ofSaveJson(path, json)) {
@@ -1554,9 +1602,9 @@ void ofxAVS::saveAudioSettings() {
 void ofxAVS::drawAudioUI() {
     float availWidth = ImGui::GetContentRegionAvail().x;
     bool wideLayout = availWidth > 400;
-    float comboWidth = wideLayout ? 270.0f : availWidth - 60;
+    float comboWidth = wideLayout ? 250.0f : availWidth - 60;
 
-    // Input device
+    // Row 1: Input device
     ImGui::Text("Input:");
     ImGui::SameLine();
     ImGui::SetNextItemWidth(comboWidth);
@@ -1612,7 +1660,17 @@ void ofxAVS::drawAudioUI() {
         ImGui::EndCombo();
     }
 
+    // Classic audio checkbox
+    ImGui::SameLine();
+    if (ImGui::Checkbox("Classic", &audio_classic_mode_)) {
+        createFft();  // Recreate FFT for new mode
+    }
+
+    ImGui::Spacing();
+    ImGui::Spacing();
     ImGui::Separator();
+    ImGui::Spacing();
+    ImGui::Spacing();
 
     // Audio source toggle
     if (audio_has_input_) {
@@ -1689,7 +1747,11 @@ void ofxAVS::drawAudioUI() {
         ImGui::SliderFloat("##micgain", &audio_mic_gain_, 1.0f, 100.0f, "%.0fx");
     }
 
+    ImGui::Spacing();
+    ImGui::Spacing();
     ImGui::Separator();
+    ImGui::Spacing();
+    ImGui::Spacing();
 
     // MIDI Input
     ImGui::Text("MIDI:");

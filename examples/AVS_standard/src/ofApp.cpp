@@ -42,9 +42,9 @@ void ofApp::draw(){
 
 //--------------------------------------------------------------
 void ofApp::drawAudioPanel() {
-    float inputHeight = 95;  // Audio (75) + MIDI row (20)
-    ImGui::SetNextWindowPos(ImVec2(10, 640 - inputHeight - 20));  // 20px gutter like top
-    ImGui::SetNextWindowSize(ImVec2(660, inputHeight));
+    float inputHeight = 110;  // Audio + MIDI rows with spacing
+    ImGui::SetNextWindowPos(ImVec2(10, 640 - inputHeight - 35));
+    ImGui::SetNextWindowSize(ImVec2(710, inputHeight));
 
     ImGui::PushStyleColor(ImGuiCol_TitleBg, ImVec4(0.2f, 0.2f, 0.2f, 1.0f));
     ImGui::PushStyleColor(ImGuiCol_TitleBgActive, ImVec4(0.2f, 0.2f, 0.2f, 1.0f));
