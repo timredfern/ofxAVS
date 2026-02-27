@@ -12,7 +12,7 @@
 #include "core/plugin_manager.h"
 #include "core/effect_base.h"
 #include "core/effect_container.h"
-#include "core/beat_detector.h"
+#include "BeatDetector.h"
 #include "core/configurable.h"
 #include "core/event_bus.h"
 #include "effects/effect_list_root.h"
@@ -104,7 +104,7 @@ public:
     avs::Configurable* getSelected() const { return selected_; }
 
     // Beat detector access
-    avs::BeatDetector* getBeatDetector() { return beat_detector_.get(); }
+    BeatDetector* getBeatDetector() { return beat_detector_.get(); }
 
     // Effect access
     const std::vector<AvailableEffectInfo>& getAvailableEffects() const { return available_effects; }
@@ -130,7 +130,9 @@ private:
     avs::AudioData current_audio_data;
 
     // FFT for spectrum analysis (runtime selectable mode)
-    ofxFft* fft = nullptr;
+    // Stereo: separate FFT for left and right channels
+    ofxFft* fft_left_ = nullptr;
+    ofxFft* fft_right_ = nullptr;
     bool audio_classic_mode_ = false;  // true = original Winamp, false = modern processing
 
     // Classic mode: 512-sample FFT with log table compression
@@ -139,7 +141,8 @@ private:
 
     // Modern mode: 2048-sample FFT with temporal smoothing
     static const int FFT_SIZE_MODERN = 2048;
-    float smoothedSpectrum[avs::AUDIO_BUFFER_SIZE] = {0}; // Temporal smoothing buffer
+    float smoothedSpectrumLeft_[avs::MAX_AUDIO_SAMPLES] = {0};
+    float smoothedSpectrumRight_[avs::MAX_AUDIO_SAMPLES] = {0};
 
     // Modern mode: raw audio circular buffer for frame-accurate resampling
     static const int RAW_AUDIO_BUFFER_SIZE = 8192;  // ~186ms at 44100Hz
@@ -153,7 +156,8 @@ private:
     int audio_sample_rate_ = 44100;
 
     // Beat detector
-    std::unique_ptr<avs::BeatDetector> beat_detector_;
+    std::unique_ptr<BeatDetector> beat_detector_;
+    bool is_beat_ = false;  // Beat state from modern mode (set in audioIn)
 
     // Effect UI state
     std::vector<AvailableEffectInfo> available_effects;

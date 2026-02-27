@@ -40,9 +40,13 @@ ofxAVS::~ofxAVS() {
     renderer.reset();
 
     // Clean up FFT
-    if (fft) {
-        delete fft;
-        fft = nullptr;
+    if (fft_left_) {
+        delete fft_left_;
+        fft_left_ = nullptr;
+    }
+    if (fft_right_) {
+        delete fft_right_;
+        fft_right_ = nullptr;
     }
 }
 
@@ -58,7 +62,7 @@ void ofxAVS::setup() {
     createFft();
 
     // Initialize beat detector
-    beat_detector_ = std::make_unique<avs::BeatDetector>();
+    beat_detector_ = std::make_unique<BeatDetector>();
 
     // Initialize renderer
     renderer = std::make_unique<avs::DefaultRenderer>(width, height);
@@ -105,7 +109,14 @@ void ofxAVS::update() {
     midi_input_.update();
 
     // Process beat detection
-    bool isBeat = beat_detector_->process(current_audio_data);
+    // Classic mode: use AudioData (energy-based, processed here)
+    // Modern mode: use raw FFT (spectral flux, processed in audioIn)
+    bool isBeat;
+    if (audio_classic_mode_) {
+        isBeat = beat_detector_->process(current_audio_data);
+    } else {
+        isBeat = is_beat_;
+    }
 
     // Render directly into pixels buffer (CPU - context independent)
     // Note: Renderer::render() calls EventBus::process_frame() internally
@@ -115,7 +126,7 @@ void ofxAVS::update() {
 
 void ofxAVS::audioIn(ofSoundBuffer& buffer) {
     // Safety check - fft might not be initialized yet
-    if (!fft || buffer.getNumFrames() == 0 || buffer.getNumChannels() == 0) {
+    if (!fft_left_ || !fft_right_ || buffer.getNumFrames() == 0 || buffer.getNumChannels() == 0) {
         return;
     }
 
@@ -129,7 +140,8 @@ void ofxAVS::audioIn(ofSoundBuffer& buffer) {
     int numFrames = buffer.getNumFrames();
     int fftSize = audio_classic_mode_ ? FFT_SIZE_CLASSIC : FFT_SIZE_MODERN;
 
-    static vector<float> fftSamples(FFT_SIZE_MODERN);
+    static vector<float> fftSamplesLeft(FFT_SIZE_MODERN);
+    static vector<float> fftSamplesRight(FFT_SIZE_MODERN);
 
     // Store raw audio in circular buffer (for modern mode frame-accurate resampling)
     for (int i = 0; i < numFrames; i++) {
@@ -147,9 +159,10 @@ void ofxAVS::audioIn(ofSoundBuffer& buffer) {
         raw_audio_right_[raw_audio_write_pos_] = right;
         raw_audio_write_pos_ = (raw_audio_write_pos_ + 1) % RAW_AUDIO_BUFFER_SIZE;
 
-        // Prepare FFT input (mono mix)
+        // Prepare stereo FFT input
         if (i < fftSize) {
-            fftSamples[i] = (left + right) * 0.5f;
+            fftSamplesLeft[i] = left;
+            fftSamplesRight[i] = right;
         }
     }
 
@@ -158,13 +171,16 @@ void ofxAVS::audioIn(ofSoundBuffer& buffer) {
 
     // Zero-pad FFT input if needed
     for (int i = numFrames; i < fftSize; i++) {
-        fftSamples[i] = 0;
+        fftSamplesLeft[i] = 0;
+        fftSamplesRight[i] = 0;
     }
 
-    // Compute FFT spectrum
-    fft->setSignal(fftSamples);
-    float* amplitude = fft->getAmplitude();
-    int binSize = fft->getBinSize();
+    // Compute stereo FFT spectrum
+    fft_left_->setSignal(fftSamplesLeft);
+    fft_right_->setSignal(fftSamplesRight);
+    float* amplitudeLeft = fft_left_->getAmplitude();
+    float* amplitudeRight = fft_right_->getAmplitude();
+    int binSize = fft_left_->getBinSize();
 
     if (audio_classic_mode_) {
         // ========== CLASSIC MODE (Original Winamp) ==========
@@ -185,29 +201,46 @@ void ofxAVS::audioIn(ofSoundBuffer& buffer) {
         }
 
         // 512-sample FFT → 256 bins → expand to MIN_AUDIO_SAMPLES → log table compression
-        unsigned char spectrumRaw[avs::MIN_AUDIO_SAMPLES];
+        // Process left and right channels separately
+        unsigned char spectrumRawLeft[avs::MIN_AUDIO_SAMPLES];
+        unsigned char spectrumRawRight[avs::MIN_AUDIO_SAMPLES];
+
+        // Process left channel
         int outIdx = 0;
         float lastValue = 0.0f;
-
         for (int x = 0; x < 256 && outIdx < 512; x++) {
-            float mag = amplitude[x] * 128.0f;
+            float mag = amplitudeLeft[x] * 128.0f;
             if (mag > 255.0f) mag = 255.0f;
-
             unsigned char smoothed = static_cast<unsigned char>((mag + lastValue) / 2.0f);
-            spectrumRaw[outIdx++] = smoothed;
-            spectrumRaw[outIdx++] = static_cast<unsigned char>(mag);
+            spectrumRawLeft[outIdx++] = smoothed;
+            spectrumRawLeft[outIdx++] = static_cast<unsigned char>(mag);
             lastValue = mag;
         }
-
         while (outIdx < avs::MIN_AUDIO_SAMPLES) {
             lastValue /= 2.0f;
-            spectrumRaw[outIdx++] = static_cast<unsigned char>(lastValue);
+            spectrumRawLeft[outIdx++] = static_cast<unsigned char>(lastValue);
         }
 
+        // Process right channel
+        outIdx = 0;
+        lastValue = 0.0f;
+        for (int x = 0; x < 256 && outIdx < 512; x++) {
+            float mag = amplitudeRight[x] * 128.0f;
+            if (mag > 255.0f) mag = 255.0f;
+            unsigned char smoothed = static_cast<unsigned char>((mag + lastValue) / 2.0f);
+            spectrumRawRight[outIdx++] = smoothed;
+            spectrumRawRight[outIdx++] = static_cast<unsigned char>(mag);
+            lastValue = mag;
+        }
+        while (outIdx < avs::MIN_AUDIO_SAMPLES) {
+            lastValue /= 2.0f;
+            spectrumRawRight[outIdx++] = static_cast<unsigned char>(lastValue);
+        }
+
+        // Apply log compression to both channels
         for (int i = 0; i < avs::MIN_AUDIO_SAMPLES; i++) {
-            unsigned char compressed = logTable[spectrumRaw[i]];
-            current_audio_data[avs::AUDIO_SPECTRUM][avs::AUDIO_LEFT][i] = static_cast<char>(compressed);
-            current_audio_data[avs::AUDIO_SPECTRUM][avs::AUDIO_RIGHT][i] = static_cast<char>(compressed);
+            current_audio_data[avs::AUDIO_SPECTRUM][avs::AUDIO_LEFT][i] = static_cast<char>(logTable[spectrumRawLeft[i]]);
+            current_audio_data[avs::AUDIO_SPECTRUM][avs::AUDIO_RIGHT][i] = static_cast<char>(logTable[spectrumRawRight[i]]);
         }
     } else {
         // ========== MODERN MODE ==========
@@ -222,7 +255,7 @@ void ofxAVS::audioIn(ofSoundBuffer& buffer) {
 
         // Target sample count: max(render_width, MIN_AUDIO_SAMPLES)
         int targetSamples = std::max(render_width_, avs::MIN_AUDIO_SAMPLES);
-        targetSamples = std::min(targetSamples, avs::AUDIO_BUFFER_SIZE);
+        targetSamples = std::min(targetSamples, avs::MAX_AUDIO_SAMPLES);
 
         // Resample last frame's audio to target sample count
         if (samplesPerFrame > 0) {
@@ -249,6 +282,7 @@ void ofxAVS::audioIn(ofSoundBuffer& buffer) {
         }
 
         // Spectrum: resample to target sample count with dB scale and temporal smoothing
+        // Process stereo - separate smoothing for left and right channels
         const float attack = 0.8f;
         const float decay = 0.4f;
 
@@ -261,23 +295,38 @@ void ofxAVS::audioIn(ofSoundBuffer& buffer) {
                 frac = 1.0f;
             }
 
-            float mag = amplitude[srcIdx] * (1.0f - frac) + amplitude[srcIdx + 1] * frac;
+            // Process left channel
+            float magLeft = amplitudeLeft[srcIdx] * (1.0f - frac) + amplitudeLeft[srcIdx + 1] * frac;
+            float dbLeft = 20.0f * log10f(magLeft + 0.00001f);
+            float normalizedLeft = (dbLeft + 80.0f) / 80.0f;
+            if (normalizedLeft < 0) normalizedLeft = 0;
+            if (normalizedLeft > 1) normalizedLeft = 1;
 
-            float db = 20.0f * log10f(mag + 0.00001f);
-            float normalized = (db + 80.0f) / 80.0f;
-            if (normalized < 0) normalized = 0;
-            if (normalized > 1) normalized = 1;
-
-            if (normalized > smoothedSpectrum[i]) {
-                smoothedSpectrum[i] += (normalized - smoothedSpectrum[i]) * attack;
+            if (normalizedLeft > smoothedSpectrumLeft_[i]) {
+                smoothedSpectrumLeft_[i] += (normalizedLeft - smoothedSpectrumLeft_[i]) * attack;
             } else {
-                smoothedSpectrum[i] += (normalized - smoothedSpectrum[i]) * decay;
+                smoothedSpectrumLeft_[i] += (normalizedLeft - smoothedSpectrumLeft_[i]) * decay;
             }
 
-            unsigned char val = static_cast<unsigned char>(smoothedSpectrum[i] * 255.0f);
-            current_audio_data[avs::AUDIO_SPECTRUM][avs::AUDIO_LEFT][i] = static_cast<char>(val);
-            current_audio_data[avs::AUDIO_SPECTRUM][avs::AUDIO_RIGHT][i] = static_cast<char>(val);
+            // Process right channel
+            float magRight = amplitudeRight[srcIdx] * (1.0f - frac) + amplitudeRight[srcIdx + 1] * frac;
+            float dbRight = 20.0f * log10f(magRight + 0.00001f);
+            float normalizedRight = (dbRight + 80.0f) / 80.0f;
+            if (normalizedRight < 0) normalizedRight = 0;
+            if (normalizedRight > 1) normalizedRight = 1;
+
+            if (normalizedRight > smoothedSpectrumRight_[i]) {
+                smoothedSpectrumRight_[i] += (normalizedRight - smoothedSpectrumRight_[i]) * attack;
+            } else {
+                smoothedSpectrumRight_[i] += (normalizedRight - smoothedSpectrumRight_[i]) * decay;
+            }
+
+            current_audio_data[avs::AUDIO_SPECTRUM][avs::AUDIO_LEFT][i] = static_cast<char>(smoothedSpectrumLeft_[i] * 255.0f);
+            current_audio_data[avs::AUDIO_SPECTRUM][avs::AUDIO_RIGHT][i] = static_cast<char>(smoothedSpectrumRight_[i] * 255.0f);
         }
+
+        // Modern beat detection: use raw FFT magnitudes (spectral flux)
+        is_beat_ = beat_detector_->processModern(amplitudeLeft, amplitudeRight, binSize);
     }
 }
 
@@ -1277,18 +1326,25 @@ void ofxAVS::restartAudio() {
 }
 
 void ofxAVS::createFft() {
-    if (fft) {
-        delete fft;
-        fft = nullptr;
+    if (fft_left_) {
+        delete fft_left_;
+        fft_left_ = nullptr;
+    }
+    if (fft_right_) {
+        delete fft_right_;
+        fft_right_ = nullptr;
     }
 
     if (audio_classic_mode_) {
         // Original Winamp: 512 samples, Hann window
-        fft = ofxFft::create(FFT_SIZE_CLASSIC, OF_FFT_WINDOW_HANN);
+        fft_left_ = ofxFft::create(FFT_SIZE_CLASSIC, OF_FFT_WINDOW_HANN);
+        fft_right_ = ofxFft::create(FFT_SIZE_CLASSIC, OF_FFT_WINDOW_HANN);
     } else {
         // Modern: 2048 samples, Hamming window
-        fft = ofxFft::create(FFT_SIZE_MODERN, OF_FFT_WINDOW_HAMMING);
-        memset(smoothedSpectrum, 0, sizeof(smoothedSpectrum));
+        fft_left_ = ofxFft::create(FFT_SIZE_MODERN, OF_FFT_WINDOW_HAMMING);
+        fft_right_ = ofxFft::create(FFT_SIZE_MODERN, OF_FFT_WINDOW_HAMMING);
+        memset(smoothedSpectrumLeft_, 0, sizeof(smoothedSpectrumLeft_));
+        memset(smoothedSpectrumRight_, 0, sizeof(smoothedSpectrumRight_));
     }
 }
 
@@ -1703,19 +1759,37 @@ void ofxAVS::drawAudioUI() {
             }
             ImGui::SameLine();
 
-            float fileInfoWidth = wideLayout ? 250.0f : std::min(availWidth - 80, 150.0f);
-            ImGui::SetNextItemWidth(fileInfoWidth);
-            ImGui::Text("%s", audio_loaded_filename_.c_str());
-            ImGui::SameLine();
+            // Progress bar takes available width minus space for percentage
+            float percentWidth = 45.0f;  // Space for "100%"
+            float progressWidth = ImGui::GetContentRegionAvail().x - percentWidth;
+            if (progressWidth < 50.0f) progressWidth = 50.0f;
 
-            float progressWidth = wideLayout ? 150.0f : std::max(availWidth - fileInfoWidth - 100, 50.0f);
             float progress = (float)audio_playback_pos_ / audio_file_buffer_.getNumFrames();
-            ImGui::ProgressBar(progress, ImVec2(progressWidth, 0));
 
-            if (ImGui::IsItemClicked()) {
+            // Draw progress bar with empty overlay text (we'll draw our own)
+            ImGui::ProgressBar(progress, ImVec2(progressWidth, 0), "");
+
+            // Get progress bar rect to overlay filename
+            ImVec2 barMin = ImGui::GetItemRectMin();
+            ImVec2 barMax = ImGui::GetItemRectMax();
+
+            // Overlay filename text centered vertically, left-aligned with padding
+            ImDrawList* drawList = ImGui::GetWindowDrawList();
+            ImVec2 textPos(barMin.x + 4, barMin.y + (barMax.y - barMin.y - ImGui::GetTextLineHeight()) * 0.5f);
+
+            // Clip text to progress bar bounds
+            drawList->PushClipRect(barMin, barMax, true);
+            drawList->AddText(textPos, ImGui::GetColorU32(ImGuiCol_Text), audio_loaded_filename_.c_str());
+            drawList->PopClipRect();
+
+            // Invisible button over progress bar for click/drag interaction
+            ImGui::SetCursorScreenPos(barMin);
+            ImGui::InvisibleButton("##seekbar", ImVec2(barMax.x - barMin.x, barMax.y - barMin.y));
+
+            // Handle click or drag on progress bar
+            if (ImGui::IsItemActive()) {
                 ImVec2 mousePos = ImGui::GetMousePos();
-                ImVec2 itemPos = ImGui::GetItemRectMin();
-                float seekPos = (mousePos.x - itemPos.x) / progressWidth;
+                float seekPos = (mousePos.x - barMin.x) / progressWidth;
                 seekPos = ofClamp(seekPos, 0.0f, 1.0f);
                 audio_playback_pos_ = (size_t)(seekPos * audio_file_buffer_.getNumFrames());
 
@@ -1736,6 +1810,10 @@ void ofxAVS::drawAudioUI() {
                     avs::EventBus::instance().reset();
                 }
             }
+
+            // Percentage after progress bar
+            ImGui::SetCursorScreenPos(ImVec2(barMax.x + 4, barMin.y));
+            ImGui::Text("%3.0f%%", progress * 100.0f);
         } else {
             ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Drop audio file here");
         }

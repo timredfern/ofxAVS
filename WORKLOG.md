@@ -4,9 +4,63 @@
 
 ## Current Task
 
-Ready for user testing on macOS and Linux/Pi4.
+Ready for testing. Beat detection moved to ofxAVS with modern spectral flux support.
 
 ## Recent Work
+
+### Beat Detection Architecture Change - COMPLETE
+
+**Moved beat detection from avs_lib to ofxAVS.**
+
+**Rationale:**
+The original architecture had BeatDetector in avs_lib, but ofxAVS was calling it
+and passing the result back to the renderer. This was inconsistent:
+
+```
+OLD (inconsistent):
+ofxAVS owns BeatDetector (from avs_lib)
+    → ofxAVS calls beat_detector_->process(audio)
+    → ofxAVS passes isBeat to renderer->render(..., isBeat, ...)
+    → Why is beat detection in avs_lib if host orchestrates it?
+```
+
+More importantly, modern beat detection needs raw FFT data which is only
+available in ofxAVS. The AudioData passed to avs_lib has already been
+processed (log-compressed or dB-scaled), losing magnitude information
+needed for proper onset detection.
+
+**New architecture:**
+```
+NEW (clean separation):
+avs_lib: Pure rendering. Receives isBeat from host. No audio analysis.
+ofxAVS: Owns beat detection. Has raw FFT. Passes isBeat to renderer.
+```
+
+**Files moved:**
+- `libs/avs_lib/core/beat_detector.h` → `src/BeatDetector.h`
+- `libs/avs_lib/core/beat_detector.cpp` → `src/BeatDetector.cpp`
+
+**Benefits:**
+- avs_lib stays portable with no audio analysis dependencies
+- Modern onset detection can use raw FFT magnitudes
+- Different hosts can implement different beat detection
+- Classic algorithm preserved, modern improvements possible
+
+---
+
+### Audio Processing Changes - COMPLETE
+
+**Stereo spectrum support:**
+- Two FFT objects (left/right channels) instead of mono mix
+- Separate smoothing buffers per channel
+- Both classic and modern modes now have true stereo spectrum
+
+**Audio buffer rename:**
+- `AUDIO_BUFFER_SIZE` → `MAX_AUDIO_SAMPLES` for clarity
+- `MIN_AUDIO_SAMPLES = 576` (classic AVS guarantee)
+- `MAX_AUDIO_SAMPLES = 8192` (supports 8K displays)
+
+---
 
 ### MIDI/EventBus Support - COMPLETE
 
