@@ -12,20 +12,17 @@
 #include "core/plugin_manager.h"
 #include "core/effect_base.h"
 #include "core/effect_container.h"
-#include "core/beat_detector.h"
+#include "BeatDetector.h"
 #include "core/configurable.h"
 #include "core/event_bus.h"
 #include "effects/effect_list_root.h"
 #include "MidiFile.h"
+#include "MidiInput.h"
 #include <vector>
 #include <unordered_set>
 #include <memory>
 #include <functional>
 
-// FFT mode selection:
-// Define AVS_ENHANCED_FFT for modern processing (2048 samples, smoothing, dB scale)
-// Undefine for original Winamp behavior (512 samples, log table, no smoothing)
-//#define AVS_ENHANCED_FFT
 
 // Available effect info
 struct AvailableEffectInfo {
@@ -56,8 +53,12 @@ public:
     // MIDI file loading and catalogue
     void loadMidiFile(const std::string& path);
     bool loadCatalogue(const std::string& jsonPath);  // Load JSON with audio+MIDI paths
-    void setMidiDebug(bool enabled) { midi_debug_ = enabled; }
-    void toggleMidiDebug();
+    void setMidiFileDebug(bool enabled) { midi_debug_ = enabled; }
+    void toggleMidiFileDebug();
+
+    // Live MIDI input
+    avs::MidiInput& getMidiInput() { return midi_input_; }
+    void drawMidiDebugWindow();  // Call from your draw loop if debug window enabled
 
     // Audio settings persistence
     void loadAudioSettings();
@@ -103,7 +104,7 @@ public:
     avs::Configurable* getSelected() const { return selected_; }
 
     // Beat detector access
-    avs::BeatDetector* getBeatDetector() { return beat_detector_.get(); }
+    BeatDetector* getBeatDetector() { return beat_detector_.get(); }
 
     // Effect access
     const std::vector<AvailableEffectInfo>& getAvailableEffects() const { return available_effects; }
@@ -128,18 +129,35 @@ private:
     int width, height;
     avs::AudioData current_audio_data;
 
-    // FFT for spectrum analysis
-    ofxFft* fft;
-#ifdef AVS_ENHANCED_FFT
-    static const int FFT_SIZE = 2048;  // Higher resolution for enhanced mode
-    float smoothedSpectrum[576];       // Temporal smoothing buffer
-#else
-    static const int FFT_SIZE = 512;   // Original Winamp FFT size
-    unsigned char logTable[256];       // AVS log compression table
-#endif
+    // FFT for spectrum analysis (runtime selectable mode)
+    // Stereo: separate FFT for left and right channels
+    ofxFft* fft_left_ = nullptr;
+    ofxFft* fft_right_ = nullptr;
+    bool audio_classic_mode_ = false;  // true = original Winamp, false = modern processing
+
+    // Classic mode: 512-sample FFT with log table compression
+    static const int FFT_SIZE_CLASSIC = 512;
+    unsigned char logTable[256];       // AVS log compression table (always initialized)
+
+    // Modern mode: 2048-sample FFT with temporal smoothing
+    static const int FFT_SIZE_MODERN = 2048;
+    float smoothedSpectrumLeft_[avs::MAX_AUDIO_SAMPLES] = {0};
+    float smoothedSpectrumRight_[avs::MAX_AUDIO_SAMPLES] = {0};
+
+    // Modern mode: raw audio circular buffer for frame-accurate resampling
+    static const int RAW_AUDIO_BUFFER_SIZE = 8192;  // ~186ms at 44100Hz
+    float raw_audio_left_[RAW_AUDIO_BUFFER_SIZE] = {0};
+    float raw_audio_right_[RAW_AUDIO_BUFFER_SIZE] = {0};
+    int raw_audio_write_pos_ = 0;
+    int raw_audio_samples_available_ = 0;
+
+    // Render dimensions for audio resampling
+    int render_width_ = 600;   // Updated by draw()
+    int audio_sample_rate_ = 44100;
 
     // Beat detector
-    std::unique_ptr<avs::BeatDetector> beat_detector_;
+    std::unique_ptr<BeatDetector> beat_detector_;
+    bool is_beat_ = false;  // Beat state from modern mode (set in audioIn)
 
     // Effect UI state
     std::vector<AvailableEffectInfo> available_effects;
@@ -217,12 +235,18 @@ private:
     float audio_mic_gain_ = 1.0f;             // Microphone gain (1x to 100x)
 
     void restartAudio();
+    void createFft();  // Create/recreate FFT for current mode
 
     // MIDI file playback
     avs::MidiFile midi_file_;
     size_t midi_event_index_ = 0;            // Next event to process
-    bool midi_debug_ = false;                // Print MIDI events to console
+    bool midi_debug_ = false;                // Print MIDI file events to console
     std::string midi_loaded_filepath_;       // Currently loaded MIDI file
 
     void updateMidiPlayback();               // Called from update() to process MIDI events
+
+    // Live MIDI input
+    avs::MidiInput midi_input_;
+    std::string midi_input_device_name_;     // For persistence
+    int midi_input_channel_ = 0;             // 0 = Omni, 1-16 = specific channel
 };

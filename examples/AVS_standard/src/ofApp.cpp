@@ -36,17 +36,19 @@ void ofApp::draw(){
     gui.begin();
     avs.drawUI();
     drawAudioPanel();
+    avs.drawMidiDebugWindow();
     gui.end();
 }
 
 //--------------------------------------------------------------
 void ofApp::drawAudioPanel() {
-    ImGui::SetNextWindowPos(ImVec2(10, 640 - 135));
-    ImGui::SetNextWindowSize(ImVec2(660, 75));
+    float inputHeight = 110;  // Audio + MIDI rows with spacing
+    ImGui::SetNextWindowPos(ImVec2(10, 640 - inputHeight - 35));
+    ImGui::SetNextWindowSize(ImVec2(710, inputHeight));
 
     ImGui::PushStyleColor(ImGuiCol_TitleBg, ImVec4(0.2f, 0.2f, 0.2f, 1.0f));
     ImGui::PushStyleColor(ImGuiCol_TitleBgActive, ImVec4(0.2f, 0.2f, 0.2f, 1.0f));
-    ImGui::Begin("Audio", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse);
+    ImGui::Begin("Input", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse);
 
     avs.drawAudioUI();
 
@@ -78,7 +80,7 @@ void ofApp::keyPressed(int key){
     } else if (key == 'p' || key == 'P') {
         avs.toggleProfiling();
     } else if (key == '`') {
-        avs.toggleMidiDebug();
+        avs.toggleMidiFileDebug();
     }
 }
 
@@ -108,12 +110,12 @@ void ofApp::dragEvent(ofDragInfo dragInfo){
     }
     // MIDI files
     else if (ext == "mid" || ext == "midi") {
-        avs.setMidiDebug(true);
+        avs.setMidiFileDebug(true);
         avs.loadMidiFile(path);
     }
     // Catalogue files (audio + MIDI synced)
     else if (ext == "avsc") {
-        avs.setMidiDebug(true);
+        avs.setMidiFileDebug(true);
         avs.loadCatalogue(path);
     }
     // Audio files
