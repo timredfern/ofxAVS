@@ -30,7 +30,7 @@ The addon provides a complete visualization environment:
 - Audio controls with device selection and file playback
 - Auto-resizing output (renders at native resolution)
 
-## Examples
+## Example output
 
 [![AVS Jams](https://img.youtube.com/vi/SFMsAm_R4Y0/hqdefault.jpg)](https://www.youtube.com/playlist?list=PLBzqXh2tnyZAgSMJmZOuagnsHFIZdGyz1)
 
