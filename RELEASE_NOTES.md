@@ -1,3 +1,25 @@
+# ofxAVS v1.0.1
+
+Audio and beat detection improvements.
+
+## New Features
+
+- **Stereo spectrum analysis** - separate FFT for left and right channels instead of mono mix
+- **Modern audio mode** - optional processing with spectral flux beat detection, more accurate than energy-based Classic mode
+- **Runtime audio mode switching** - toggle between Classic (original Winamp) and Modern audio processing
+- **Improved progress bar** - song title overlaid on seekable progress bar with drag support
+
+## Changes
+
+- Beat detector auto-keep now defaults to OFF for more reliable BPM lock-in
+
+## UI Improvements
+
+- Multiwindow layout: wider chain window (420px), taller input panel
+- Narrower audio device dropdowns for better fit in compact layouts
+
+---
+
 # ofxAVS v1.0.0
 
 Initial public release of ofxAVS - bringing Nullsoft's legendary Winamp visualizer to creative coding.
