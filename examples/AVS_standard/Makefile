@@ -24,8 +24,8 @@ help:
 	@echo "  make copy-resources  - Copy AVS resources to bin/data"
 	@echo ""
 	@echo "Packaging:"
-	@echo "  make package         - Build release + package + create DMG"
-	@echo "  make package-only    - Package existing build (no rebuild)"
+	@echo "  make package VERSION=v1.0.1  - Build release + package + create DMG"
+	@echo "  make package-only VERSION=v1.0.1  - Package existing build (no rebuild)"
 	@echo "  make run-release     - Open the packaged app"
 	@echo "  make clean-release   - Remove release artifacts"
 	@echo "  Output: bin/release/AVS_standard.app, bin/release/AVS_standard.dmg"
@@ -52,12 +52,14 @@ PROJECT_DIR = ../..
 APP_NAME = $(shell basename $(CURDIR))
 
 # Build release and package as distributable .app
+# Usage: make package VERSION=v1.0.1
 package: Release copy-resources
-	@$(SCRIPTS_DIR)/package-app.sh $(APP_NAME) bin
+	@$(SCRIPTS_DIR)/package-app.sh $(APP_NAME) "$(VERSION)" bin
 
 # Package without rebuilding (use existing build)
+# Usage: make package-only VERSION=v1.0.1
 package-only:
-	@$(SCRIPTS_DIR)/package-app.sh $(APP_NAME) bin
+	@$(SCRIPTS_DIR)/package-app.sh $(APP_NAME) "$(VERSION)" bin
 
 # Open the packaged app
 run-release:

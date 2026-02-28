@@ -4,7 +4,6 @@ Audio and beat detection improvements.
 
 ## New Features
 
-- **Live MIDI input** - connect hardware controllers with channel filtering and debug window
 - **Stereo spectrum analysis** - separate FFT for left and right channels instead of mono mix
 - **Modern audio mode** - optional processing with spectral flux beat detection, more accurate than energy-based Classic mode
 - **Runtime audio mode switching** - toggle between Classic (original Winamp) and Modern audio processing
@@ -30,6 +29,7 @@ Initial public release of ofxAVS - bringing Nullsoft's legendary Winamp visualiz
 - **49 effects** ported from original AVS (96% coverage)
 - **Full preset compatibility** - load original .avs preset files
 - **Built-in audio management** - microphone input or audio file playback
+- **Live MIDI input** - connect hardware controllers with channel filtering and debug window
 - **ImGui-based UI** - effect chain editing with parameter controls
 - **Beat detection** - automatic BPM detection and beat-triggered effects
 - **Session persistence** - effect chains, audio and MIDI settings saved between sessions
@@ -50,7 +50,8 @@ Initial public release of ofxAVS - bringing Nullsoft's legendary Winamp visualiz
 | Cmd+L | Load preset |
 | Space | Play/pause audio |
 | P | Toggle effect profiling |
-| Drag & drop | Load .avs presets, audio files |
+| ` | Toggle MIDI debug output |
+| Drag & drop | Load .avs presets, audio files, .mid MIDI files |
 
 ## macOS Security
 

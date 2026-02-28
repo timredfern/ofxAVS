@@ -1,11 +1,12 @@
 #!/bin/bash
 # Package an OpenFrameworks app as a distributable macOS .app bundle
-# Usage: package-app.sh <app-name> [bin-dir]
+# Usage: package-app.sh <app-name> [version] [bin-dir]
 
 set -e
 
 APP_NAME="${1:-ofxAVSExample}"
-BIN_DIR="${2:-.}"
+VERSION="${2:-}"
+BIN_DIR="${3:-.}"
 APP_PATH="$BIN_DIR/${APP_NAME}.app"
 RELEASE_DIR="$BIN_DIR/release"
 
@@ -91,7 +92,11 @@ fi
 
 # Create styled DMG with Applications symlink
 log_info "Creating DMG for $ARCH..."
-DMG_PATH="$RELEASE_DIR/${APP_NAME}-${ARCH}.dmg"
+if [ -n "$VERSION" ]; then
+    DMG_PATH="$RELEASE_DIR/${APP_NAME}-${VERSION}-${ARCH}.dmg"
+else
+    DMG_PATH="$RELEASE_DIR/${APP_NAME}-${ARCH}.dmg"
+fi
 DMG_TEMP="$RELEASE_DIR/.dmg-temp.dmg"
 DMG_STAGING="$RELEASE_DIR/.dmg-staging"
 VOLUME_NAME="$APP_NAME"
