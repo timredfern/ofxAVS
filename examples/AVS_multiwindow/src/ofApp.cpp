@@ -46,7 +46,7 @@ void ofApp::draw() {
 
     float margin = 5;
     float gap = 5;
-    float inputHeight = 150;  // Audio + MIDI row
+    float inputHeight = 170;  // Audio + MIDI row
     float w = ofGetWidth();
     float h = ofGetHeight();
     float panelWidth = w - margin * 2;

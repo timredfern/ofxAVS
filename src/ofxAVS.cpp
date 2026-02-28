@@ -1658,7 +1658,7 @@ void ofxAVS::saveAudioSettings() {
 void ofxAVS::drawAudioUI() {
     float availWidth = ImGui::GetContentRegionAvail().x;
     bool wideLayout = availWidth > 400;
-    float comboWidth = wideLayout ? 250.0f : availWidth - 60;
+    float comboWidth = wideLayout ? 190.0f : availWidth - 120;
 
     // Row 1: Input device
     ImGui::Text("Input:");

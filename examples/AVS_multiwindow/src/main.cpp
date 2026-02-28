@@ -9,7 +9,7 @@
 int main() {
     // Chain/UI window (main application window)
     ofGLFWWindowSettings chain_settings;
-    chain_settings.setSize(400, 600);
+    chain_settings.setSize(420, 600);
     chain_settings.setPosition(glm::vec2(100, 100));
     chain_settings.resizable = false;
     chain_settings.title = "AVS Chain";
