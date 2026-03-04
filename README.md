@@ -43,9 +43,8 @@ The addon provides a complete visualization environment:
 - OpenFrameworks 0.12+ (https://github.com/openframeworks/openFrameworks/blob/master/INSTALL_FROM_GITHUB.md)
 - C++20 compiler
 - Required addons:
-  - [ofxImGui](https://github.com/jvcleave/ofxImGui) - UI rendering
+  - [ofxImGui](https://github.com/jvcleave/ofxImGui) - UI rendering (USE DEVELOP BRANCH)
   - [ofxFft](https://github.com/kylemcdonald/ofxFft) - FFT audio processing
-  - [ofxAudioDecoder](https://github.com/kylemcdonald/ofxAudioDecoder) - Audio file playback
   - [ofxMidi](https://github.com/danomatika/ofxMidi) - Live MIDI input
 
 ### Building
