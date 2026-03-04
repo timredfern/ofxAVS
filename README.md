@@ -57,7 +57,7 @@ export OF_ROOT=/path/to/openFrameworks
 
 # Clone into addons directory
 cd $OF_ROOT/addons
-git clone --recursive ssh://git@git.eclectronics.org:2222/timredfern/ofxAVS.git
+git clone --recursive git@github.com:timredfern/ofxAVS.git
 
 # Build the standard example
 cd ofxAVS/examples/AVS_standard
@@ -65,7 +65,7 @@ make
 make RunRelease
 ```
 
-or, just install a release
+or, just install a release (https://github.com/timredfern/ofxAVS/releases)
 
 ### Usage
 

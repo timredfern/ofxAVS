@@ -83,7 +83,13 @@ for f in "${EXCLUDE_FILES[@]}"; do
     [ -f "$f" ] && git rm -f "$f" 2>/dev/null || true
 done
 
-# 3. Update submodule to avs_lib main
+# 3. Update .gitmodules to use GitHub URL (for public cloning)
+echo ""
+echo "=== Updating submodule URL for GitHub ==="
+sed -i '' 's|ssh://git@git.eclectronics.org:2222/timredfern/avs_lib.git|git@github.com:timredfern/avs_lib.git|' .gitmodules
+git add .gitmodules
+
+# 4. Update submodule to avs_lib main
 echo ""
 echo "=== Updating avs_lib submodule reference ==="
 cd "$AVSLIB_ROOT"
@@ -91,7 +97,7 @@ git checkout main
 cd "$OFXAVS_ROOT"
 git add libs/avs_lib
 
-# 4. Commit and tag ofxAVS
+# 5. Commit and tag ofxAVS
 if [ -n "$VERSION" ]; then
     git diff --cached --quiet || git commit -m "$VERSION - sync from master"
     git tag -f "$VERSION"
@@ -101,7 +107,7 @@ else
     echo "ofxAVS: synced (no tag)"
 fi
 
-# 5. Push both
+# 6. Push both
 echo ""
 echo "=== Pushing to GitHub ==="
 cd "$AVSLIB_ROOT"
@@ -112,7 +118,7 @@ cd "$OFXAVS_ROOT"
 git push github main
 [ -n "$VERSION" ] && git push github "$VERSION" --force
 
-# 6. Return to master
+# 7. Return to master
 echo ""
 echo "=== Returning to master ==="
 cd "$AVSLIB_ROOT"
