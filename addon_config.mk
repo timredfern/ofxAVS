@@ -31,6 +31,7 @@ common:
 	# specified here separated by spaces or one per line using +=
 	ADDON_INCLUDES += libs/avs_lib
 	ADDON_INCLUDES += libs/miniaudio
+	ADDON_INCLUDES += libs/midifile/include
 
 	# any special flag that should be passed to the compiler when using this
 	# addon
@@ -57,7 +58,9 @@ common:
 	ADDON_SOURCES_EXCLUDE = libs/avs_lib/example/%
 	ADDON_SOURCES_EXCLUDE += libs/avs_lib/tests/%
 	ADDON_SOURCES_EXCLUDE += libs/avs_lib/tools/%
-	ADDON_SOURCES_EXCLUDE += libs/avs_lib/build/% 
+	ADDON_SOURCES_EXCLUDE += libs/avs_lib/build/%
+	ADDON_SOURCES_EXCLUDE += libs/midifile/tools/%
+	ADDON_SOURCES_EXCLUDE += libs/midifile/src/%
 
 	# some addons need resources to be copied to the bin/data folder of the project
 	# specify here any files that need to be copied, you can use wildcards like * and ?

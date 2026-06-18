@@ -1625,6 +1625,9 @@ void ofxAVS::loadAudioSettings() {
             audio_classic_mode_ = json["classic_audio"].get<bool>();
             createFft();  // Recreate FFT for loaded mode
         }
+        if (json.contains("beat_mode")) {
+            beat_detector_->parameters().set_int("mode", json["beat_mode"].get<int>());
+        }
         ofLogNotice("ofxAVS") << "Loaded audio settings";
     } catch (const std::exception& e) {
         ofLogWarning("ofxAVS") << "Failed to load audio settings: " << e.what();
@@ -1646,6 +1649,8 @@ void ofxAVS::saveAudioSettings() {
     json["midi_input_debug"] = midi_input_.isDebugEnabled();
     // Audio processing mode
     json["classic_audio"] = audio_classic_mode_;
+    // Beat detection mode
+    json["beat_mode"] = beat_detector_->parameters().get_int("mode");
 
     std::string path = ofToDataPath("audio_settings.json");
     if (ofSaveJson(path, json)) {
